@@ -4,6 +4,14 @@ import type { GameState } from "./state.js";
 export interface TriggerContext {
   playerId?: number;
   phase?: string | null;
+  guard?: TriggerGuard;
+}
+
+export interface TriggerGuard {
+  depth?: number;
+  maxDepth?: number;
+  steps?: number;
+  maxSteps?: number;
 }
 
 export interface TriggerResult {

@@ -15,6 +15,10 @@ const schemaJson = JSON.parse(
 const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
 const validate = ajv.compile(schemaJson);
 
+function cloneDefinition(definition) {
+  return structuredClone(definition);
+}
+
 function assertValid(definition) {
   const ok = validate(definition);
   assert.equal(ok, true, JSON.stringify(validate.errors, null, 2));
@@ -26,11 +30,11 @@ function assertInvalid(definition) {
 }
 
 test("accepts a valid game definition", () => {
-  assertValid(baseDefinition);
+  assertValid(cloneDefinition(baseDefinition));
 });
 
 test("accepts the minimal example definition", () => {
-  assertValid(exampleDefinition);
+  assertValid(cloneDefinition(exampleDefinition));
 });
 
 test("rejects missing version", () => {
@@ -40,7 +44,7 @@ test("rejects missing version", () => {
 });
 
 test("rejects missing termination fixture", () => {
-  assertInvalid(missingTerminationDefinition);
+  assertInvalid(cloneDefinition(missingTerminationDefinition));
 });
 
 test("rejects invalid enum values", () => {

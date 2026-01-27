@@ -1,0 +1,100 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "score",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 10 },
+        "initial": 0
+      }
+    ],
+    "tokenTypes": [
+      {
+        "id": "pawn",
+        "attributes": [
+          {
+            "id": "owner",
+            "scope": "global",
+            "type": { "kind": "enum", "values": ["a", "b"] },
+            "initial": "a"
+          }
+        ]
+      }
+    ],
+    "zones": [
+      {
+        "id": "board",
+        "tokenType": "pawn",
+        "scope": "global",
+        "order": "ordered",
+        "visibility": "public"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "blocked-move",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "score" } },
+        "right": { "kind": "value", "value": 99 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "score" },
+          "amount": 1
+        }
+      ],
+      "targets": [
+        {
+          "id": "piece",
+          "kind": "token",
+          "selector": {
+            "zone": "board",
+            "tokenType": "pawn",
+            "count": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "blocked-pass",
+      "actor": "player",
+      "preconditions": { "kind": "value", "value": false },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "score" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "score" } },
+          "right": { "kind": "value", "value": 10 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 20
+  }
+}

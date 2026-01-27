@@ -7,17 +7,19 @@ Guarantee that generated games are finite, well-formed, and meaningful. Enforced
 - Finite termination: at least one end condition and max turns fallback.
 - Bounded state: integers clamped; token counts capped; zone capacity enforced.
 - Action legality: preconditions must be satisfiable and reference valid state.
-- Non-triviality: at least one meaningful choice per turn in typical states.
+- Non-triviality: avoid dominant trivial strategies; at least one meaningful choice per turn in typical states.
 - No dead rules: declared variables/tokens must be referenced by rules.
+- No free lunch: beneficial effects must include costs, limits, or counter-play windows.
+- No illegal operations: effects cannot move tokens to invalid zones or reference invalid entities.
 
 ## Validation Phases
 1. Static validation (AST/type checks).
 2. Structural validation (required sections present).
 3. Constraint validation (bounds and caps).
-4. Dynamic validation (simulation-based degeneracy checks).
+4. Dynamic validation (simulation-based degeneracy checks and dominance detection).
 
 ## Runtime Safety
-- Detect repeated state loops; break with draw/loss flag.
+- Detect repeated state loops; break with draw/loss flag (failsafe only).
 - Trigger recursion protection (depth or re-entry guard).
 - Max step limit per turn to prevent infinite auto-effects.
 

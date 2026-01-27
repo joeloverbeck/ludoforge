@@ -13,6 +13,12 @@ Use `validateGameDefinition(input)` from `src/dsl/validate.js` to validate DSL i
 ## Semantic validation
 Use `validateSemanticDefinition(input)` from `src/dsl/semantic.js` to check cross-reference integrity and DSL constraints not captured by JSON Schema. It returns `{ valid, issues }`.
 
+## Scheduler safeguards
+`advanceTurnPhase(definition, state, options)` supports optional runtime guard rails:
+- `maxStepsPerTurn`: cap on trigger effects applied during a single scheduler advance (default 1000).
+- `maxTriggerDepth`: maximum trigger re-entry depth before returning `trigger-recursion` (default 8).
+- `stateHistoryLimit`: number of recent state snapshots tracked for loop detection (default 256).
+
 ## Tests
 - `node --test test/dsl/schema.test.mjs`
 - `node --test test/dsl/validate.test.mjs`

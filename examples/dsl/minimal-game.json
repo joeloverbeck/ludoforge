@@ -17,6 +17,12 @@
     {
       "id": "gain",
       "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "score" } },
+        "right": { "kind": "value", "value": 5 }
+      },
       "effects": [
         {
           "kind": "inc",
@@ -43,6 +49,7 @@
           "players": "active"
         }
       }
-    ]
+    ],
+    "maxTurns": 20
   }
 }

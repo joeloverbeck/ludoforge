@@ -35,32 +35,69 @@ function normalizeErrors(errors) {
       schemaPath: error.schemaPath ?? "",
       params: error.params ?? {},
     }))
-    .sort((left, right) => {
-      if (left.path !== right.path) {
-        return left.path < right.path ? -1 : 1;
-      }
-      if (left.keyword !== right.keyword) {
-        return left.keyword < right.keyword ? -1 : 1;
-      }
-      if (left.schemaPath !== right.schemaPath) {
-        return left.schemaPath < right.schemaPath ? -1 : 1;
-      }
-      if (left.message !== right.message) {
-        return left.message < right.message ? -1 : 1;
-      }
-      const leftParams = JSON.stringify(left.params);
-      const rightParams = JSON.stringify(right.params);
-      if (leftParams !== rightParams) {
-        return leftParams < rightParams ? -1 : 1;
-      }
-      return 0;
+    .sort(compareValidationErrors);
+}
+
+function compareValidationErrors(left, right) {
+  if (left.path !== right.path) {
+    return left.path < right.path ? -1 : 1;
+  }
+  if (left.keyword !== right.keyword) {
+    return left.keyword < right.keyword ? -1 : 1;
+  }
+  if (left.schemaPath !== right.schemaPath) {
+    return left.schemaPath < right.schemaPath ? -1 : 1;
+  }
+  if (left.message !== right.message) {
+    return left.message < right.message ? -1 : 1;
+  }
+  const leftParams = JSON.stringify(left.params);
+  const rightParams = JSON.stringify(right.params);
+  if (leftParams !== rightParams) {
+    return leftParams < rightParams ? -1 : 1;
+  }
+  return 0;
+}
+
+function collectStructuralErrors(input) {
+  const errors = [];
+  if (!input || typeof input !== "object") {
+    return errors;
+  }
+  const termination = input.termination;
+  if (!termination || typeof termination !== "object") {
+    return errors;
+  }
+  const conditions = Array.isArray(termination.conditions) ? termination.conditions : [];
+  if (conditions.length === 0) {
+    errors.push({
+      path: "/termination/conditions",
+      message: "At least one termination condition is required",
+      keyword: "termination-conditions",
+      schemaPath: "",
+      params: {},
     });
+  }
+  if (typeof termination.maxTurns !== "number") {
+    errors.push({
+      path: "/termination/maxTurns",
+      message: "A maxTurns fallback is required",
+      keyword: "termination-max-turns",
+      schemaPath: "",
+      params: {},
+    });
+  }
+  return errors;
 }
 
 export function validateGameDefinition(input) {
   const valid = validate(input);
+  const schemaErrors = valid ? [] : normalizeErrors(validate.errors);
+  const structuralErrors = collectStructuralErrors(input);
+  const errors = [...schemaErrors, ...structuralErrors].sort(compareValidationErrors);
+  const isValid = Boolean(valid) && structuralErrors.length === 0;
   return {
-    valid: Boolean(valid),
-    errors: valid ? [] : normalizeErrors(validate.errors),
+    valid: isValid,
+    errors: isValid ? [] : errors,
   };
 }

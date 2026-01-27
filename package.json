@@ -6,6 +6,6 @@
     "ajv": "^8.12.0"
   },
   "scripts": {
-    "test": "node --test test/dsl/schema.test.mjs && tsc -p tsconfig.json"
+    "test": "node --test test/**/*.test.mjs && tsc -p tsconfig.json"
   }
 }

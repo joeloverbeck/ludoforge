@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { validateGameDefinition } from "../../src/dsl/validate.js";
-import { baseDefinition } from "./fixtures.mjs";
+import {
+  baseDefinition,
+  missingMaxTurnsDefinition,
+  missingTerminationConditionsDefinition
+} from "./fixtures.mjs";
+
+function cloneDefinition(definition) {
+  return structuredClone(definition);
+}
 
 function compareErrors(left, right) {
   if (left.path !== right.path) {
@@ -25,7 +33,7 @@ function compareErrors(left, right) {
 }
 
 test("validateGameDefinition returns valid true for a valid definition", () => {
-  const result = validateGameDefinition(baseDefinition);
+  const result = validateGameDefinition(cloneDefinition(baseDefinition));
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
 });
@@ -43,4 +51,20 @@ test("validateGameDefinition returns sorted, structured errors", () => {
 
   const sorted = [...result.errors].sort(compareErrors);
   assert.deepEqual(result.errors, sorted);
+});
+
+test("validateGameDefinition reports missing termination conditions", () => {
+  const result = validateGameDefinition(
+    cloneDefinition(missingTerminationConditionsDefinition)
+  );
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.path === "/termination/conditions"));
+});
+
+test("validateGameDefinition reports missing maxTurns fallback", () => {
+  const result = validateGameDefinition(cloneDefinition(missingMaxTurnsDefinition));
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.path === "/termination/maxTurns"));
 });

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createInitialState } from "../../src/game-kernel/state.js";
 import { advanceTurnPhase } from "../../src/game-kernel/scheduler.js";
+import { applyTriggers } from "../../src/game-kernel/triggers.js";
 
 const baseDefinition = {
   version: "1.0",
@@ -92,4 +93,65 @@ test("max-turn failsafe blocks advancing beyond the configured limit", () => {
   assert.equal(state.turn.turn, 1);
   assert.equal(state.turn.currentPlayer, 1);
   assert.equal(state.turn.phase, "main");
+});
+
+test("state loop detection halts repeated states with a failsafe flag", () => {
+  const definition = {
+    ...baseDefinition,
+    turn: { scheduler: "round_robin", phases: ["setup", "main"] },
+  };
+  const state = createInitialState(definition);
+
+  advanceTurnPhase(definition, state);
+  advanceTurnPhase(definition, state);
+  advanceTurnPhase(definition, state);
+  const result = advanceTurnPhase(definition, state);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "state-loop");
+  assert.equal(result.failsafe?.type, "draw");
+});
+
+test("max step guard caps auto-effects per scheduler step", () => {
+  const definition = {
+    ...baseDefinition,
+    triggers: [
+      {
+        event: "start_phase",
+        effects: [
+          { kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 },
+          { kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 },
+        ],
+      },
+    ],
+  };
+  const state = createInitialState(definition);
+
+  const result = advanceTurnPhase(definition, state, { maxStepsPerTurn: 1 });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "max-steps");
+  assert.equal(state.variables.global.counter, 1);
+});
+
+test("trigger recursion guard blocks re-entry when depth is exceeded", () => {
+  const definition = {
+    ...baseDefinition,
+    triggers: [
+      {
+        event: "start_phase",
+        effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+      },
+    ],
+  };
+  const state = createInitialState(definition);
+  const guard = { depth: 1, maxDepth: 1, steps: 0, maxSteps: 10 };
+
+  const result = applyTriggers(definition, state, "start_phase", {
+    playerId: 1,
+    phase: "setup",
+    guard,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "trigger-recursion");
 });
