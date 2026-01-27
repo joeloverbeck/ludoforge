@@ -160,6 +160,11 @@ const preferenceModelState: PreferenceModelState = {
   ],
   learningRate: 0.05,
   maxHistory: 100,
+  comparisonWeight: 1,
+  ratingWeight: 0.25,
+  weightDecay: 0,
+  maxWeightAbs: 5,
+  maxBiasAbs: 5,
 };
 
 const preferenceFeedbackSample: PreferenceFeedbackSample = {

@@ -10,6 +10,11 @@ const baseModelState = {
   history: [],
   learningRate: 0.05,
   maxHistory: 100,
+  comparisonWeight: 1,
+  ratingWeight: 0.25,
+  weightDecay: 0,
+  maxWeightAbs: 5,
+  maxBiasAbs: 5,
 };
 
 test("selection is deterministic and does not mutate inputs", () => {

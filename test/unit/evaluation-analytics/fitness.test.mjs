@@ -13,6 +13,11 @@ test("computePreferenceAwareFitness uses model sample count to lift bootstrap ca
     history: [],
     learningRate: 0.1,
     maxHistory: 100,
+    comparisonWeight: 1,
+    ratingWeight: 0.25,
+    weightDecay: 0,
+    maxWeightAbs: 5,
+    maxBiasAbs: 5,
   });
 
   const result = computePreferenceAwareFitness(featureVector, {
@@ -38,6 +43,11 @@ test("computePreferenceAwareFitness skips preference scoring when gated", () => 
     history: [],
     learningRate: 0.1,
     maxHistory: 100,
+    comparisonWeight: 1,
+    ratingWeight: 0.25,
+    weightDecay: 0,
+    maxWeightAbs: 5,
+    maxBiasAbs: 5,
   });
 
   const result = computePreferenceAwareFitness(featureVector, {
@@ -63,6 +73,11 @@ test("computePreferenceAwareFitness reports diagnostics when preference is avail
     history: [],
     learningRate: 0.1,
     maxHistory: 100,
+    comparisonWeight: 1,
+    ratingWeight: 0.25,
+    weightDecay: 0,
+    maxWeightAbs: 5,
+    maxBiasAbs: 5,
   };
 
   const result = computePreferenceAwareFitness(featureVector, {

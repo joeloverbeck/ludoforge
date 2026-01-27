@@ -2,6 +2,11 @@ import { computePreferenceScore } from "./preference-scoring.js";
 
 const DEFAULT_LEARNING_RATE = 0.05;
 const DEFAULT_MAX_HISTORY = 100;
+const DEFAULT_COMPARISON_WEIGHT = 1.0;
+const DEFAULT_RATING_WEIGHT = 0.25;
+const DEFAULT_WEIGHT_DECAY = 0.0;
+const DEFAULT_MAX_WEIGHT_ABS = 5.0;
+const DEFAULT_MAX_BIAS_ABS = 5.0;
 
 function cloneFeatureVector(vector) {
   return vector && typeof vector === "object" ? { ...vector } : {};
@@ -15,28 +20,32 @@ function scaleFeatureVector(vector, scalar) {
   return result;
 }
 
-function clamp01(value) {
+function clampAbs(value, limit) {
   if (!Number.isFinite(value)) {
     return 0;
   }
-  if (value <= 0) {
+  const absLimit = Math.abs(Number.isFinite(limit) ? limit : 0);
+  if (absLimit === 0) {
     return 0;
   }
-  if (value >= 1) {
-    return 1;
+  if (value >= absLimit) {
+    return absLimit;
+  }
+  if (value <= -absLimit) {
+    return -absLimit;
   }
   return value;
 }
 
-function normalizeRatingTarget(rating) {
+function normalizeRatingTargetCentered(rating) {
   if (!Number.isFinite(rating)) {
-    return 0.5;
+    return 0;
   }
   if (rating >= 1 && rating <= 5) {
-    return (rating - 1) / 4;
+    return ((rating - 1) / 4) * 2 - 1;
   }
   if (rating >= -1 && rating <= 1) {
-    return (rating + 1) / 2;
+    return rating;
   }
   return rating;
 }
@@ -69,24 +78,54 @@ function clampHistory(history, maxHistory) {
   return history.slice(history.length - maxHistory);
 }
 
-function normalizePreference(preferred) {
+function normalizeComparisonTarget(preferred) {
   if (preferred === "a") {
     return 1;
   }
   if (preferred === "b") {
-    return -1;
+    return 0;
   }
-  return 0;
+  return 0.5;
+}
+
+function safeNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function safeLearningRate(value) {
-  return Number.isFinite(value) ? value : DEFAULT_LEARNING_RATE;
+  return safeNumber(value, DEFAULT_LEARNING_RATE);
+}
+
+function applyWeightDecay(weights, learningRate, weightDecay) {
+  const decay = learningRate * weightDecay;
+  if (!Number.isFinite(decay) || decay === 0) {
+    return weights;
+  }
+  const result = {};
+  for (const [key, value] of Object.entries(weights)) {
+    const current = Number.isFinite(value) ? value : 0;
+    result[key] = current - decay * current;
+  }
+  return result;
+}
+
+function clampWeights(weights, maxAbs) {
+  const result = {};
+  for (const [key, value] of Object.entries(weights)) {
+    result[key] = clampAbs(value, maxAbs);
+  }
+  return result;
 }
 
 function createPreferenceModelState(options = {}) {
   const learningRate = safeLearningRate(options.learningRate);
   const maxHistory = Number.isFinite(options.maxHistory) ? options.maxHistory : DEFAULT_MAX_HISTORY;
   const history = clampHistory(options.history ? [...options.history] : [], maxHistory);
+  const comparisonWeight = safeNumber(options.comparisonWeight, DEFAULT_COMPARISON_WEIGHT);
+  const ratingWeight = safeNumber(options.ratingWeight, DEFAULT_RATING_WEIGHT);
+  const weightDecay = safeNumber(options.weightDecay, DEFAULT_WEIGHT_DECAY);
+  const maxWeightAbs = safeNumber(options.maxWeightAbs, DEFAULT_MAX_WEIGHT_ABS);
+  const maxBiasAbs = safeNumber(options.maxBiasAbs, DEFAULT_MAX_BIAS_ABS);
   return {
     version: Number.isFinite(options.version) ? options.version : 1,
     weights: cloneFeatureVector(options.weights),
@@ -95,12 +134,37 @@ function createPreferenceModelState(options = {}) {
     history,
     learningRate,
     maxHistory,
+    comparisonWeight,
+    ratingWeight,
+    weightDecay,
+    maxWeightAbs,
+    maxBiasAbs,
   };
 }
 
 function updatePreferenceModelState(state, feedback, options = {}) {
   const learningRate = safeLearningRate(options.learningRate ?? state.learningRate);
   const maxHistory = Number.isFinite(options.maxHistory) ? options.maxHistory : state.maxHistory;
+  const comparisonWeight = safeNumber(
+    options.comparisonWeight,
+    safeNumber(state.comparisonWeight, DEFAULT_COMPARISON_WEIGHT),
+  );
+  const ratingWeight = safeNumber(
+    options.ratingWeight,
+    safeNumber(state.ratingWeight, DEFAULT_RATING_WEIGHT),
+  );
+  const weightDecay = safeNumber(
+    options.weightDecay,
+    safeNumber(state.weightDecay, DEFAULT_WEIGHT_DECAY),
+  );
+  const maxWeightAbs = safeNumber(
+    options.maxWeightAbs,
+    safeNumber(state.maxWeightAbs, DEFAULT_MAX_WEIGHT_ABS),
+  );
+  const maxBiasAbs = safeNumber(
+    options.maxBiasAbs,
+    safeNumber(state.maxBiasAbs, DEFAULT_MAX_BIAS_ABS),
+  );
   const baseWeights = cloneFeatureVector(state.weights);
   const baseBias = Number.isFinite(state.bias) ? state.bias : 0;
   const baseSampleCount = Number.isFinite(state.sampleCount) ? state.sampleCount : 0;
@@ -108,34 +172,50 @@ function updatePreferenceModelState(state, feedback, options = {}) {
   let biasDelta = 0;
 
   if (feedback?.type === "comparison") {
-    const preference = normalizePreference(feedback.preferred);
+    const target = normalizeComparisonTarget(feedback.preferred);
     const diff = diffFeatureVectors(feedback.featureA, feedback.featureB);
-    weightDelta = scaleFeatureVector(diff, learningRate * preference);
-    biasDelta = learningRate * preference;
+    const prediction = computePreferenceScore({ weights: baseWeights, bias: baseBias }, diff).score;
+    const error = target - prediction;
+    const scaledError = learningRate * comparisonWeight * error;
+    weightDelta = scaleFeatureVector(diff, scaledError);
+    biasDelta = scaledError;
   } else if (feedback?.type === "rating") {
     const rating = Number.isFinite(feedback.rating) ? feedback.rating : null;
     if (rating !== null) {
-      const target = clamp01(normalizeRatingTarget(rating));
+      const targetCentered = clampAbs(normalizeRatingTargetCentered(rating), 1);
       const prediction = computePreferenceScore(
         { weights: baseWeights, bias: baseBias },
         feedback.featureVector,
       ).score;
-      const error = target - prediction;
-      weightDelta = scaleFeatureVector(feedback.featureVector, learningRate * error);
-      biasDelta = learningRate * error;
+      const predictionCentered = (prediction - 0.5) * 2;
+      const error = targetCentered - predictionCentered;
+      const scaledError = learningRate * ratingWeight * error;
+      weightDelta = scaleFeatureVector(feedback.featureVector, scaledError);
+      biasDelta = scaledError;
     }
   }
 
   const nextHistory = clampHistory([...(state.history ?? []), feedback], maxHistory);
+  const updatedWeights = addFeatureVectors(baseWeights, weightDelta);
+  const decayedWeights = applyWeightDecay(updatedWeights, learningRate, weightDecay);
+  const clampedWeights = clampWeights(decayedWeights, maxWeightAbs);
+  const updatedBias = baseBias + biasDelta;
+  const decayedBias = updatedBias - learningRate * weightDecay * updatedBias;
+  const clampedBias = clampAbs(decayedBias, maxBiasAbs);
 
   return {
     version: state.version + 1,
-    weights: addFeatureVectors(baseWeights, weightDelta),
-    bias: baseBias + biasDelta,
+    weights: clampedWeights,
+    bias: clampedBias,
     sampleCount: baseSampleCount + 1,
     history: nextHistory,
     learningRate,
     maxHistory,
+    comparisonWeight,
+    ratingWeight,
+    weightDecay,
+    maxWeightAbs,
+    maxBiasAbs,
   };
 }
 

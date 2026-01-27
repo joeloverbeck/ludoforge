@@ -10,6 +10,11 @@ const preferenceModelState = Object.freeze({
   history: [],
   learningRate: 0.1,
   maxHistory: 100,
+  comparisonWeight: 1,
+  ratingWeight: 0.25,
+  weightDecay: 0,
+  maxWeightAbs: 5,
+  maxBiasAbs: 5,
 });
 
 test("mock fitness deterministically maps evaluation artifacts", () => {

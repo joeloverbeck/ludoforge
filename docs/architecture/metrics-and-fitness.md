@@ -36,7 +36,8 @@ Implemented in `src/evaluation-analytics/metrics/extended.js`:
 
 Implemented in `src/evaluation-analytics/degeneracy.js` with default thresholds:
 
-- Loop: repeated state ratio >= 0.25 with at least 1 repeated state.
+- Loop: any run terminates with `terminationReason = "loop-detected"` OR repeated state ratio
+  >= 0.25 with at least 1 repeated state.
 - Stalemate: any run terminates with `terminationReason = "stalemate"`.
 - Non-terminating: any run has `terminationReason = "max-turns"` or `terminated=false`.
 - Forced move: ratio of steps with `legalActionCount <= 1` >= 0.8.
@@ -75,6 +76,7 @@ Implemented in `src/evaluation-analytics/preference-scoring.js`:
 - Linear score = `dot(weights, featureVector) + bias`.
 - Preference score = `sigmoid(linear)`.
 - Confidence = `abs(score - 0.5) * 2`.
+- Preference learning is comparison-first (comparisons are the primary training signal).
 
 ## Fitness Blend
 

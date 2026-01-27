@@ -23,6 +23,8 @@ Implemented in `src/evolutionary-engine/map-elites.js`.
   - `normalized = (clamp(value, min, max) - min) / (max - min)`
   - `index = floor(normalized * bins)`
   - clamped into `[0, bins - 1]`.
+- Descriptor configs are validated (finite numbers, `bins` is a positive integer,
+  and `max > min`); invalid configs throw.
 
 ### Niche Id
 

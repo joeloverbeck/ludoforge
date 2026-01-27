@@ -27,6 +27,7 @@ Implemented in `src/human-interface/feedback.js`.
 - Adds `gameAId`, `gameBId` if ids exist.
 - Adds `winnerId` if a non-tie winner exists.
 - Copies feature vectors into `featureA` and `featureB`.
+- Collapses optional tags/rationale into `notes` (single string) on the comparison payload.
 
 ## Preference Model State
 
@@ -38,29 +39,46 @@ State fields:
 - `bias`: scalar intercept term.
 - `sampleCount`: total preference samples seen.
 - `learningRate`, `maxHistory` with defaults 0.05 and 100.
+- `comparisonWeight` (default 1.0) and `ratingWeight` (default 0.25) for weighting
+  comparison vs rating updates.
+- `weightDecay` (default 0.0), `maxWeightAbs` (default 5.0), `maxBiasAbs` (default 5.0)
+  applied for regularization and clamping.
 - `history`: most recent feedback samples (clamped to `maxHistory`).
 
 ## Model Update Rules
 
 - Comparison feedback:
-  - `preference` maps to `{ a: +1, b: -1, tie: 0 }`.
-  - `weightDelta = learningRate * preference * (featureA - featureB)`.
-  - `biasDelta = learningRate * preference`.
+  - `target` maps to `{ a: 1, b: 0, tie: 0.5 }`.
+  - `diff = featureA - featureB`.
+  - `prediction = sigmoid(dot(weights, diff) + bias)`.
+  - `error = target - prediction`.
+  - `weightDelta = learningRate * comparisonWeight * error * diff`.
+  - `biasDelta = learningRate * comparisonWeight * error`.
 
 - Rating feedback:
-  - Rating is normalized into a target score in `[0, 1]`:
-    - `1..5` maps linearly to `0..1` (`1 -> 0`, `3 -> 0.5`, `5 -> 1`).
-    - `-1..1` maps to `0..1` (`-1 -> 0`, `0 -> 0.5`, `1 -> 1`).
-  - Compute the current prediction via `sigmoid(dot(weights, featureVector) + bias)`.
-  - `error = target - prediction`.
-  - `weightDelta = learningRate * error * featureVector`.
-  - `biasDelta = learningRate * error`.
+  - Rating is normalized into a centered target in `[-1, 1]`:
+    - `1..5` maps linearly to `-1..1` (`1 -> -1`, `3 -> 0`, `5 -> 1`).
+    - `-1..1` is accepted as-is.
+  - `predictionCentered = (sigmoid(dot(weights, featureVector) + bias) - 0.5) * 2`.
+  - `error = targetCentered - predictionCentered`.
+  - `weightDelta = learningRate * ratingWeight * error * featureVector`.
+  - `biasDelta = learningRate * ratingWeight * error`.
+
+- Regularization and clamping:
+  - Apply deltas, then decay, then clamp.
+  - `weights[key] -= learningRate * weightDecay * weights[key]`.
+  - `bias -= learningRate * weightDecay * bias`.
+  - Clamp weights to `[-maxWeightAbs, maxWeightAbs]` and bias to `[-maxBiasAbs, maxBiasAbs]`.
 
 Every update increments `version` and `sampleCount`.
 
-Note: because weights are keyed by feature id, adding new metrics does not misalign
-existing weights. Renaming or removing a metric will orphan any stored weights under
-the old id, so treat metric-id changes as a migration event.
+Note: weights are stored directly under their feature ids in JSON snapshots (there
+is no separate feature-id list). Adding new metrics does not misalign existing
+weights, but renaming/removing a metric orphans stored weights under the old id,
+so treat metric-id changes as a migration event.
+
+Note: comparison updates now use a Bradley–Terry / logistic error, keeping updates
+probabilistic while still deterministic for identical inputs.
 
 ## Use in Fitness
 

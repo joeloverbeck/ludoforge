@@ -160,6 +160,11 @@ const preferenceSnapshot: PreferenceModelSnapshotRecord = {
   },
   hyperparams: {
     learningRate: 0.05,
+    comparisonWeight: 1,
+    ratingWeight: 0.25,
+    weightDecay: 0,
+    maxWeightAbs: 5,
+    maxBiasAbs: 5,
   },
   metrics: {
     accuracy: 0.82,

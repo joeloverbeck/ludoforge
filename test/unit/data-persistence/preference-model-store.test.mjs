@@ -25,6 +25,11 @@ const snapshotRecord = {
   contextTag: "quick",
   hyperparams: {
     learningRate: 0.05,
+    comparisonWeight: 1,
+    ratingWeight: 0.25,
+    weightDecay: 0,
+    maxWeightAbs: 5,
+    maxBiasAbs: 5,
     regularization: "l2",
   },
   metrics: {
@@ -62,6 +67,11 @@ test("serialization is deterministic for the same logical snapshot", async () =>
     hyperparams: {
       regularization: "l2",
       learningRate: 0.05,
+      comparisonWeight: 1,
+      ratingWeight: 0.25,
+      weightDecay: 0,
+      maxWeightAbs: 5,
+      maxBiasAbs: 5,
     },
     trainingWindow: {
       end: "2025-01-01T00:00:00Z",

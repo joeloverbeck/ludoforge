@@ -112,6 +112,11 @@ export interface PreferenceModelState {
   history: ReadonlyArray<PreferenceFeedbackSample>;
   learningRate: number;
   maxHistory: number;
+  comparisonWeight: number;
+  ratingWeight: number;
+  weightDecay: number;
+  maxWeightAbs: number;
+  maxBiasAbs: number;
 }
 
 export interface ActiveLearningCandidate {
