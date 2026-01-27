@@ -49,53 +49,6 @@ function computeEarlyTerminationRate(summaries) {
   return earlyCount / summaries.length;
 }
 
-function outcomeToScore(outcome) {
-  if (outcome === "win") {
-    return 1;
-  }
-  if (outcome === "lose") {
-    return 0;
-  }
-  return 0.5;
-}
-
-function computeBalanceSkew(summaries) {
-  const totals = new Map();
-  const counts = new Map();
-
-  for (const summary of summaries) {
-    const outcomes = summary?.terminalOutcome?.outcomes;
-    if (!outcomes || typeof outcomes !== "object") {
-      continue;
-    }
-    for (const [playerId, outcome] of Object.entries(outcomes)) {
-      const score = outcomeToScore(outcome);
-      totals.set(playerId, safeNumber(totals.get(playerId)) + score);
-      counts.set(playerId, safeNumber(counts.get(playerId)) + 1);
-    }
-  }
-
-  if (totals.size < 2) {
-    return 0;
-  }
-
-  const winRates = [];
-  for (const [playerId, total] of totals.entries()) {
-    const count = counts.get(playerId) ?? 0;
-    if (count > 0) {
-      winRates.push(total / count);
-    }
-  }
-
-  if (winRates.length < 2) {
-    return 0;
-  }
-
-  const max = Math.max(...winRates);
-  const min = Math.min(...winRates);
-  return max - min;
-}
-
 function computeCoverageActions(definition, summaries) {
   const actionCount = Array.isArray(definition?.actions) ? definition.actions.length : 0;
   if (actionCount <= 0) {
@@ -138,7 +91,6 @@ function computeExtendedMetrics(definition, summaries) {
     { id: "length_mean", value: computeLengthMean(summaries) },
     { id: "length_variance", value: computeLengthVariance(summaries) },
     { id: "early_termination_rate", value: computeEarlyTerminationRate(summaries) },
-    { id: "balance_skew", value: computeBalanceSkew(summaries) },
     { id: "coverage_actions", value: computeCoverageActions(definition, summaries) },
     { id: "coverage_state", value: computeCoverageState(summaries) },
   ];
@@ -148,7 +100,6 @@ export {
   computeLengthMean,
   computeLengthVariance,
   computeEarlyTerminationRate,
-  computeBalanceSkew,
   computeCoverageActions,
   computeCoverageState,
   computeExtendedMetrics,

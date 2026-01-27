@@ -40,9 +40,10 @@ about the seeded simulation and evolution loop.
   - `test/e2e/state-transition.e2e.test.mjs`
   - Confirms action effects alter state consistently between runs.
 
-- Failure on no legal actions
+- Human loop failure on no legal actions
   - `test/e2e/state-transition.e2e.test.mjs`
-  - The loop fails clearly when legal actions are empty.
+  - The human prompt loop throws "No legal actions available" when the legal action
+    list is empty (simulation engine treats this case as a stalemate draw).
 
 - DSL validation and deterministic serialization
   - `test/e2e/game-definition.e2e.test.mjs`

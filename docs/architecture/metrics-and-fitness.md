@@ -15,7 +15,8 @@ Implemented in `src/evaluation-analytics/metrics/core.js`:
 
 - Agency = `choiceSteps / totalSteps`, where `choiceSteps` count steps with `legalActionCount > 1`.
 - Strategic depth = average legal action count per step.
-- Skill expression = max(winRate) - min(winRate) across players.
+- Skill expression (proxy) = max(winRate) - min(winRate) across players.
+  - This currently measures seat/role imbalance, not agent-skill separation.
 - Variety = normalized action entropy across steps.
 - Pacing tension = average `stepCount / turnCount`.
 - Interaction rate = fraction of steps where the active player changes.
@@ -26,7 +27,8 @@ Implemented in `src/evaluation-analytics/metrics/extended.js`:
 
 - Length mean and variance from `stepCount` distribution.
 - Early termination rate = fraction of runs with non-"condition" termination or `terminated=false`.
-- Balance skew = max(winRate) - min(winRate) across players.
+- Balance skew is not tracked separately; the core skill-expression proxy already
+  captures per-player win-rate spread.
 - Coverage actions = observed action ids / total action count.
 - Coverage state = average `uniqueStateCount / stepCount`.
 
@@ -49,11 +51,13 @@ Degeneracy filters default to rejecting any of:
 
 Implemented in `src/evaluation-analytics/feature-vector.js`:
 
+- Feature vectors are objects keyed by metric id (not positional arrays).
 - Metrics are normalized (non-finite values become 0).
 - Ordering defaults to:
   `agency`, `strategic_depth`, `skill_expression`, `variety`, `pacing_tension`, `interaction_rate`.
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
+- Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.
 
 ## Composite Score
 

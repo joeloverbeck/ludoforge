@@ -76,6 +76,20 @@ test("skill expression reflects win-rate gap", () => {
   assert.ok(Math.abs(computeSkillExpression(skewed) - 1) < 1e-9);
 });
 
+test("skill expression handles draws and sparse player coverage", () => {
+  const mixed = [
+    buildSummary({ outcomes: { 1: "win", 2: "draw" } }),
+    buildSummary({ outcomes: { 1: "draw", 2: "draw" } }),
+  ];
+  const singlePlayer = [
+    buildSummary({ outcomes: { 1: "win" } }),
+    buildSummary({ outcomes: { 1: "lose" } }),
+  ];
+
+  assert.ok(Math.abs(computeSkillExpression(mixed) - 0.25) < 1e-9);
+  assert.ok(Math.abs(computeSkillExpression(singlePlayer)) < 1e-9);
+});
+
 test("pacing tension uses steps per turn", () => {
   const summary = buildSummary({ stepCount: 6, turnCount: 3 });
   assert.ok(Math.abs(computePacingTension([summary]) - 2) < 1e-9);

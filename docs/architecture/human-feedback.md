@@ -34,7 +34,7 @@ Implemented in `src/evaluation-analytics/preference-model.js`.
 
 State fields:
 
-- `weights`: feature weights for the linear model.
+- `weights`: feature weights keyed by feature id (object map, not positional).
 - `bias`: scalar intercept term.
 - `sampleCount`: total preference samples seen.
 - `learningRate`, `maxHistory` with defaults 0.05 and 100.
@@ -57,6 +57,10 @@ State fields:
   - `biasDelta = learningRate * error`.
 
 Every update increments `version` and `sampleCount`.
+
+Note: because weights are keyed by feature id, adding new metrics does not misalign
+existing weights. Renaming or removing a metric will orphan any stored weights under
+the old id, so treat metric-id changes as a migration event.
 
 ## Use in Fitness
 

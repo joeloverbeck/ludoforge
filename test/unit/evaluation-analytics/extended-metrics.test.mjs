@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  computeBalanceSkew,
   computeCoverageActions,
   computeCoverageState,
   computeEarlyTerminationRate,
@@ -59,15 +58,6 @@ test("early termination rate treats un-terminated outcomes as early exits", () =
   assert.ok(Math.abs(computeEarlyTerminationRate(summaries) - 0.5) < 1e-9);
 });
 
-test("balance skew reflects win-rate gap by seat", () => {
-  const summaries = [
-    buildSummary({ outcomes: { 1: "win", 2: "lose" } }),
-    buildSummary({ outcomes: { 1: "win", 2: "lose" } }),
-  ];
-
-  assert.ok(Math.abs(computeBalanceSkew(summaries) - 1) < 1e-9);
-});
-
 test("coverage metrics use definition actions and state exploration proxies", () => {
   const definition = {
     version: "0.1.0",
@@ -112,7 +102,6 @@ test("extended metrics bundle output", () => {
   assert.equal(getMetric(metrics, "length_mean"), 2);
   assert.equal(getMetric(metrics, "length_variance"), 0);
   assert.equal(getMetric(metrics, "early_termination_rate"), 0);
-  assert.equal(getMetric(metrics, "balance_skew"), 0);
   assert.equal(getMetric(metrics, "coverage_actions"), 1);
   assert.equal(getMetric(metrics, "coverage_state"), 0);
 });
