@@ -72,6 +72,24 @@ Run the evaluation-analytics preference model tests with:
 Run the evaluation-analytics extended metrics tests with:
 - `node --test test/evaluation-analytics/extended-metrics.test.mjs`
 
+Run the evolutionary-engine serialization tests with:
+- `node --test test/evolutionary-engine/serialization.test.mjs`
+
+Run the evolutionary-engine mutation/repair tests with:
+- `node --test test/evolutionary-engine/mutation.test.mjs`
+
+Run the evolutionary-engine crossover tests with:
+- `node --test test/evolutionary-engine/crossover.test.mjs`
+
+Run the evolutionary-engine MAP-Elites tests with:
+- `node --test test/evolutionary-engine/map-elites.test.mjs`
+
+Run the evolutionary-engine evaluation adapter tests with:
+- `node --test test/evolutionary-engine/evaluation-adapter.test.mjs`
+
+Run the evolutionary-engine generation loop tests with:
+- `node --test test/evolutionary-engine/engine.test.mjs`
+
 Run the data-persistence simulation run store tests with:
 - `node --test test/data-persistence/simulation-run-store.test.mjs`
 
@@ -80,6 +98,9 @@ Run the data-persistence trajectory log store tests with:
 
 Run the data-persistence feedback store tests with:
 - `node --test test/data-persistence/feedback-store.test.mjs`
+
+Run the data-persistence game definition store tests with:
+- `node --test test/data-persistence/game-definition-store.test.mjs`
 
 ## Coding Style & Naming Conventions
 - Markdown files should use clear headings, short paragraphs, and bullet lists where helpful.
@@ -108,10 +129,19 @@ Evaluation-analytics feature vector checks run via `node --test test/evaluation-
 Evaluation-analytics scoring checks run via `node --test test/evaluation-analytics/scoring.test.mjs`.
 Evaluation-analytics preference model checks run via `node --test test/evaluation-analytics/preference-model.test.mjs`.
 Evaluation-analytics extended metrics checks run via `node --test test/evaluation-analytics/extended-metrics.test.mjs`.
+Evolutionary-engine serialization checks run via `node --test test/evolutionary-engine/serialization.test.mjs`.
+Evolutionary-engine mutation/repair checks run via `node --test test/evolutionary-engine/mutation.test.mjs`.
+Evolutionary-engine crossover checks run via `node --test test/evolutionary-engine/crossover.test.mjs`.
+Evolutionary-engine MAP-Elites checks run via `node --test test/evolutionary-engine/map-elites.test.mjs`.
+Evolutionary-engine evaluation adapter checks run via `node --test test/evolutionary-engine/evaluation-adapter.test.mjs`.
+Evolutionary-engine generation loop checks run via `node --test test/evolutionary-engine/engine.test.mjs`.
 Evaluation-analytics type checks run via `tsc -p tsconfig.json` (covers `test/evaluation-analytics/types.test.ts`).
+Evolutionary-engine type checks run via `tsc -p tsconfig.json` (covers `test/evolutionary-engine/types.test.ts`).
 Data-persistence simulation run store checks run via `node --test test/data-persistence/simulation-run-store.test.mjs`.
 Data-persistence trajectory log store checks run via `node --test test/data-persistence/trajectory-log-store.test.mjs`.
 Data-persistence feedback store checks run via `node --test test/data-persistence/feedback-store.test.mjs`.
+Data-persistence game definition store checks run via `node --test test/data-persistence/game-definition-store.test.mjs`.
+Data-persistence type checks run via `tsc -p tsconfig.json` (covers `test/data-persistence/types.test.ts`).
 
 ## Commit & Pull Request Guidelines
 - Commit messages in this repo use short, imperative sentences (e.g., “Revise README title and project description”). Follow that pattern.
