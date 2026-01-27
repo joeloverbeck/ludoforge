@@ -7,6 +7,7 @@ import type {
   FeedbackRecord,
   GameDefinitionRecord,
   MetricsRecord,
+  PreferenceModelSnapshotRecord,
   SimulationRunRecord,
   TrajectoryLogRecord,
 } from "../../src/data-persistence/types.js";
@@ -150,12 +151,30 @@ const feedbackRecord: FeedbackRecord = {
   rationale: "Felt balanced overall.",
 };
 
+const preferenceSnapshot: PreferenceModelSnapshotRecord = {
+  ...base,
+  id: "pref-model-1",
+  trainingWindow: {
+    start: "2024-12-01T00:00:00Z",
+    end: "2025-01-01T00:00:00Z",
+  },
+  hyperparams: {
+    learningRate: 0.05,
+  },
+  metrics: {
+    accuracy: 0.82,
+  },
+  weights: featureVector,
+  bias: 0.1,
+};
+
 const envelopes: DataPersistenceEnvelope[] = [
   { type: "game-definition", payload: gameRecord },
   { type: "simulation-run", payload: runRecord },
   { type: "trajectory-log", payload: trajectoryRecord },
   { type: "metrics", payload: metricsRecord },
   { type: "feedback", payload: feedbackRecord },
+  { type: "preference-model-snapshot", payload: preferenceSnapshot },
 ];
 
 void envelopes;

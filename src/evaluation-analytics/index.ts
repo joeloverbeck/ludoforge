@@ -1,4 +1,7 @@
 export type {
+  ActiveLearningCandidate,
+  ActiveLearningPair,
+  ActiveLearningSelectionOptions,
   CompositeScore,
   DegeneracyFlag,
   DegeneracyReport,
@@ -11,7 +14,10 @@ export type {
   PreferenceFeedbackComparison,
   PreferenceFeedbackRating,
   PreferenceFeedbackSample,
+  PreferenceCalibrationBucket,
   PreferenceModelUpdate,
+  PreferenceMetrics,
+  PreferenceScore,
   PreferenceModelState,
   SimulationLog,
   SimulationLogMetadata,
@@ -59,6 +65,20 @@ export {
   assembleFeatureVector,
 } from "./feature-vector.js";
 
-export { computeCompositeScore, computeObjectiveScores } from "./scoring.js";
+export { combineFitnessScores, computeCompositeScore, computeObjectiveScores } from "./scoring.js";
+
+export { computePreferenceScore } from "./preference-scoring.js";
+
+export { computePreferenceMetrics } from "./preference-metrics.js";
+
+export { computePreferenceAwareFitness } from "./fitness.js";
+
+export type {
+  PreferenceFitnessDiagnostics,
+  PreferenceFitnessOptions,
+  PreferenceFitnessResult,
+} from "./fitness.js";
 
 export { createPreferenceModelState, updatePreferenceModelState } from "./preference-model.js";
+
+export { selectActiveLearningPairs } from "./active-learning.js";

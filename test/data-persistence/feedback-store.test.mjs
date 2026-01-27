@@ -37,6 +37,21 @@ const comparisonFeedback = {
   },
 };
 
+const comparisonFeedbackWithMetadata = {
+  ...comparisonFeedback,
+  id: "feedback-3",
+  feedback: {
+    ...comparisonFeedback.feedback,
+    gameAId: "game-1",
+    gameBId: "game-2",
+    winnerId: "game-1",
+    userId: "user-9",
+    contextTag: "quick",
+    confidence: 0.82,
+    notes: "Preferred higher agency.",
+  },
+};
+
 test("writes and reads normalized feedback JSONL", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
   const filePath = join(dir, "feedback.jsonl");
@@ -85,6 +100,17 @@ test("writes and reads comparison feedback JSONL", async () => {
   assert.deepEqual(records[0], comparisonFeedback);
 });
 
+test("writes and reads comparison feedback metadata JSONL", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
+  const filePath = join(dir, "feedback.jsonl");
+
+  await writeFeedbackJsonl(filePath, [comparisonFeedbackWithMetadata]);
+
+  const records = await readFeedbackJsonl(filePath);
+  assert.equal(records.length, 1);
+  assert.deepEqual(records[0], comparisonFeedbackWithMetadata);
+});
+
 test("rejects missing required fields and invalid feedback samples", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
   const filePath = join(dir, "feedback.jsonl");
@@ -117,5 +143,71 @@ test("rejects missing required fields and invalid feedback samples", async () =>
         feedback: { type: "comparison", preferred: "c", featureA: {}, featureB: {} },
       }),
     /invalid preferred/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: { ...comparisonFeedback.feedback, confidence: "high" },
+      }),
+    /confidence must be a number/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: { ...comparisonFeedback.feedback, confidence: 1.5 },
+      }),
+    /confidence must be between 0 and 1/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: { ...comparisonFeedback.feedback, gameAId: " " },
+      }),
+    /gameAId must be a non-empty string/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: {
+          ...comparisonFeedback.feedback,
+          gameAId: "game-1",
+          gameBId: "game-1",
+        },
+      }),
+    /gameAId and gameBId must differ/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: {
+          ...comparisonFeedback.feedback,
+          gameAId: "game-1",
+          gameBId: "game-2",
+          winnerId: "game-3",
+        },
+      }),
+    /winnerId must match gameAId or gameBId/i,
+  );
+
+  assert.throws(
+    () =>
+      serializeFeedbackRecord({
+        ...comparisonFeedback,
+        feedback: {
+          ...comparisonFeedback.feedback,
+          winnerId: "game-1",
+        },
+      }),
+    /winnerId requires gameAId and gameBId/i,
   );
 });

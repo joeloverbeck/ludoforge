@@ -18,6 +18,15 @@ function assertFeedbackSample(sample) {
     throw new Error("FeedbackRecord missing required field: feedback");
   }
 
+  const optionalStringFields = [
+    "gameAId",
+    "gameBId",
+    "winnerId",
+    "userId",
+    "contextTag",
+    "notes",
+  ];
+
   if (sample.type === "rating") {
     if (!Number.isFinite(sample.rating)) {
       throw new Error("FeedbackRecord rating feedback requires a numeric rating");
@@ -37,6 +46,51 @@ function assertFeedbackSample(sample) {
     }
     if (!sample.featureB || typeof sample.featureB !== "object") {
       throw new Error("FeedbackRecord comparison feedback requires featureB");
+    }
+    for (const field of optionalStringFields) {
+      if (field in sample) {
+        if (typeof sample[field] !== "string") {
+          throw new Error(`FeedbackRecord comparison feedback ${field} must be a string`);
+        }
+        if (sample[field].trim().length === 0) {
+          throw new Error(`FeedbackRecord comparison feedback ${field} must be a non-empty string`);
+        }
+      }
+    }
+    if ("confidence" in sample && !Number.isFinite(sample.confidence)) {
+      throw new Error("FeedbackRecord comparison feedback confidence must be a number");
+    }
+    if (
+      Number.isFinite(sample.confidence) &&
+      (sample.confidence < 0 || sample.confidence > 1)
+    ) {
+      throw new Error("FeedbackRecord comparison feedback confidence must be between 0 and 1");
+    }
+    if (
+      typeof sample.gameAId === "string" &&
+      typeof sample.gameBId === "string" &&
+      sample.gameAId === sample.gameBId
+    ) {
+      throw new Error("FeedbackRecord comparison feedback gameAId and gameBId must differ");
+    }
+    if (
+      typeof sample.winnerId === "string" &&
+      (!sample.gameAId || !sample.gameBId)
+    ) {
+      throw new Error(
+        "FeedbackRecord comparison feedback winnerId requires gameAId and gameBId",
+      );
+    }
+    if (
+      typeof sample.winnerId === "string" &&
+      typeof sample.gameAId === "string" &&
+      typeof sample.gameBId === "string" &&
+      sample.winnerId !== sample.gameAId &&
+      sample.winnerId !== sample.gameBId
+    ) {
+      throw new Error(
+        "FeedbackRecord comparison feedback winnerId must match gameAId or gameBId",
+      );
     }
     return;
   }

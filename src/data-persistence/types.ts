@@ -63,12 +63,22 @@ export interface FeedbackRecord extends BaseRecord {
   rationale?: string;
 }
 
+export interface PreferenceModelSnapshotRecord extends BaseRecord {
+  trainingWindow: Record<string, unknown>;
+  contextTag?: string;
+  hyperparams: Record<string, number | string | boolean>;
+  metrics: Record<string, number | string | boolean>;
+  weights: FeatureVector;
+  bias?: number;
+}
+
 export type RecordType =
   | "game-definition"
   | "simulation-run"
   | "trajectory-log"
   | "metrics"
-  | "feedback";
+  | "feedback"
+  | "preference-model-snapshot";
 
 export interface RecordEnvelope<TType extends RecordType, TPayload extends BaseRecord> {
   type: TType;
@@ -94,16 +104,23 @@ export type MetricsEnvelope = RecordEnvelope<"metrics", MetricsRecord>;
 
 export type FeedbackEnvelope = RecordEnvelope<"feedback", FeedbackRecord>;
 
+export type PreferenceModelSnapshotEnvelope = RecordEnvelope<
+  "preference-model-snapshot",
+  PreferenceModelSnapshotRecord
+>;
+
 export type DataPersistenceEnvelope =
   | GameDefinitionEnvelope
   | SimulationRunEnvelope
   | TrajectoryLogEnvelope
   | MetricsEnvelope
-  | FeedbackEnvelope;
+  | FeedbackEnvelope
+  | PreferenceModelSnapshotEnvelope;
 
 export type DataPersistenceRecord =
   | GameDefinitionRecord
   | SimulationRunRecord
   | TrajectoryLogRecord
   | MetricsRecord
-  | FeedbackRecord;
+  | FeedbackRecord
+  | PreferenceModelSnapshotRecord;

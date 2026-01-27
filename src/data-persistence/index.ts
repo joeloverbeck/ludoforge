@@ -10,6 +10,8 @@ export type {
   MetricsEnvelope,
   MetricsRecord,
   PersistedAgent,
+  PreferenceModelSnapshotEnvelope,
+  PreferenceModelSnapshotRecord,
   RecordEnvelope,
   RecordId,
   RecordType,

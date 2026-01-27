@@ -75,6 +75,28 @@ export interface CompositeScore {
   objectives?: Record<string, number>;
 }
 
+export interface PreferenceScore {
+  score: number;
+  confidence: number;
+}
+
+export interface PreferenceCalibrationBucket {
+  lowerBound: number;
+  upperBound: number;
+  count: number;
+  averagePredicted: number;
+  averageOutcome: number;
+}
+
+export interface PreferenceMetrics {
+  accuracy: number;
+  correct: number;
+  total: number;
+  ties: number;
+  bucketSize: number;
+  calibrationBuckets: ReadonlyArray<PreferenceCalibrationBucket>;
+}
+
 export interface PreferenceModelUpdate {
   weights: FeatureVector;
   bias?: number;
@@ -92,11 +114,39 @@ export interface PreferenceModelState {
   maxHistory: number;
 }
 
+export interface ActiveLearningCandidate {
+  id: string;
+  featureVector: FeatureVector;
+  nicheId?: string;
+}
+
+export interface ActiveLearningPair {
+  candidateA: ActiveLearningCandidate;
+  candidateB: ActiveLearningCandidate;
+  winProbability: number;
+  uncertainty: number;
+}
+
+export interface ActiveLearningSelectionOptions {
+  maxPairs?: number;
+  uncertaintyThreshold?: number;
+  diversityQuota?: number;
+  cadence?: number;
+  iteration?: number;
+}
+
 export interface PreferenceFeedbackComparison {
   type: "comparison";
   preferred: "a" | "b" | "tie";
   featureA: FeatureVector;
   featureB: FeatureVector;
+  gameAId?: string;
+  gameBId?: string;
+  winnerId?: string;
+  userId?: string;
+  contextTag?: string;
+  confidence?: number;
+  notes?: string;
 }
 
 export interface PreferenceFeedbackRating {

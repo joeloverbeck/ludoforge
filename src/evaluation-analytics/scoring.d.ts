@@ -9,6 +9,28 @@ export interface CompositeScoreOptions {
   objectiveDefaultWeight?: number;
 }
 
+export interface FitnessBlendOptions {
+  preferenceWeight?: number;
+  preferenceCap?: number;
+  preferenceBootstrapCap?: number;
+  preferenceBootstrapSamples?: number;
+  preferenceSampleCount?: number;
+  diversityWeight?: number;
+  allowPreference?: boolean;
+}
+
+export interface FitnessBlendComponents {
+  base: number;
+  preference: number;
+  diversity: number;
+  preferenceCap: number;
+}
+
+export interface FitnessBlendResult {
+  score: number;
+  components: FitnessBlendComponents;
+}
+
 export function computeObjectiveScores(
   featureVector: FeatureVector,
   objectives: Record<string, FeatureVector>,
@@ -19,3 +41,10 @@ export function computeCompositeScore(
   featureVector: FeatureVector,
   options?: CompositeScoreOptions
 ): CompositeScore;
+
+export function combineFitnessScores(
+  compositeScore: number,
+  preferenceScore: number | null | undefined,
+  diversityPressure: number | null | undefined,
+  options?: FitnessBlendOptions
+): FitnessBlendResult;

@@ -10,19 +10,16 @@ Provide a concise, prioritized sequence for implementing the remaining specs bas
 - Simulation engine.
 - Evaluation and analytics.
 - Data and persistence.
+- Evolutionary engine.
+- Human interface.
 
 ## Priority Order
-1. Evolutionary engine
-   - Depends on evaluation scores and validation rules.
-   - Uses metrics for fitness and diversity management.
-
-2. Human interface
-   - Depends on kernel; best after persistence to capture feedback.
-   - Enables human play sessions and ratings.
-
-3. Preference learning
+1. Preference learning (completed and archived after PRELEA-005)
    - Depends on human feedback and evaluation vectors.
    - Refines fitness after initial evaluation pipeline is stable.
+
+## Next
+- Draft the next spec tranche once new requirements land.
 
 ## Notes
 - This order is optimized for the shortest path to an end-to-end automated loop.

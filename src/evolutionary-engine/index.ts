@@ -57,6 +57,14 @@ export {
 
 export { evaluateGenome } from "./evaluation-adapter.js";
 
+export type {
+  PreferenceEvaluationAnalytics,
+  PreferenceEvaluatorDiagnostics,
+  PreferenceEvaluatorOptions,
+} from "./preference-evaluator.js";
+
+export { createPreferenceEvaluator } from "./preference-evaluator.js";
+
 export {
   binDescriptorValue,
   getDescriptorCoordinates,

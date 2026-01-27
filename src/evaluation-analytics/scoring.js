@@ -2,6 +2,50 @@ function safeNumber(value) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+const DEFAULT_PREFERENCE_CAP = 0.25;
+const DEFAULT_PREFERENCE_BOOTSTRAP_CAP = 0.1;
+const DEFAULT_PREFERENCE_BOOTSTRAP_SAMPLES = 20;
+const DEFAULT_PREFERENCE_WEIGHT = 1;
+const DEFAULT_DIVERSITY_WEIGHT = 1;
+
+function resolvePreferenceCap(options = {}) {
+  const cap = Math.max(0, safeNumber(options.preferenceCap ?? DEFAULT_PREFERENCE_CAP));
+  const bootstrapCap = Math.max(
+    0,
+    safeNumber(options.preferenceBootstrapCap ?? DEFAULT_PREFERENCE_BOOTSTRAP_CAP)
+  );
+  const bootstrapSamples = safeNumber(
+    options.preferenceBootstrapSamples ?? DEFAULT_PREFERENCE_BOOTSTRAP_SAMPLES
+  );
+  const sampleCount = safeNumber(options.preferenceSampleCount ?? 0);
+
+  if (bootstrapSamples > 0 && sampleCount < bootstrapSamples) {
+    return Math.min(cap, bootstrapCap);
+  }
+  return cap;
+}
+
+function computePreferenceContribution(preferenceScore, options = {}) {
+  const cap = resolvePreferenceCap(options);
+  if (options.allowPreference === false) {
+    return { contribution: 0, cap };
+  }
+  if (!Number.isFinite(preferenceScore)) {
+    return { contribution: 0, cap };
+  }
+  const weight = safeNumber(options.preferenceWeight ?? DEFAULT_PREFERENCE_WEIGHT);
+  if (cap <= 0 || weight === 0) {
+    return { contribution: 0, cap };
+  }
+  const centered = (preferenceScore - 0.5) * 2;
+  const weighted = centered * weight;
+  return { contribution: clamp(weighted, -cap, cap), cap };
+}
+
 function resolveWeights(featureVector, weights, defaultWeight) {
   const resolved = new Map();
   const defaults = Number.isFinite(defaultWeight) ? defaultWeight : 0;
@@ -96,4 +140,24 @@ function computeCompositeScore(featureVector, options = {}) {
   };
 }
 
-export { computeCompositeScore, computeObjectiveScores };
+function combineFitnessScores(compositeScore, preferenceScore, diversityPressure, options = {}) {
+  const base = safeNumber(compositeScore);
+  const diversityWeight = safeNumber(options.diversityWeight ?? DEFAULT_DIVERSITY_WEIGHT);
+  const diversityContribution = safeNumber(diversityPressure) * diversityWeight;
+  const { contribution: preferenceContribution, cap } = computePreferenceContribution(
+    preferenceScore,
+    options
+  );
+
+  return {
+    score: base + diversityContribution + preferenceContribution,
+    components: {
+      base,
+      preference: preferenceContribution,
+      diversity: diversityContribution,
+      preferenceCap: cap,
+    },
+  };
+}
+
+export { computeCompositeScore, computeObjectiveScores, combineFitnessScores };

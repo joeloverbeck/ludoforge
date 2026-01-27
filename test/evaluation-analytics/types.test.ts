@@ -8,9 +8,12 @@ import type {
   EvaluationAnalyticsOutput,
   FeatureVector,
   MetricResults,
+  PreferenceCalibrationBucket,
   PreferenceFeedbackSample,
+  PreferenceMetrics,
   PreferenceModelState,
   PreferenceModelUpdate,
+  PreferenceScore,
   SimulationLog,
   TrajectorySummary,
 } from "../../src/evaluation-analytics/types.js";
@@ -125,6 +128,28 @@ const preferenceModelUpdate: PreferenceModelUpdate = {
   learningRate: 0.05,
 };
 
+const preferenceScore: PreferenceScore = {
+  score: 0.7,
+  confidence: 0.4,
+};
+
+const preferenceCalibrationBucket: PreferenceCalibrationBucket = {
+  lowerBound: 0,
+  upperBound: 0.1,
+  count: 1,
+  averagePredicted: 0.05,
+  averageOutcome: 0,
+};
+
+const preferenceMetrics: PreferenceMetrics = {
+  accuracy: 1,
+  correct: 1,
+  total: 1,
+  ties: 0,
+  bucketSize: 0.1,
+  calibrationBuckets: [preferenceCalibrationBucket],
+};
+
 const preferenceModelState: PreferenceModelState = {
   version: 1,
   weights: { agency: 0.1 },
@@ -156,5 +181,7 @@ const output: EvaluationAnalyticsOutput = {
 void log;
 void input;
 void output;
+void preferenceScore;
+void preferenceMetrics;
 void preferenceModelState;
 void preferenceFeedbackSample;
