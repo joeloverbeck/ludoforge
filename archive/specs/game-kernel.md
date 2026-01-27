@@ -31,10 +31,13 @@ Execute any game defined in the DSL by enforcing turn structure, legal action se
 3. On termination, evaluate outcome/score per agent.
 
 ## Validation and Safety
+- Required sections: game must declare at least one termination condition (win/loss/draw) or explicit max turn limit.
 - Type checks: all references must resolve to declared entities.
-- Bounds checks: integers clamped, zone capacity enforced.
+- Bounds checks: integers clamped or action rejected (configurable); zone capacity enforced.
 - Action legality: precondition must be true at time of execution.
+- Global loop detection: prevent infinite gameplay cycles (not just trigger loops); enforce max-turn failsafe.
 - Trigger loop detection: prevent infinite auto-execution.
+  - Detect re-triggering without state change and break with an error or draw.
 
 ## Interfaces
 - Input: DSL AST (validated), RNG seed, agent controllers.

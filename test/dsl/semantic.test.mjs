@@ -34,6 +34,16 @@ test("collectSemanticIssues reports missing termination conditions", () => {
   assert.ok(findRule(issues, "termination-conditions"));
 });
 
+test("collectSemanticIssues allows maxTurns without termination conditions", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.termination.conditions = [];
+  candidate.termination.maxTurns = 10;
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(!findRule(issues, "termination-conditions"));
+});
+
 test("collectSemanticIssues reports bad int bounds", () => {
   const candidate = structuredClone(baseDefinition);
   delete candidate.state.variables[0].type.max;

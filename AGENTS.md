@@ -21,6 +21,9 @@ Run the runtime validator tests with:
 Run the semantic validator tests with:
 - `node --test test/dsl/semantic.test.mjs`
 
+Run the game-kernel scheduler tests with:
+- `node --test test/game-kernel/scheduler.test.mjs`
+
 ## Coding Style & Naming Conventions
 - Markdown files should use clear headings, short paragraphs, and bullet lists where helpful.
 - Keep filenames lowercase with hyphens or existing prefixes (e.g., `dsl.md`, `DSL-004-semantic-validation.md`).
@@ -31,6 +34,7 @@ Type-level tests live under `test/` and run via `tsc -p tsconfig.json`.
 Runtime schema checks run via `node --test test/dsl/schema.test.mjs`.
 Runtime validator checks run via `node --test test/dsl/validate.test.mjs`.
 Runtime semantic checks run via `node --test test/dsl/semantic.test.mjs`.
+Game-kernel scheduler checks run via `node --test test/game-kernel/scheduler.test.mjs`.
 
 ## Commit & Pull Request Guidelines
 - Commit messages in this repo use short, imperative sentences (e.g., “Revise README title and project description”). Follow that pattern.

@@ -97,11 +97,12 @@ export function collectSemanticIssues(definition) {
   });
 
   const terminationConditions = normalizeArray(definition.termination?.conditions);
-  if (terminationConditions.length === 0) {
+  const maxTurns = definition.termination?.maxTurns;
+  if (terminationConditions.length === 0 && typeof maxTurns !== "number") {
     pushIssue(
       issues,
       "/termination/conditions",
-      "At least one termination condition is required",
+      "At least one termination condition or maxTurns is required",
       "termination-conditions"
     );
   }
