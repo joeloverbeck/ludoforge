@@ -6,14 +6,16 @@ Store game definitions, simulation logs, evaluation metrics, and human feedback 
 ## Responsibilities
 - Serialize/deserialize DSL game definitions.
 - Store simulation results and summary metrics per candidate.
+- Persist optional full trajectories for replay and deeper analysis.
 - Record preference comparisons and user ratings.
 - Provide reproducibility metadata (RNG seeds, versioning).
 
 ## Data Entities
 - GameDefinition: DSL AST + metadata (id, version, descriptors).
 - SimulationRun: game id, seed, agents, trajectory summary.
+- TrajectoryLog (optional): event stream of state/action changes for replay.
 - Metrics: per-game feature vectors and fitness scores.
-- Feedback: pairwise comparisons, ratings, tags.
+- Feedback: pairwise comparisons, ratings, tags, optional rationale.
 
 ## Storage Options
 - JSONL files for MVP.

@@ -19,6 +19,12 @@ Use `validateSemanticDefinition(input)` from `src/dsl/semantic.js` to check cros
 - `maxTriggerDepth`: maximum trigger re-entry depth before returning `trigger-recursion` (default 8).
 - `stateHistoryLimit`: number of recent state snapshots tracked for loop detection (default 256).
 
+## Simulation engine agents
+Use `createRandomPolicy()` or `createGreedyPolicy({ scoreAction })` from `src/simulation-engine/index.js` to build baseline agent controllers. `createRandomPolicy` uses the RNG supplied to the simulation engine (via `seed` or `rng`) for deterministic selection, while `createGreedyPolicy` picks the highest scoring action and falls back to the first legal action when no heuristic is available.
+
+## Simulation engine batches
+`runBatchSimulations(inputs, hooks, { concurrency })` supports optional worker-thread execution. Worker mode is opt-in and only activates when all inputs are worker-safe: agents must be built-in descriptors (`{ kind: "random" | "greedy" }`), custom `rng` objects, `stepControl.onStep`, and `loopDetection.stateHasher` are not allowed, and greedy policies must use the default scoring.
+
 ## Tests
 - `node --test test/dsl/schema.test.mjs`
 - `node --test test/dsl/validate.test.mjs`

@@ -8,6 +8,7 @@ Compute proxy "fun" metrics and filter degenerate games. Produce feature vectors
 - Detect degeneracy (loops, dominant moves, trivial wins).
 - Produce a feature vector per game candidate.
 - Compute a composite score or multi-objective vector.
+- Incorporate human feedback into a learned preference model over time.
 
 ## Metrics (Initial Set)
 - Agency: outcome sensitivity to choices.
@@ -18,6 +19,11 @@ Compute proxy "fun" metrics and filter degenerate games. Produce feature vectors
 - Interaction rate: frequency of meaningful opponent impact.
 - Degeneracy flags: repeated states, stalemates, forced moves.
 
+## Metrics (Optional / Extended)
+- Length distribution: mean/variance of game length, early-termination rate.
+- Balance: win-rate skew by seat/turn order in symmetric games.
+- Coverage: fraction of defined actions and state elements exercised in simulation.
+
 ## Filtering Rules
 - Reject games with infinite loops or no termination signals.
 - Reject if no meaningful choices (branching factor too low).
@@ -25,7 +31,7 @@ Compute proxy "fun" metrics and filter degenerate games. Produce feature vectors
 
 ## Interfaces
 - Input: simulation logs, game definitions.
-- Output: feature vectors, flags, composite fitness.
+- Output: feature vectors, flags, composite fitness, preference-model updates.
 
 ## Open Questions
 - Minimum simulation count per candidate for stable metrics.
