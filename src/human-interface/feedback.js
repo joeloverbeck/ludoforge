@@ -82,7 +82,7 @@ export async function promptForRating({ io, promptLabel, tagsLabel, rationaleLab
   const reasonLabel = rationaleLabel ?? DEFAULT_RATIONALE_LABEL;
 
   while (true) {
-    io.writeLine(`${label} (1-5):`);
+    io.writeLine(`${label} (1-5, 3 = neutral):`);
     const input = await io.readLine();
     const rating = parseRating(input);
     if (rating !== null) {

@@ -1,3 +1,5 @@
+import { computePreferenceScore } from "./preference-scoring.js";
+
 const DEFAULT_LEARNING_RATE = 0.05;
 const DEFAULT_MAX_HISTORY = 100;
 
@@ -11,6 +13,32 @@ function scaleFeatureVector(vector, scalar) {
     result[key] = (Number.isFinite(value) ? value : 0) * scalar;
   }
   return result;
+}
+
+function clamp01(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+}
+
+function normalizeRatingTarget(rating) {
+  if (!Number.isFinite(rating)) {
+    return 0.5;
+  }
+  if (rating >= 1 && rating <= 5) {
+    return (rating - 1) / 4;
+  }
+  if (rating >= -1 && rating <= 1) {
+    return (rating + 1) / 2;
+  }
+  return rating;
 }
 
 function addFeatureVectors(base, delta) {
@@ -85,9 +113,17 @@ function updatePreferenceModelState(state, feedback, options = {}) {
     weightDelta = scaleFeatureVector(diff, learningRate * preference);
     biasDelta = learningRate * preference;
   } else if (feedback?.type === "rating") {
-    const rating = Number.isFinite(feedback.rating) ? feedback.rating : 0;
-    weightDelta = scaleFeatureVector(feedback.featureVector, learningRate * rating);
-    biasDelta = learningRate * rating;
+    const rating = Number.isFinite(feedback.rating) ? feedback.rating : null;
+    if (rating !== null) {
+      const target = clamp01(normalizeRatingTarget(rating));
+      const prediction = computePreferenceScore(
+        { weights: baseWeights, bias: baseBias },
+        feedback.featureVector,
+      ).score;
+      const error = target - prediction;
+      weightDelta = scaleFeatureVector(feedback.featureVector, learningRate * error);
+      biasDelta = learningRate * error;
+    }
   }
 
   const nextHistory = clampHistory([...(state.history ?? []), feedback], maxHistory);

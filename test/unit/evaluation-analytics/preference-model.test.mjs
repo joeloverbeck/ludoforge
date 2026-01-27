@@ -75,8 +75,22 @@ test("updatePreferenceModelState updates weights from ratings", () => {
 
   const next = updatePreferenceModelState(state, feedback);
 
-  assert.equal(next.weights.agency, -0.1);
-  assert.equal(next.weights.pacing, -0.2);
-  assert.equal(next.bias, -0.1);
+  assert.equal(next.weights.agency, -0.05);
+  assert.equal(next.weights.pacing, -0.1);
+  assert.equal(next.bias, -0.05);
   assert.equal(next.sampleCount, 1);
+});
+
+test("updatePreferenceModelState maps 1-5 ratings into prediction error updates", () => {
+  const state = createPreferenceModelState({ learningRate: 0.1 });
+  const feedback = {
+    type: "rating",
+    rating: 1,
+    featureVector: { agency: 2 },
+  };
+
+  const next = updatePreferenceModelState(state, feedback);
+
+  assert.equal(next.weights.agency, -0.1);
+  assert.equal(next.bias, -0.05);
 });
