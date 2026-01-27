@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/dsl/game-definition.v1.json",
+  "title": "GameDefinition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "players", "state", "actions", "turn", "termination"],
+  "properties": {
+    "version": { "type": "string" },
+    "players": { "$ref": "#/$defs/PlayersDef" },
+    "state": { "$ref": "#/$defs/StateDef" },
+    "actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ActionDef" }
+    },
+    "turn": { "$ref": "#/$defs/TurnDef" },
+    "termination": { "$ref": "#/$defs/TerminationBlock" },
+    "triggers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TriggerDef" }
+    }
+  },
+  "$defs": {
+    "ScalarValue": {
+      "type": ["number", "boolean", "string"]
+    },
+    "PlayersDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "teams": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "StateDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variables"],
+      "properties": {
+        "variables": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VariableDef" }
+        },
+        "tokenTypes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TokenTypeDef" }
+        },
+        "zones": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ZoneDef" }
+        }
+      }
+    },
+    "VariableDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "scope", "type", "initial"],
+      "properties": {
+        "id": { "type": "string" },
+        "scope": { "type": "string", "enum": ["global", "per_player"] },
+        "type": { "$ref": "#/$defs/VariableTypeDef" },
+        "initial": { "$ref": "#/$defs/ScalarValue" }
+      }
+    },
+    "VariableTypeDef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "int" },
+            "min": { "type": "integer" },
+            "max": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "bool" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "enum" },
+            "values": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      ]
+    },
+    "TokenTypeDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "attributes"],
+      "properties": {
+        "id": { "type": "string" },
+        "attributes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VariableDef" }
+        }
+      }
+    },
+    "ZoneDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tokenType", "scope", "order", "visibility"],
+      "properties": {
+        "id": { "type": "string" },
+        "tokenType": { "type": "string" },
+        "scope": { "type": "string", "enum": ["global", "per_player"] },
+        "order": { "type": "string", "enum": ["ordered", "unordered"] },
+        "visibility": { "type": "string", "enum": ["public", "private"] },
+        "spatial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nodes", "edges"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "ActionDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "actor", "effects"],
+      "properties": {
+        "id": { "type": "string" },
+        "actor": { "type": "string", "enum": ["any", "player", "role", "environment"] },
+        "actorRole": { "type": "string" },
+        "preconditions": { "$ref": "#/$defs/Expr" },
+        "costs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Effect" }
+        },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Effect" }
+        },
+        "targets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TargetDef" }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "phase": { "type": "string" },
+            "speed": { "type": "string", "enum": ["normal", "reaction"] }
+          }
+        }
+      }
+    },
+    "TargetDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "selector"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["token", "player", "zone"] },
+        "selector": { "$ref": "#/$defs/SelectorDef" }
+      }
+    },
+    "SelectorDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "where": { "$ref": "#/$defs/Expr" },
+        "zone": { "type": "string" },
+        "tokenType": { "type": "string" },
+        "player": { "type": "string", "enum": ["self", "opponent", "any"] },
+        "count": { "type": "integer" },
+        "random": { "type": "boolean" }
+      }
+    },
+    "Effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "set" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "value": { "$ref": "#/$defs/ScalarValue" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "inc" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "amount": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "dec" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "amount": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "move" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "toZone": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "spawn" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "toZone": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "destroy" },
+            "target": { "$ref": "#/$defs/Ref" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "reveal" },
+            "target": { "$ref": "#/$defs/Ref" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "hide" },
+            "target": { "$ref": "#/$defs/Ref" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "random" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "value": { "$ref": "#/$defs/ScalarValue" },
+            "amount": { "type": "number" },
+            "toZone": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "foreach" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "value": { "$ref": "#/$defs/ScalarValue" },
+            "amount": { "type": "number" },
+            "toZone": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "TriggerDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "effects"],
+      "properties": {
+        "event": {
+          "type": "string",
+          "enum": [
+            "start_turn",
+            "end_turn",
+            "start_phase",
+            "end_phase",
+            "after_action",
+            "state_change",
+            "threshold"
+          ]
+        },
+        "condition": { "$ref": "#/$defs/Expr" },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Effect" }
+        }
+      }
+    },
+    "TurnDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheduler"],
+      "properties": {
+        "scheduler": { "type": "string", "enum": ["round_robin", "custom"] },
+        "phases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "stepEffects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TriggerDef" }
+        }
+      }
+    },
+    "TerminationBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conditions"],
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TerminationDef" }
+        },
+        "maxTurns": { "type": "integer" },
+        "scoring": { "$ref": "#/$defs/ScoreDef" }
+      }
+    },
+    "TerminationDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition", "outcome"],
+      "properties": {
+        "condition": { "$ref": "#/$defs/Expr" },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string", "enum": ["win", "lose", "draw"] },
+            "players": {
+              "oneOf": [
+                { "type": "string", "enum": ["all", "active"] },
+                {
+                  "type": "array",
+                  "items": { "type": "integer" }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ScoreDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["perPlayer"],
+      "properties": {
+        "perPlayer": { "$ref": "#/$defs/Expr" }
+      }
+    },
+    "Expr": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "and" },
+            "left": { "$ref": "#/$defs/Expr" },
+            "right": { "$ref": "#/$defs/Expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "or" },
+            "left": { "$ref": "#/$defs/Expr" },
+            "right": { "$ref": "#/$defs/Expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "not" },
+            "value": { "$ref": "#/$defs/Expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "cmp" },
+            "op": { "type": "string", "enum": ["==", "!=", "<", "<=", ">", ">="] },
+            "left": { "$ref": "#/$defs/Expr" },
+            "right": { "$ref": "#/$defs/Expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "value" },
+            "value": { "$ref": "#/$defs/ScalarValue" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "ref" },
+            "ref": { "$ref": "#/$defs/Ref" }
+          }
+        }
+      ]
+    },
+    "Ref": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "var" },
+            "id": { "type": "string" },
+            "attribute": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "token" },
+            "id": { "type": "string" },
+            "attribute": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "zone" },
+            "id": { "type": "string" },
+            "attribute": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "player" },
+            "id": { "type": "string" },
+            "attribute": { "type": "string" }
+          }
+        }
+      ]
+    }
+  }
+}
