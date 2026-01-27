@@ -24,6 +24,18 @@ Run the semantic validator tests with:
 Run the game-kernel scheduler tests with:
 - `node --test test/game-kernel/scheduler.test.mjs`
 
+Run the game-kernel actions tests with:
+- `node --test test/game-kernel/actions.test.mjs`
+
+Run the game-kernel effects tests with:
+- `node --test test/game-kernel/effects.test.mjs`
+
+Run the game-kernel state tests with:
+- `node --test test/game-kernel/state.test.mjs`
+
+Run the game-kernel termination tests with:
+- `node --test test/game-kernel/termination.test.mjs`
+
 Run the simulation-engine loop tests with:
 - `node --test test/simulation-engine/core-loop.test.mjs`
 
@@ -35,6 +47,9 @@ Run the simulation-engine RNG tests with:
 
 Run the simulation-engine agent policy tests with:
 - `node --test test/simulation-engine/agents.test.mjs`
+
+Run the simulation-engine parallel worker tests with:
+- `node --test test/simulation-engine/parallel.test.mjs`
 
 Run the evaluation-analytics log adapter tests with:
 - `node --test test/evaluation-analytics/log-adapter.test.mjs`
@@ -57,6 +72,15 @@ Run the evaluation-analytics preference model tests with:
 Run the evaluation-analytics extended metrics tests with:
 - `node --test test/evaluation-analytics/extended-metrics.test.mjs`
 
+Run the data-persistence simulation run store tests with:
+- `node --test test/data-persistence/simulation-run-store.test.mjs`
+
+Run the data-persistence trajectory log store tests with:
+- `node --test test/data-persistence/trajectory-log-store.test.mjs`
+
+Run the data-persistence feedback store tests with:
+- `node --test test/data-persistence/feedback-store.test.mjs`
+
 ## Coding Style & Naming Conventions
 - Markdown files should use clear headings, short paragraphs, and bullet lists where helpful.
 - Keep filenames lowercase with hyphens or existing prefixes (e.g., `dsl.md`, `DSL-004-semantic-validation.md`).
@@ -68,10 +92,15 @@ Runtime schema checks run via `node --test test/dsl/schema.test.mjs`.
 Runtime validator checks run via `node --test test/dsl/validate.test.mjs`.
 Runtime semantic checks run via `node --test test/dsl/semantic.test.mjs`.
 Game-kernel scheduler checks run via `node --test test/game-kernel/scheduler.test.mjs`.
+Game-kernel actions checks run via `node --test test/game-kernel/actions.test.mjs`.
+Game-kernel effects checks run via `node --test test/game-kernel/effects.test.mjs`.
+Game-kernel state checks run via `node --test test/game-kernel/state.test.mjs`.
+Game-kernel termination checks run via `node --test test/game-kernel/termination.test.mjs`.
 Simulation-engine loop checks run via `node --test test/simulation-engine/core-loop.test.mjs`.
 Simulation-engine batch checks run via `node --test test/simulation-engine/batch.test.mjs`.
 Simulation-engine RNG checks run via `node --test test/simulation-engine/rng.test.mjs`.
 Simulation-engine agent policy checks run via `node --test test/simulation-engine/agents.test.mjs`.
+Simulation-engine parallel worker checks run via `node --test test/simulation-engine/parallel.test.mjs`.
 Evaluation-analytics log adapter checks run via `node --test test/evaluation-analytics/log-adapter.test.mjs`.
 Evaluation-analytics core metrics checks run via `node --test test/evaluation-analytics/core-metrics.test.mjs`.
 Evaluation-analytics degeneracy checks run via `node --test test/evaluation-analytics/degeneracy.test.mjs`.
@@ -80,6 +109,9 @@ Evaluation-analytics scoring checks run via `node --test test/evaluation-analyti
 Evaluation-analytics preference model checks run via `node --test test/evaluation-analytics/preference-model.test.mjs`.
 Evaluation-analytics extended metrics checks run via `node --test test/evaluation-analytics/extended-metrics.test.mjs`.
 Evaluation-analytics type checks run via `tsc -p tsconfig.json` (covers `test/evaluation-analytics/types.test.ts`).
+Data-persistence simulation run store checks run via `node --test test/data-persistence/simulation-run-store.test.mjs`.
+Data-persistence trajectory log store checks run via `node --test test/data-persistence/trajectory-log-store.test.mjs`.
+Data-persistence feedback store checks run via `node --test test/data-persistence/feedback-store.test.mjs`.
 
 ## Commit & Pull Request Guidelines
 - Commit messages in this repo use short, imperative sentences (e.g., “Revise README title and project description”). Follow that pattern.

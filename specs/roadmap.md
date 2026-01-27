@@ -9,21 +9,18 @@ Provide a concise, prioritized sequence for implementing the remaining specs bas
 - Validation and safety invariants.
 - Simulation engine.
 - Evaluation and analytics.
+- Data and persistence.
 
 ## Priority Order
-1. Data and persistence
-   - Needed to store simulation runs, metrics, and feedback.
-   - MVP JSONL storage unblocks later modules.
-
-2. Evolutionary engine
+1. Evolutionary engine
    - Depends on evaluation scores and validation rules.
    - Uses metrics for fitness and diversity management.
 
-3. Human interface
+2. Human interface
    - Depends on kernel; best after persistence to capture feedback.
    - Enables human play sessions and ratings.
 
-4. Preference learning
+3. Preference learning
    - Depends on human feedback and evaluation vectors.
    - Refines fitness after initial evaluation pipeline is stable.
 
