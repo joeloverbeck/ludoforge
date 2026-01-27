@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "health",
+        "scope": "per_player",
+        "type": { "kind": "int", "min": 0, "max": 3 },
+        "initial": 2
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "heal",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "health" } },
+        "right": { "kind": "value", "value": 3 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "health" },
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hurt",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "health" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "dec",
+          "target": { "kind": "var", "id": "health" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": "==",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "health" } },
+          "right": { "kind": "value", "value": 0 }
+        },
+        "outcome": {
+          "type": "lose",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 10,
+    "scoring": {
+      "perPlayer": { "kind": "ref", "ref": { "kind": "var", "id": "health" } }
+    }
+  }
+}

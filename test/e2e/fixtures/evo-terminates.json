@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "steps",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 2 },
+        "initial": 0
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "step",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "steps" } },
+        "right": { "kind": "value", "value": 2 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "steps" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "steps" } },
+          "right": { "kind": "value", "value": 2 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 5
+  }
+}

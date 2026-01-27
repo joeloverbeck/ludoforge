@@ -84,7 +84,11 @@ const evaluator = createPreferenceEvaluator((genome) => ({
 ```
 
 ## Tests
-- `npm test` (runs `node --test test/**/*.test.mjs` and `tsc -p tsconfig.json`)
-- `node --test test/dsl/schema.test.mjs`
-- `node --test test/dsl/validate.test.mjs`
-- `tsc -p tsconfig.json`
+- `npm run test:unit` (runs `node --test test/unit/**/*.test.mjs` and `tsc -p tsconfig.json`)
+- See `test/unit/README.md` for unit test conventions.
+- `npm run test:integration`
+- `npm run test:e2e`
+- `npm run test:performance`
+- `npm run test:memory`
+- `node --test test/unit/dsl/schema.test.mjs`
+- `node --test test/unit/dsl/validate.test.mjs`

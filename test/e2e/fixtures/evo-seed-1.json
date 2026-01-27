@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "progress",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 3 },
+        "initial": 0
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "advance",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "progress" } },
+        "right": { "kind": "value", "value": 3 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "progress" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "progress" } },
+          "right": { "kind": "value", "value": 3 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 8
+  }
+}

@@ -9,7 +9,7 @@
 - `LICENSE` contains licensing information.
 
 ## Build, Test, and Development Commands
-- Run all tests and type checks with `npm test`.
+- Run unit tests and type checks with `npm run test:unit`.
 - Run a single test file with `node --test path/to/test-file.test.mjs`.
 
 ## Coding Style & Naming Conventions
@@ -18,8 +18,8 @@
 - Prefer concise, descriptive section titles and avoid long multi-sentence headings.
 
 ## Testing Guidelines
-- All test files live under `test/` and are picked up by `npm test`.
-- `npm test` runs `node --test test/**/*.test.mjs` and `tsc -p tsconfig.json`.
+- Unit test files live under `test/unit/` and are picked up by `npm run test:unit`.
+- `npm run test:unit` runs `node --test test/unit/**/*.test.mjs` and `tsc -p tsconfig.json`.
 - Run a single test file with `node --test path/to/test-file.test.mjs`.
 
 ## Commit & Pull Request Guidelines

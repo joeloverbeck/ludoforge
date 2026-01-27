@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "spawned",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 1 },
+        "initial": 0
+      }
+    ],
+    "tokenTypes": [
+      {
+        "id": "piece",
+        "attributes": []
+      }
+    ],
+    "zones": [
+      {
+        "id": "deck",
+        "tokenType": "piece",
+        "scope": "global",
+        "order": "unordered",
+        "visibility": "public"
+      },
+      {
+        "id": "discard",
+        "tokenType": "piece",
+        "scope": "global",
+        "order": "unordered",
+        "visibility": "public"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "deal",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "==",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "spawned" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "spawn",
+          "target": { "kind": "token", "id": "piece" },
+          "toZone": "deck"
+        },
+        {
+          "kind": "set",
+          "target": { "kind": "var", "id": "spawned" },
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "discard",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "==",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "spawned" } },
+        "right": { "kind": "value", "value": 1 }
+      },
+      "effects": [
+        {
+          "kind": "move",
+          "target": { "kind": "token", "id": "piece" },
+          "toZone": "discard"
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": "==",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "spawned" } },
+          "right": { "kind": "value", "value": 1 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 5
+  }
+}

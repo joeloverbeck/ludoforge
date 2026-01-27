@@ -6,6 +6,11 @@
     "ajv": "^8.12.0"
   },
   "scripts": {
-    "test": "node --test test/**/*.test.mjs && tsc -p tsconfig.json"
+    "test": "npm run test:unit",
+    "test:unit": "node --test test/unit/**/*.test.mjs && tsc -p tsconfig.json",
+    "test:integration": "node --test test/integration/**/*.test.mjs",
+    "test:e2e": "node --test test/e2e/**/*.test.mjs",
+    "test:performance": "node --test test/performance/**/*.test.mjs",
+    "test:memory": "node --test test/memory/**/*.test.mjs"
   }
 }

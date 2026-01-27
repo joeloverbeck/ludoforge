@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "energy",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 2 },
+        "initial": 0
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "charge",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "energy" } },
+        "right": { "kind": "value", "value": 2 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "energy" },
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "spend",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "energy" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "dec",
+          "target": { "kind": "var", "id": "energy" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "energy" } },
+          "right": { "kind": "value", "value": 2 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 12
+  }
+}
