@@ -1,6 +1,8 @@
 import type { GameDefinition } from "../dsl/types.js";
 import type { TerminationResult } from "../game-kernel/termination.js";
 import type {
+  AgentController,
+  AgentDescriptor,
   SimulationResult,
   SimulationTerminationReason,
   TrajectoryStep,
@@ -52,6 +54,23 @@ export interface MetricResult {
 }
 
 export type MetricResults = ReadonlyArray<MetricResult>;
+
+export interface DecisionQualitySamplingConfig {
+  enabled?: boolean;
+  decisionSamplesPerRun?: number;
+  rolloutsPerAction?: number;
+  rolloutMaxSteps?: number;
+  maxRolloutsPerRun?: number;
+  rolloutAgent?: AgentController | AgentDescriptor;
+  seed?: number;
+  earlyStepPercent?: number;
+}
+
+export interface ExtendedMetricsOptions {
+  simulations?: ReadonlyArray<SimulationResult>;
+  meaningfulChoice?: DecisionQualitySamplingConfig;
+  comebackPotential?: DecisionQualitySamplingConfig;
+}
 
 export type DegeneracyFlag =
   | "loop"

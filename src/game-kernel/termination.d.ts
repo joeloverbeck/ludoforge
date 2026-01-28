@@ -18,6 +18,11 @@ export interface TerminationOptions {
   events?: GameEvent[];
 }
 
+export function computeScoresAtState(
+  definition: GameDefinition,
+  state: GameState
+): Record<number, ScalarValue> | undefined;
+
 export function evaluateTermination(
   definition: GameDefinition,
   state: GameState,

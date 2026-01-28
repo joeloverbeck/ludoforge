@@ -5,6 +5,8 @@ import type {
   BatchMetricsHooks,
   BatchSimulationResult,
   GreedyPolicyOptions,
+  RolloutConfig,
+  RolloutResult,
   SeededRng,
   SimulationConfig,
   SimulationEngine,
@@ -19,6 +21,9 @@ export type {
   BatchSimulationResult,
   GreedyPolicyOptions,
   LoopDetectionOptions,
+  RolloutConfig,
+  RolloutResult,
+  RolloutTerminationReason,
   SeededRng,
   SimulationConfig,
   SimulationEngine,
@@ -35,6 +40,7 @@ export function runBatchSimulations(
   hooks?: BatchMetricsHooks,
   options?: BatchRunOptions,
 ): BatchSimulationResult;
+export function runRollout(config: RolloutConfig): RolloutResult;
 export function createSeededRng(seed: number): SeededRng;
 export function createRandomPolicy(): AgentController;
 export function createGreedyPolicy(options?: GreedyPolicyOptions): AgentController;

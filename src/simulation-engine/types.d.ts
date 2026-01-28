@@ -69,6 +69,23 @@ export interface SimulationResult {
   metrics?: Record<string, number>;
 }
 
+export interface RolloutConfig {
+  definition: GameDefinition;
+  state: GameState;
+  agent: AgentController | AgentDescriptor;
+  seed?: number;
+  rng?: SeededRng;
+  maxSteps?: number;
+  loopDetection?: LoopDetectionOptions;
+}
+
+export interface RolloutResult {
+  trajectory: Trajectory;
+  outcome: TerminationResult;
+  terminationReason?: RolloutTerminationReason;
+  metrics?: Record<string, number>;
+}
+
 export interface SimulationEngine {
   run(): SimulationResult;
   runBatch(count: number): SimulationResult[];
@@ -115,3 +132,5 @@ export type SimulationTerminationReason =
   | "max-turns"
   | "loop-detected"
   | "stalemate";
+
+export type RolloutTerminationReason = SimulationTerminationReason | "max-steps";

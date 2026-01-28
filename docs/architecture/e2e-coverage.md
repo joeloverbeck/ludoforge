@@ -74,10 +74,14 @@ about the seeded simulation and evolution loop.
   - Validates game definitions with multiple actions, visibility, phases,
     token movement, and per-player variables.
 
+- Active learning pair selection
+  - `test/e2e/active-learning.e2e.test.mjs`
+  - Prioritizes uncertain comparisons while ensuring underrepresented niches
+    are surfaced for human review.
+
 ## Gaps and Not Yet Proven in E2E
 
 - Real simulation metrics pipeline (core + extended metrics aggregation).
 - Preference model updates from real human feedback.
-- Active learning pair selection.
 - Worker-thread batch simulations.
 - End-to-end mutation/crossover/repair orchestration between generations.

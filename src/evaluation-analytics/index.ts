@@ -5,8 +5,10 @@ export type {
   CompositeScore,
   DegeneracyFlag,
   DegeneracyReport,
+  DecisionQualitySamplingConfig,
   EvaluationAnalyticsInput,
   EvaluationAnalyticsOutput,
+  ExtendedMetricsOptions,
   FeatureVector,
   MetricId,
   MetricResult,
@@ -51,12 +53,15 @@ export {
 
 export {
   computeBalanceSkew,
+  computeComebackPotential,
   computeCoverageActions,
   computeCoverageState,
   computeEarlyTerminationRate,
   computeExtendedMetrics,
   computeLengthMean,
   computeLengthVariance,
+  computeMeaningfulChoice,
+  computeOutcomeVariance,
 } from "./metrics/extended.js";
 
 export {

@@ -8,6 +8,7 @@ import {
   computeExtendedMetrics,
   computeLengthMean,
   computeLengthVariance,
+  computeOutcomeVariance,
 } from "../../../src/evaluation-analytics/metrics/extended.js";
 
 function buildSummary({
@@ -58,6 +59,15 @@ test("early termination rate treats un-terminated outcomes as early exits", () =
   assert.ok(Math.abs(computeEarlyTerminationRate(summaries) - 0.5) < 1e-9);
 });
 
+test("outcome variance measures swinginess across runs", () => {
+  const summaries = [
+    buildSummary({ outcomes: { 1: "win", 2: "lose" } }),
+    buildSummary({ outcomes: { 1: "lose", 2: "win" } }),
+  ];
+
+  assert.ok(Math.abs(computeOutcomeVariance(summaries) - 0.25) < 1e-9);
+});
+
 test("coverage metrics use definition actions and state exploration proxies", () => {
   const definition = {
     version: "0.1.0",
@@ -102,6 +112,7 @@ test("extended metrics bundle output", () => {
   assert.equal(getMetric(metrics, "length_mean"), 2);
   assert.equal(getMetric(metrics, "length_variance"), 0);
   assert.equal(getMetric(metrics, "early_termination_rate"), 0);
+  assert.equal(getMetric(metrics, "outcome_variance"), 0);
   assert.equal(getMetric(metrics, "coverage_actions"), 1);
   assert.equal(getMetric(metrics, "coverage_state"), 0);
 });

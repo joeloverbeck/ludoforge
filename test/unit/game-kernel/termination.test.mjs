@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createInitialState } from "../../../src/game-kernel/state.js";
 import {
   createEventStream,
+  computeScoresAtState,
   evaluateTermination,
   recordStateUpdate,
 } from "../../../src/game-kernel/index.js";
@@ -49,6 +50,26 @@ test("evaluateTermination returns outcomes and scores for all agents", () => {
   assert.equal(result.conditionIndex, 0);
   assert.deepEqual(result.outcomes, { 1: "lose", 2: "win" });
   assert.deepEqual(result.scores, { 1: 3, 2: 1 });
+});
+
+test("computeScoresAtState returns per-player scores from termination scoring", () => {
+  const state = createInitialState(baseDefinition);
+  state.variables.perPlayer[1].score = 5;
+  state.variables.perPlayer[2].score = 2;
+
+  const scores = computeScoresAtState(baseDefinition, state);
+  assert.deepEqual(scores, { 1: 5, 2: 2 });
+});
+
+test("computeScoresAtState returns undefined when no scoring expression is configured", () => {
+  const definition = {
+    ...baseDefinition,
+    termination: { ...baseDefinition.termination, scoring: undefined },
+  };
+  const state = createInitialState(definition);
+
+  const scores = computeScoresAtState(definition, state);
+  assert.equal(scores, undefined);
 });
 
 test("evaluateTermination returns draw on max-turns fallback", () => {

@@ -4,4 +4,4 @@ export { advanceTurnPhase } from "./scheduler.js";
 export { applyTriggers } from "./triggers.js";
 export { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
 export { createEventStream, recordStateUpdate, recordTermination } from "./events.js";
-export { evaluateTermination } from "./termination.js";
+export { computeScoresAtState, evaluateTermination } from "./termination.js";

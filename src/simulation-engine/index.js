@@ -1,4 +1,5 @@
 import { runSimulation } from "./loop.js";
+import { runRollout } from "./rollout.js";
 import { runBatchSimulations } from "./batch.js";
 import { createSeededRng } from "./rng.js";
 import { createGreedyPolicy } from "./agents/greedy.js";
@@ -30,5 +31,6 @@ export function createSimulationEngine(config) {
 }
 
 export { runBatchSimulations };
+export { runRollout };
 export { createSeededRng };
 export { createGreedyPolicy, createRandomPolicy };

@@ -32,7 +32,11 @@ then repeats.
 4. Human feedback capture
    - Human ratings or comparisons are collected and stored as preference samples.
    - These samples update the preference model used during fitness computation.
-   - Relevant code: `src/human-interface/feedback.js`, `src/evaluation-analytics/preference-model.js`.
+   - Active learning can prioritize pairwise comparisons using preference-model
+     uncertainty and niche diversity.
+   - Relevant code: `src/human-interface/feedback.js`,
+     `src/evaluation-analytics/preference-model.js`,
+     `src/evaluation-analytics/active-learning.js`.
 
 5. Fitness computation
    - Metrics + degeneracy flags become a feature vector.

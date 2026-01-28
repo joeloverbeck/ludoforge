@@ -121,6 +121,23 @@ function resolveDefaultOutcome(type) {
   return "draw";
 }
 
+export function computeScoresAtState(definition, state) {
+  const scoringExpr = definition.termination?.scoring?.perPlayer;
+  if (!scoringExpr) {
+    return undefined;
+  }
+  const variableIndex = buildVariableIndex(definition);
+  const scores = {};
+  for (let playerId = 1; playerId <= definition.players.count; playerId += 1) {
+    scores[playerId] = evaluateValue(scoringExpr, {
+      state,
+      playerId,
+      variableIndex,
+    });
+  }
+  return scores;
+}
+
 export function evaluateTermination(definition, state, options = {}) {
   const variableIndex = buildVariableIndex(definition);
   const activePlayerId = options.activePlayerId ?? state.turn?.currentPlayer;
@@ -168,18 +185,7 @@ export function evaluateTermination(definition, state, options = {}) {
     }
   }
 
-  let scores;
-  const scoringExpr = definition.termination?.scoring?.perPlayer;
-  if (scoringExpr) {
-    scores = {};
-    for (let playerId = 1; playerId <= definition.players.count; playerId += 1) {
-      scores[playerId] = evaluateValue(scoringExpr, {
-        state,
-        playerId,
-        variableIndex,
-      });
-    }
-  }
+  const scores = computeScoresAtState(definition, state);
 
   const result = {
     terminated: true,

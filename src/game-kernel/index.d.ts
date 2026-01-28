@@ -22,4 +22,4 @@ export { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
 export type { GameEvent, StateUpdateEvent, TerminationEvent } from "./events.js";
 export { createEventStream, recordStateUpdate, recordTermination } from "./events.js";
 export type { OutcomeType, TerminationOptions, TerminationResult } from "./termination.js";
-export { evaluateTermination } from "./termination.js";
+export { computeScoresAtState, evaluateTermination } from "./termination.js";

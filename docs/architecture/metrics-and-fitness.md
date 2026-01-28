@@ -13,13 +13,15 @@ Analytics operate on per-simulation summaries that include:
 
 Implemented in `src/evaluation-analytics/metrics/core.js`:
 
+- These are cheap descriptors and filters. Treat them as proxies, not direct "fun"
+  predictors, unless paired with human preference data.
 - Agency = `choiceSteps / totalSteps`, where `choiceSteps` count steps with `legalActionCount > 1`.
-- Strategic depth = average legal action count per step.
+- Strategic depth = average legal action count per step (branching factor proxy).
 - Skill expression (proxy) = max(winRate) - min(winRate) across players.
   - This currently measures seat/role imbalance, not agent-skill separation.
 - Variety = normalized action entropy across steps.
 - Pacing tension = average `stepCount / turnCount`.
-- Interaction rate = fraction of steps where the active player changes.
+- Interaction rate = fraction of steps where the active player changes (turn-taking proxy).
 
 ## Extended Metric Calculations
 
@@ -27,10 +29,29 @@ Implemented in `src/evaluation-analytics/metrics/extended.js`:
 
 - Length mean and variance from `stepCount` distribution.
 - Early termination rate = fraction of runs with non-"condition" termination or `terminated=false`.
+- Outcome variance (swinginess proxy) = average per-player variance of outcome scores
+  across runs (win=1, lose=0, draw=0.5).
 - Balance skew is not tracked separately; the core skill-expression proxy already
   captures per-player win-rate spread.
 - Coverage actions = observed action ids / total action count.
 - Coverage state = average `uniqueStateCount / stepCount`.
+- Meaningful choice (`choice_value_spread`) is optional and requires simulations
+  (not just summaries). Decision points are derived from post-action trajectory
+  states advanced to the next turn phase; for each sampled point, the metric runs
+  per-action rollouts with a fixed policy and averages
+  `max(actionValues) - min(actionValues)` across samples. Opt-in via
+  `meaningfulChoice.enabled` with config defaults:
+  `decisionSamplesPerRun=8`, `rolloutsPerAction=8`, `rolloutMaxSteps=64`,
+  `maxRolloutsPerRun=128`, `rolloutAgent=random`, `seed=0`. Guardrails cap total
+  rollouts per run and skip decisions with <=1 legal action.
+- Comeback potential (`comeback_potential`) is optional and requires simulations
+  (not just summaries). For each run, it samples an early step, computes per-player
+  scores from the termination scoring expression, derives the early leader advantage,
+  and computes Pearson correlation with the leader's final outcome value
+  (win=1, lose=0, draw=0.5). The metric reports `1 - clamp(correlation, 0, 1)` and
+  returns 0 when scoring or correlation data are unavailable. Opt-in via
+  `comebackPotential.enabled` with config default `earlyStepPercent=0.25`
+  (clamped to `[0, 1]`, step index at least 1).
 
 ## Degeneracy Detection
 

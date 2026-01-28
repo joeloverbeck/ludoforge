@@ -20,6 +20,17 @@ Implemented in `src/human-interface/feedback.js`.
 - Output record:
   - `{ type: "comparison", preferred, tags?, rationale? }`.
 
+### Active Learning Pair Selection
+
+Implemented in `src/evaluation-analytics/active-learning.js`.
+
+- Uses the current preference model to rank pairs with predicted preference
+  closest to 0.5 (highest uncertainty).
+- Optional `uncertaintyThreshold` limits selection to low-confidence pairs.
+- `diversityQuota` reserves slots for underrepresented `nicheId` values
+  (e.g., rare Map-Elites bins).
+- Intended to run on a shortlist of elites before prompting comparisons.
+
 ### Comparison Assembly
 
 `assemblePreferenceFeedbackComparison` ties feedback to feature vectors:
@@ -76,6 +87,10 @@ Note: weights are stored directly under their feature ids in JSON snapshots (the
 is no separate feature-id list). Adding new metrics does not misalign existing
 weights, but renaming/removing a metric orphans stored weights under the old id,
 so treat metric-id changes as a migration event.
+
+Note: scoring and updates are keyed by feature id (object map). Missing features
+default to `0`, and extra feature keys that have no stored weight do not affect
+the score unless/ until a weight is learned for them.
 
 Note: comparison updates now use a Bradley–Terry / logistic error, keeping updates
 probabilistic while still deterministic for identical inputs.

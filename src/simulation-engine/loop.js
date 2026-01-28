@@ -101,10 +101,10 @@ function buildStep(state, actionId, legalActionCount) {
   };
 }
 
-export function runSimulation(config) {
+function runSimulationLoop(config) {
   const definition = config.definition;
-  const agents = normalizeAgents(config.agents ?? []);
-  const state = createInitialState(definition);
+  const agents = config.agents ?? [];
+  const state = config.state ?? createInitialState(definition);
   const rng =
     config.rng ?? (typeof config.seed === "number" ? createSeededRng(config.seed) : undefined);
   const events = createEventStream();
@@ -119,10 +119,25 @@ export function runSimulation(config) {
         }
       : null;
   const maxTurns = typeof config.maxTurns === "number" ? config.maxTurns : undefined;
+  const maxSteps = typeof config.maxSteps === "number" ? config.maxSteps : undefined;
+  let stepsTaken = 0;
 
   recordLoopHash(state, tracker);
 
   while (true) {
+    if (typeof maxSteps === "number" && stepsTaken >= maxSteps) {
+      const maxStepOutcome = evaluateTermination(definition, state, {
+        activePlayerId: state.turn.currentPlayer,
+        maxTurnsReached: true,
+        events,
+      });
+      return {
+        trajectory,
+        outcome: maxStepOutcome,
+        terminationReason: "max-steps",
+      };
+    }
+
     const termination = evaluateTermination(definition, state, {
       activePlayerId: state.turn.currentPlayer,
       events,
@@ -190,6 +205,7 @@ export function runSimulation(config) {
     const step = buildStep(state, action.id, legalActions.length);
     trajectory.steps.push(step);
     config.stepControl?.onStep?.(step);
+    stepsTaken += 1;
 
     const postActionTermination = evaluateTermination(definition, state, {
       activePlayerId: state.turn.currentPlayer,
@@ -243,4 +259,38 @@ export function runSimulation(config) {
       };
     }
   }
+}
+
+export function runSimulation(config) {
+  const definition = config.definition;
+  const agents = normalizeAgents(config.agents ?? []);
+  const state = createInitialState(definition);
+
+  return runSimulationLoop({ ...config, definition, agents, state });
+}
+
+export function runRollout(config) {
+  if (!config || !config.definition) {
+    throw new Error("runRollout requires a game definition.");
+  }
+  if (!config.state) {
+    throw new Error("runRollout requires a starting state.");
+  }
+  if (!config.agent) {
+    throw new Error("runRollout requires an agent.");
+  }
+  const definition = config.definition;
+  const agentInput = config.agent != null ? [config.agent] : [];
+  const agents = normalizeAgents(agentInput);
+  const state = cloneState(config.state);
+
+  return runSimulationLoop({
+    definition,
+    agents,
+    state,
+    seed: config.seed,
+    rng: config.rng,
+    loopDetection: config.loopDetection,
+    maxSteps: config.maxSteps,
+  });
 }
