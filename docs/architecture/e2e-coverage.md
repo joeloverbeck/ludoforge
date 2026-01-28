@@ -79,9 +79,16 @@ about the seeded simulation and evolution loop.
   - Prioritizes uncertain comparisons while ensuring underrepresented niches
     are surfaced for human review.
 
+- Preference model updates from real feature vectors
+  - `test/e2e/preference-model-update.e2e.test.mjs`
+  - Builds feature vectors from real simulation logs and applies comparison updates.
+
+- Mutation + repair orchestration with crossover
+  - `test/e2e/evolution-mutation-repair.e2e.test.mjs`
+  - Confirms crossover, mutation, and repair produce valid child genomes at scale.
+
 ## Gaps and Not Yet Proven in E2E
 
-- Real simulation metrics pipeline (core + extended metrics aggregation).
-- Preference model updates from real human feedback.
+- Active learning selection is already covered; gaps below exclude it.
+- Extended metrics aggregation (including meaningful choice/comeback rollouts).
 - Worker-thread batch simulations.
-- End-to-end mutation/crossover/repair orchestration between generations.
