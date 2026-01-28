@@ -7,6 +7,26 @@ LudoForge evolves playable tabletop game prototypes from composable rule primiti
 ## DSL example
 See `examples/dsl/minimal-game.json` for a minimal, valid DSL game definition.
 
+## Evolution runner CLI
+Use the `ludoforge-evolve` entrypoint to validate configs, load seeds, and run the evolution loop.
+
+Required flags:
+- `--config <path>`: runner config JSON.
+- `--seeds <path>`: seed population JSON/JSONL file or directory.
+
+Optional flags:
+- `--run-id <id>`: explicit run ID (UUID).
+- `--resume`: resume an existing run (requires `--run-id`).
+- `--out <dir>`: base output directory (default: cwd).
+- `--evaluator <path>`: evaluator module (required unless `--dry-run`).
+- `--dry-run`: validate inputs without executing the runner.
+
+Evaluator modules must export one of:
+- `createEvaluation()` returning `{ evaluator }`
+- `evaluator` function export
+- default export function
+- `evaluation` object with `{ evaluator }`
+
 ## Runtime validation
 Use `validateGameDefinition(input)` from `src/dsl/validate.js` to validate DSL inputs against `schemas/dsl/game-definition.v1.json`. It returns `{ valid, errors }` with deterministic error ordering.
 

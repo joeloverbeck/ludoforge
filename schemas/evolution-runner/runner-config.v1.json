@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/evolution-runner/runner-config.v1.json",
+  "title": "EvolutionRunnerConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "runner", "mapElites"],
+  "properties": {
+    "version": { "type": "string" },
+    "seed": { "type": "integer" },
+    "runner": { "$ref": "#/$defs/RunnerLoopConfig" },
+    "evaluation": { "$ref": "#/$defs/EvaluationConfig" },
+    "evolution": { "$ref": "#/$defs/EvolutionConfig" },
+    "mapElites": { "$ref": "#/$defs/MapElitesConfig" },
+    "humanFeedback": { "$ref": "#/$defs/HumanFeedbackConfig" }
+  },
+  "$defs": {
+    "RunnerLoopConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generations"],
+      "properties": {
+        "generations": { "type": "integer", "minimum": 1 },
+        "shortlistSize": { "type": "integer", "minimum": 0 },
+        "saveEvery": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "EvaluationConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "simulation": { "type": "object", "additionalProperties": true },
+        "metrics": { "type": "object", "additionalProperties": true },
+        "fitness": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "EvolutionConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mutation": { "type": "object", "additionalProperties": true },
+        "crossover": { "type": "object", "additionalProperties": true },
+        "repair": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "MapElitesDescriptorConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "min", "max", "bins"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "bins": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "MapElitesConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descriptors"],
+      "properties": {
+        "descriptors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/MapElitesDescriptorConfig" }
+        },
+        "fitnessKey": { "type": "string", "minLength": 1 },
+        "tieBreak": { "type": "string", "enum": ["keep", "replace"] }
+      }
+    },
+    "HumanFeedbackConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "type": "string", "enum": ["rating", "comparison"] },
+        "maxSamplesPerGen": { "type": "integer", "minimum": 1 },
+        "activeLearning": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "uncertaintyThreshold": { "type": "number", "minimum": 0 },
+            "diversityQuota": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

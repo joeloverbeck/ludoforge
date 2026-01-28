@@ -2,6 +2,9 @@
   "name": "ludoforge",
   "private": true,
   "type": "module",
+  "bin": {
+    "ludoforge-evolve": "./src/cli/ludoforge-evolve.js"
+  },
   "devDependencies": {
     "ajv": "^8.12.0"
   },
