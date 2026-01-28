@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "mutation": {
+    "enabled": [
+      "numeric-tweak",
+      "boolean-toggle",
+      "enum-cycle",
+      "action-duplicate",
+      "action-remove",
+      "action-effect-magnitude",
+      "precondition-negation",
+      "termination-threshold",
+      "termination-outcome",
+      "phase-add",
+      "phase-remove",
+      "token-zone-target-add",
+      "token-type-remove",
+      "zone-remove"
+    ],
+    "weights": {
+      "numeric-tweak": 1,
+      "boolean-toggle": 1,
+      "enum-cycle": 1,
+      "action-duplicate": 1,
+      "action-remove": 1,
+      "action-effect-magnitude": 1,
+      "precondition-negation": 1,
+      "termination-threshold": 1,
+      "termination-outcome": 1,
+      "phase-add": 1,
+      "phase-remove": 1,
+      "token-zone-target-add": 1,
+      "token-type-remove": 1,
+      "zone-remove": 1
+    }
+  },
+  "crossover": {
+    "enabled": [
+      "subtree-swap"
+    ]
+  },
+  "repair": {
+    "enabled": [
+      "dsl-safety"
+    ]
+  }
+}

@@ -1,11 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 import {
   DEFAULT_DEGENERACY_ORDER,
   DEFAULT_FEATURE_ORDER,
   assembleFeatureVector,
 } from "../../../src/evaluation-analytics/feature-vector.js";
+
+async function readJson(relativePath) {
+  const fileUrl = new URL(relativePath, import.meta.url);
+  const raw = await readFile(fileUrl, "utf8");
+  return JSON.parse(raw);
+}
+
+test("DEFAULT_FEATURE_ORDER matches metrics-core config featureOrder", async () => {
+  const config = await readJson("../../../configs/metrics-core.json");
+  assert.deepEqual(DEFAULT_FEATURE_ORDER, config.featureOrder);
+});
+
+test("DEFAULT_DEGENERACY_ORDER matches degeneracy config flags", async () => {
+  const config = await readJson("../../../configs/degeneracy.json");
+  assert.deepEqual(DEFAULT_DEGENERACY_ORDER, config.flags);
+});
+
+test("DEFAULT_FEATURE_ORDER matches the expected metric ordering", () => {
+  assert.deepEqual(DEFAULT_FEATURE_ORDER, [
+    "agency",
+    "strategic_depth",
+    "seat_imbalance",
+    "variety",
+    "pacing_tension",
+    "turn_taking_rate",
+    "interaction_rate",
+  ]);
+});
 
 test("assembleFeatureVector orders core metrics, appends extras, and includes degeneracy flags", () => {
   const metrics = [

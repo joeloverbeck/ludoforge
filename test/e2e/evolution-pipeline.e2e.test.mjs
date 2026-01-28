@@ -246,7 +246,8 @@ test("evolution pipeline records safety cutoffs for non-terminating fixtures", a
   assert.equal(result.evaluated.length, 1);
   const evaluationDiagnostics = result.evaluated[0].diagnostics.evaluation;
   assert.equal(evaluationDiagnostics.simulation.terminationReason, "max-turns");
-  assert.equal(evaluationDiagnostics.simulation.outcome.reason, "max-turns");
+  assert.equal(evaluationDiagnostics.simulation.terminated, false);
+  assert.ok(!("reason" in evaluationDiagnostics.simulation.outcome));
   assert.equal(evaluationDiagnostics.evaluation.candidateId, "seed-cutoff");
 });
 

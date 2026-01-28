@@ -58,7 +58,8 @@ test("state transition loop uses no-legal-actions terminate policy outcomes", as
   const result = runSimulation({ definition });
 
   assert.equal(result.terminationReason, "no-legal-actions");
-  assert.equal(result.outcome.reason, "no-legal-actions");
+  assert.equal(result.terminationDetail, "no-legal-actions");
+  assert.ok(!("reason" in result.outcome));
   assert.equal(result.trajectory.steps[0].legalActionCount, 0);
 });
 

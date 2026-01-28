@@ -6,7 +6,6 @@ export function computeLengthMean(summaries: ReadonlyArray<TrajectorySummary>): 
 export function computeLengthVariance(summaries: ReadonlyArray<TrajectorySummary>): number;
 export function computeEarlyTerminationRate(summaries: ReadonlyArray<TrajectorySummary>): number;
 export function computeOutcomeVariance(summaries: ReadonlyArray<TrajectorySummary>): number;
-export function computeBalanceSkew(summaries: ReadonlyArray<TrajectorySummary>): number;
 export function computeCoverageActions(
   definition: GameDefinition,
   summaries: ReadonlyArray<TrajectorySummary>

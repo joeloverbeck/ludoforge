@@ -1,7 +1,49 @@
-const DEFAULT_MAX_PAIRS = 5;
-const DEFAULT_UNCERTAINTY_THRESHOLD = 0.15;
-const DEFAULT_DIVERSITY_QUOTA = 1;
-const DEFAULT_CADENCE = 1;
+import { loadConfigFile } from "../config/loader.js";
+
+const FALLBACK_MAX_PAIRS = 5;
+const FALLBACK_UNCERTAINTY_THRESHOLD = 0.15;
+const FALLBACK_DIVERSITY_QUOTA = 1;
+const FALLBACK_CADENCE = 1;
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultActiveLearningConfig() {
+  const result = await loadConfigFile({ name: "active-learning" });
+  if (!result.valid) {
+    throw new Error(
+      `Active learning config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_ACTIVE_LEARNING_CONFIG = await loadDefaultActiveLearningConfig();
+
+const DEFAULT_MAX_PAIRS = Number.isFinite(DEFAULT_ACTIVE_LEARNING_CONFIG?.maxPairs)
+  ? DEFAULT_ACTIVE_LEARNING_CONFIG.maxPairs
+  : FALLBACK_MAX_PAIRS;
+const DEFAULT_UNCERTAINTY_THRESHOLD = Number.isFinite(
+  DEFAULT_ACTIVE_LEARNING_CONFIG?.uncertaintyThreshold
+)
+  ? DEFAULT_ACTIVE_LEARNING_CONFIG.uncertaintyThreshold
+  : FALLBACK_UNCERTAINTY_THRESHOLD;
+const DEFAULT_DIVERSITY_QUOTA = Number.isFinite(DEFAULT_ACTIVE_LEARNING_CONFIG?.diversityQuota)
+  ? DEFAULT_ACTIVE_LEARNING_CONFIG.diversityQuota
+  : FALLBACK_DIVERSITY_QUOTA;
+const DEFAULT_CADENCE = Number.isFinite(DEFAULT_ACTIVE_LEARNING_CONFIG?.cadence)
+  ? DEFAULT_ACTIVE_LEARNING_CONFIG.cadence
+  : FALLBACK_CADENCE;
 
 function safeNumber(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;

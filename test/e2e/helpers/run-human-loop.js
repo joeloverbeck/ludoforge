@@ -90,7 +90,8 @@ export async function runHumanLoopOnce({
       legalActions,
       context: actionContext,
       terminated: true,
-      terminationReason: policy === "terminate" ? reason : "stalemate",
+      terminationReason: policy === "terminate" ? "no-legal-actions" : "stalemate",
+      terminationDetail: policy === "terminate" ? reason : undefined,
     };
   }
 

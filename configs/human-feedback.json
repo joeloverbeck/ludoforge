@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "rating": {
+    "min": 1,
+    "max": 5
+  },
+  "comparison": {
+    "choices": [
+      "A",
+      "B",
+      "Tie"
+    ]
+  },
+  "promptText": {
+    "rating": "Rate the game",
+    "comparison": "Choose between A or B",
+    "tags": "Tags (comma-separated, optional)",
+    "rationale": "Reason (optional)"
+  }
+}

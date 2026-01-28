@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/simulation.schema.json",
+  "title": "SimulationConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "loopDetection", "turn", "rng"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "maxTurns": { "type": ["integer", "null"], "minimum": 1 },
+    "maxSteps": { "type": ["integer", "null"], "minimum": 1 },
+    "loopDetection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "maxRepeatedStates"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxRepeatedStates": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "turn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["noLegalActions"],
+      "properties": {
+        "noLegalActions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policy", "reason"],
+          "properties": {
+            "policy": {
+              "type": "string",
+              "enum": ["terminate", "pass", "error", "stalemate"]
+            },
+            "reason": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "rng": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "algorithm"],
+      "properties": {
+        "seed": { "type": ["integer", "string", "null"] },
+        "algorithm": { "type": "string", "enum": ["lcg32"] }
+      }
+    }
+  }
+}

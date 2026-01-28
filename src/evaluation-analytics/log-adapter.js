@@ -1,4 +1,15 @@
+import { readFileSync } from "node:fs";
+import Ajv from "ajv/dist/2020.js";
+
 const LOG_ADAPTER_VERSION = "0.1.0";
+
+const schemaJson = JSON.parse(
+  readFileSync(
+    new URL("../../schemas/simulation-engine/simulation-result.schema.json", import.meta.url)
+  )
+);
+const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+const validateSimulationResult = ajv.compile(schemaJson);
 
 class LogAdapterError extends Error {
   constructor(code, message, details) {
@@ -64,6 +75,19 @@ function validateInput(input) {
 }
 
 function buildTrajectorySummary(result, index) {
+  if (!validateSimulationResult(result)) {
+    return {
+      ok: false,
+      error: new LogAdapterError(
+        "invalid_result",
+        "Simulation result failed schema validation.",
+        {
+          index,
+          errors: validateSimulationResult.errors,
+        }
+      ),
+    };
+  }
   if (!isRecord(result)) {
     return {
       ok: false,
@@ -80,7 +104,15 @@ function buildTrajectorySummary(result, index) {
       }),
     };
   }
-  if (!isRecord(result.outcome) || typeof result.outcome.terminated !== "boolean") {
+  if (typeof result.terminated !== "boolean") {
+    return {
+      ok: false,
+      error: new LogAdapterError("invalid_result", "Simulation result must include terminated.", {
+        index,
+      }),
+    };
+  }
+  if (!isRecord(result.outcome)) {
     return {
       ok: false,
       error: new LogAdapterError("invalid_result", "Simulation result must include outcome.", {
@@ -117,6 +149,7 @@ function buildTrajectorySummary(result, index) {
     turnCount,
     terminalOutcome: result.outcome,
     terminationReason: result.terminationReason,
+    terminated: result.terminated,
     actionCounts: Object.keys(actionCounts).length > 0 ? actionCounts : undefined,
     uniqueStateCount: stateHashes.size,
     keySteps: steps.map((step) => ({
@@ -125,6 +158,8 @@ function buildTrajectorySummary(result, index) {
       playerId: step.playerId ?? null,
       actionId: step.actionId,
       legalActionCount: step.legalActionCount,
+      affectedPlayerIds: Array.isArray(step.affectedPlayerIds) ? [...step.affectedPlayerIds] : [],
+      affectedGlobal: typeof step.affectedGlobal === "boolean" ? step.affectedGlobal : false,
     })),
   };
 

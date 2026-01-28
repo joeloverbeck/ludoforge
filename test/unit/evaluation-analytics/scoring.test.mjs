@@ -38,6 +38,29 @@ test("computeCompositeScore averages objective scores when weights are absent", 
   assert.ok(Math.abs(result.score - 0.5) < 1e-9);
 });
 
+test("computeCompositeScore honors per-feature default weights", () => {
+  const featureVector = { agency: 0.2, interaction_rate: 0.9 };
+
+  const result = computeCompositeScore(featureVector, {
+    defaultWeights: { interaction_rate: 0 },
+    includeComponents: false,
+  });
+
+  assert.ok(Math.abs(result.score - 0.2) < 1e-9);
+});
+
+test("computeCompositeScore applies defaultWeights when weights omit a feature", () => {
+  const featureVector = { agency: 0.4, interaction_rate: 0.8 };
+
+  const result = computeCompositeScore(featureVector, {
+    weights: { agency: 1 },
+    defaultWeights: { interaction_rate: 0 },
+    includeComponents: false,
+  });
+
+  assert.ok(Math.abs(result.score - 0.4) < 1e-9);
+});
+
 test("combineFitnessScores caps preference influence during bootstrap", () => {
   const result = combineFitnessScores(1, 1, 0, {
     preferenceCap: 0.4,

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/fitness.schema.json",
+  "title": "FitnessConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "weights",
+    "weightNormalization",
+    "diversityPressure",
+    "diversityWeight",
+    "preferenceWeight",
+    "preferenceCap",
+    "preferenceBootstrapSamples",
+    "preferenceBootstrapCap"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "weights": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "weightNormalization": { "type": "boolean" },
+    "diversityPressure": { "type": "number", "minimum": 0 },
+    "diversityWeight": { "type": "number", "minimum": 0 },
+    "preferenceWeight": { "type": "number", "minimum": 0 },
+    "preferenceCap": { "type": "number", "minimum": 0 },
+    "preferenceBootstrapSamples": { "type": "integer", "minimum": 0 },
+    "preferenceBootstrapCap": { "type": "number", "minimum": 0 }
+  }
+}

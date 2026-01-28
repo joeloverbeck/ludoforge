@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "runsRoot": "runs",
+  "artifacts": {
+    "runMetadata": "run.json",
+    "generationDirPattern": "generation-{generation}",
+    "population": "population.jsonl",
+    "evaluated": "evaluated.jsonl",
+    "rejected": "rejected.jsonl",
+    "mapElites": "map-elites.json",
+    "shortlist": "shortlist.json",
+    "feedback": "feedback.jsonl",
+    "preferenceModel": "preference-model.jsonl",
+    "determinism": "determinism.json"
+  },
+  "resume": {
+    "requireConfigMatch": true,
+    "requireDescriptorMatch": true
+  }
+}

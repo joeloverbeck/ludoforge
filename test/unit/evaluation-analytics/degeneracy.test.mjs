@@ -1,18 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 import {
   applyDegeneracyFilters,
   detectDegeneracy,
 } from "../../../src/evaluation-analytics/degeneracy.js";
 
+async function readJson(relativePath) {
+  const fileUrl = new URL(relativePath, import.meta.url);
+  const raw = await readFile(fileUrl, "utf8");
+  return JSON.parse(raw);
+}
+
 test("detectDegeneracy flags loops when repeated states or loop detection occurs", () => {
   const summaries = [
     {
       stepCount: 6,
       turnCount: 6,
-      terminalOutcome: { terminated: true },
+      terminalOutcome: {},
       terminationReason: "loop-detected",
+      terminated: false,
       uniqueStateCount: 3,
       keySteps: [],
     },
@@ -29,7 +37,8 @@ test("detectDegeneracy only flags stalemate when outcome is draw-for-all", () =>
       stepCount: 4,
       turnCount: 4,
       terminationReason: "stalemate",
-      terminalOutcome: { terminated: true, outcomes: { 1: "win", 2: "lose" } },
+      terminated: true,
+      terminalOutcome: { outcomes: { 1: "win", 2: "lose" } },
     },
   ];
 
@@ -43,7 +52,8 @@ test("detectDegeneracy treats no-legal-actions draw as stalemate", () => {
       stepCount: 2,
       turnCount: 2,
       terminationReason: "no-legal-actions",
-      terminalOutcome: { terminated: true, outcomes: { 1: "draw", 2: "draw" } },
+      terminated: true,
+      terminalOutcome: { outcomes: { 1: "draw", 2: "draw" } },
     },
   ];
 
@@ -52,12 +62,29 @@ test("detectDegeneracy treats no-legal-actions draw as stalemate", () => {
   assert.ok(report.details?.stalemate?.includes("count=1"));
 });
 
+test("detectDegeneracy flags non-terminating for cutoff reasons", () => {
+  const summaries = [
+    {
+      stepCount: 5,
+      turnCount: 5,
+      terminationReason: "max-steps",
+      terminated: true,
+      terminalOutcome: {},
+    },
+  ];
+
+  const report = detectDegeneracy(summaries);
+  assert.ok(report.flags.includes("non-terminating"));
+  assert.ok(report.details?.["non-terminating"]?.includes("max_steps=1"));
+});
+
 test("detectDegeneracy flags forced-move dominance and no-choices", () => {
   const summaries = [
     {
       stepCount: 3,
       turnCount: 3,
-      terminalOutcome: { terminated: true },
+      terminalOutcome: {},
+      terminated: true,
       keySteps: [
         { turn: 1, phase: null, playerId: 1, legalActionCount: 1 },
         { turn: 2, phase: null, playerId: 2, legalActionCount: 1 },
@@ -77,7 +104,8 @@ test("detectDegeneracy flags dominant-action for overwhelming action share", () 
     {
       stepCount: 12,
       turnCount: 12,
-      terminalOutcome: { terminated: true },
+      terminalOutcome: {},
+      terminated: true,
       actionCounts: { pass: 10, take: 2 },
     },
   ];
@@ -88,11 +116,11 @@ test("detectDegeneracy flags dominant-action for overwhelming action share", () 
 });
 
 test("detectDegeneracy flags trivial-win for quick, consistent winners", () => {
-  const outcome = { terminated: true, outcomes: { 1: "win", 2: "lose" } };
+  const outcome = { outcomes: { 1: "win", 2: "lose" } };
   const summaries = [
-    { stepCount: 2, turnCount: 2, terminalOutcome: outcome },
-    { stepCount: 2, turnCount: 2, terminalOutcome: outcome },
-    { stepCount: 2, turnCount: 2, terminalOutcome: outcome },
+    { stepCount: 2, turnCount: 2, terminalOutcome: outcome, terminated: true },
+    { stepCount: 2, turnCount: 2, terminalOutcome: outcome, terminated: true },
+    { stepCount: 2, turnCount: 2, terminalOutcome: outcome, terminated: true },
   ];
 
   const report = detectDegeneracy(summaries);
@@ -108,4 +136,12 @@ test("applyDegeneracyFilters rejects reports with default reject flags", () => {
 
   assert.equal(decision.allow, false);
   assert.deepEqual(decision.rejectedFlags.sort(), ["forced-move", "loop"]);
+});
+
+test("applyDegeneracyFilters defaults to config rejectOn list", async () => {
+  const config = await readJson("../../../configs/degeneracy.json");
+  const flag = config.rejectOn[0];
+  const decision = applyDegeneracyFilters({ flags: [flag], details: {} });
+  assert.equal(decision.allow, false);
+  assert.deepEqual(decision.rejectedFlags, [flag]);
 });

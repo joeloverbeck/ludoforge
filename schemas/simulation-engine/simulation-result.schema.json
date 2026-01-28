@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/simulation-engine/simulation-result.schema.json",
+  "title": "SimulationResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["trajectory", "outcome", "terminationReason", "terminated"],
+  "properties": {
+    "trajectory": { "$ref": "#/$defs/Trajectory" },
+    "outcome": { "$ref": "#/$defs/SimulationOutcome" },
+    "terminationReason": { "$ref": "#/$defs/TerminationReason" },
+    "terminated": { "type": "boolean" },
+    "terminationDetail": { "type": "string" },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["terminationReason"],
+        "properties": {
+          "terminationReason": {
+            "enum": ["condition", "stalemate", "no-legal-actions"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "terminated": { "const": true }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["terminationReason"],
+        "properties": {
+          "terminationReason": {
+            "enum": ["max-turns", "max-steps", "loop-detected"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "terminated": { "const": false }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps", "events"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TrajectoryStep" }
+        },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GameEvent" }
+        }
+      }
+    },
+    "TrajectoryStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn",
+        "phase",
+        "playerId",
+        "legalActionCount",
+        "affectedPlayerIds",
+        "affectedGlobal",
+        "state"
+      ],
+      "properties": {
+        "turn": { "type": "integer" },
+        "phase": { "type": ["string", "null"] },
+        "playerId": { "type": ["integer", "null"] },
+        "actionId": { "type": ["string", "null"] },
+        "legalActionCount": { "type": "integer", "minimum": 0 },
+        "affectedPlayerIds": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "affectedGlobal": { "type": "boolean" },
+        "state": { "type": "object" }
+      }
+    },
+    "GameEvent": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" }
+      }
+    },
+    "SimulationOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcomes"],
+      "properties": {
+        "outcomes": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^\\d+$": { "enum": ["win", "lose", "draw"] }
+          }
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^\\d+$": { "$ref": "#/$defs/ScalarValue" }
+          }
+        }
+      }
+    },
+    "ScalarValue": {
+      "type": ["number", "boolean", "string"]
+    },
+    "TerminationReason": {
+      "enum": [
+        "condition",
+        "stalemate",
+        "no-legal-actions",
+        "max-turns",
+        "max-steps",
+        "loop-detected"
+      ]
+    }
+  }
+}

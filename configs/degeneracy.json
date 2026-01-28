@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "thresholds": {
+    "loop": {
+      "repeatedStateRatio": 0.25,
+      "minRepeatedStates": 1
+    },
+    "forcedMove": {
+      "ratio": 0.8
+    },
+    "dominantAction": {
+      "ratio": 0.8,
+      "minSamples": 10
+    },
+    "trivialWin": {
+      "winRate": 0.9,
+      "maxAvgSteps": 3,
+      "minSamples": 3
+    }
+  },
+  "flags": [
+    "loop",
+    "stalemate",
+    "forced-move",
+    "dominant-action",
+    "trivial-win",
+    "no-choices",
+    "non-terminating"
+  ],
+  "rejectOn": [
+    "loop",
+    "stalemate",
+    "forced-move",
+    "dominant-action",
+    "trivial-win",
+    "no-choices",
+    "non-terminating"
+  ]
+}

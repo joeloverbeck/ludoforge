@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/metrics-core.schema.json",
+  "title": "MetricsCoreConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "enabled", "normalization", "featureOrder"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "enabled": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nonFinite"],
+      "properties": {
+        "nonFinite": { "type": "string", "enum": ["zero"] }
+      }
+    },
+    "featureOrder": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

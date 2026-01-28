@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   assemblePreferenceFeedbackComparison,
   promptForPairwiseComparison,
@@ -64,6 +65,30 @@ test("promptForPairwiseComparison accepts tie", async () => {
 
   assert.equal(record.type, "comparison");
   assert.equal(record.preferred, "tie");
+});
+
+test("prompt defaults match human-feedback config", async () => {
+  const configUrl = new URL("../../../configs/human-feedback.json", import.meta.url);
+  const config = JSON.parse(await readFile(configUrl, "utf8"));
+  const allowedChoices = new Set(["a", "b", "tie"]);
+  for (const choice of config.comparison.choices) {
+    assert.ok(allowedChoices.has(choice.trim().toLowerCase()));
+  }
+  const rangeSuffix =
+    config.rating.min === 1 && config.rating.max === 5
+      ? "1-5, 3 = neutral"
+      : `${config.rating.min}-${config.rating.max}`;
+  const choiceHint = config.comparison.choices.join("/");
+
+  const { io, lines } = createTestIO(["3", "", "", "A", "", ""]);
+
+  await promptForRating({ io });
+  await promptForPairwiseComparison({ io });
+
+  assert.ok(lines[0].includes(config.promptText.rating));
+  assert.ok(lines[0].includes(`(${rangeSuffix})`));
+  assert.ok(lines.some((line) => line.includes(config.promptText.comparison)));
+  assert.ok(lines.some((line) => line.includes(`(${choiceHint})`)));
 });
 
 test("assemblePreferenceFeedbackComparison maps winner and preserves notes", () => {

@@ -1,12 +1,71 @@
+import { loadConfigFile } from "../config/loader.js";
 import { computePreferenceScore } from "./preference-scoring.js";
 
-const DEFAULT_LEARNING_RATE = 0.05;
-const DEFAULT_MAX_HISTORY = 100;
-const DEFAULT_COMPARISON_WEIGHT = 1.0;
-const DEFAULT_RATING_WEIGHT = 0.25;
-const DEFAULT_WEIGHT_DECAY = 0.0;
-const DEFAULT_MAX_WEIGHT_ABS = 5.0;
-const DEFAULT_MAX_BIAS_ABS = 5.0;
+const FALLBACK_LEARNING_RATE = 0.05;
+const FALLBACK_MAX_HISTORY = 100;
+const FALLBACK_COMPARISON_WEIGHT = 1.0;
+const FALLBACK_RATING_WEIGHT = 0.25;
+const FALLBACK_WEIGHT_DECAY = 0.0;
+const FALLBACK_MAX_WEIGHT_ABS = 5.0;
+const FALLBACK_MAX_BIAS_ABS = 5.0;
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultPreferenceModelConfig() {
+  const result = await loadConfigFile({ name: "preference-model" });
+  if (!result.valid) {
+    throw new Error(
+      `Preference model config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_PREFERENCE_MODEL_CONFIG = await loadDefaultPreferenceModelConfig();
+
+function safeNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+const DEFAULT_LEARNING_RATE = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.learningRate,
+  FALLBACK_LEARNING_RATE
+);
+const DEFAULT_MAX_HISTORY = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.maxHistory,
+  FALLBACK_MAX_HISTORY
+);
+const DEFAULT_COMPARISON_WEIGHT = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.comparisonWeight,
+  FALLBACK_COMPARISON_WEIGHT
+);
+const DEFAULT_RATING_WEIGHT = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.ratingWeight,
+  FALLBACK_RATING_WEIGHT
+);
+const DEFAULT_WEIGHT_DECAY = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.weightDecay,
+  FALLBACK_WEIGHT_DECAY
+);
+const DEFAULT_MAX_WEIGHT_ABS = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.maxWeightAbs,
+  FALLBACK_MAX_WEIGHT_ABS
+);
+const DEFAULT_MAX_BIAS_ABS = safeNumber(
+  DEFAULT_PREFERENCE_MODEL_CONFIG?.maxBiasAbs,
+  FALLBACK_MAX_BIAS_ABS
+);
 
 function cloneFeatureVector(vector) {
   return vector && typeof vector === "object" ? { ...vector } : {};
@@ -86,10 +145,6 @@ function normalizeComparisonTarget(preferred) {
     return 0;
   }
   return 0.5;
-}
-
-function safeNumber(value, fallback) {
-  return Number.isFinite(value) ? value : fallback;
 }
 
 function safeLearningRate(value) {

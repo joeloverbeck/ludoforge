@@ -1,8 +1,8 @@
 import type { GameDefinition } from "../dsl/types.js";
-import type { TerminationResult } from "../game-kernel/termination.js";
 import type {
   AgentController,
   AgentDescriptor,
+  SimulationOutcome,
   SimulationResult,
   SimulationTerminationReason,
   TrajectoryStep,
@@ -30,8 +30,9 @@ export interface EvaluationAnalyticsInput {
 export interface TrajectorySummary {
   stepCount: number;
   turnCount: number;
-  terminalOutcome: TerminationResult;
+  terminalOutcome: SimulationOutcome;
   terminationReason?: SimulationTerminationReason;
+  terminated: boolean;
   actionCounts?: Record<string, number>;
   uniqueStateCount?: number;
   keySteps?: ReadonlyArray<TrajectoryKeyStep>;
@@ -43,6 +44,8 @@ export interface TrajectoryKeyStep {
   playerId: number | null;
   actionId?: string | null;
   legalActionCount?: number;
+  affectedPlayerIds?: number[];
+  affectedGlobal?: boolean;
 }
 
 export type MetricId = string;
@@ -66,10 +69,22 @@ export interface DecisionQualitySamplingConfig {
   earlyStepPercent?: number;
 }
 
+export type SkillExpressionTier = AgentController | AgentDescriptor | string;
+
+export interface SkillExpressionMetricOptions {
+  enabled?: boolean;
+  agentTiers?: ReadonlyArray<SkillExpressionTier>;
+  matchesPerSeat?: number;
+  maxSteps?: number;
+  maxTurns?: number;
+  seed?: number;
+}
+
 export interface ExtendedMetricsOptions {
   simulations?: ReadonlyArray<SimulationResult>;
   meaningfulChoice?: DecisionQualitySamplingConfig;
   comebackPotential?: DecisionQualitySamplingConfig;
+  skillExpression?: SkillExpressionMetricOptions;
 }
 
 export type DegeneracyFlag =

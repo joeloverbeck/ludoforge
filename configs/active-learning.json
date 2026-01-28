@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "uncertaintyThreshold": 0.15,
+  "diversityQuota": 1,
+  "maxPairs": 5,
+  "cadence": 1
+}

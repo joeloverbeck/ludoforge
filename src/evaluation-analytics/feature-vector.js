@@ -1,13 +1,52 @@
-const DEFAULT_FEATURE_ORDER = [
+import { loadConfigFile } from "../config/loader.js";
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultMetricsCoreConfig() {
+  const result = await loadConfigFile({ name: "metrics-core" });
+  if (!result.valid) {
+    throw new Error(
+      `Metrics core config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+async function loadDefaultDegeneracyConfig() {
+  const result = await loadConfigFile({ name: "degeneracy" });
+  if (!result.valid) {
+    throw new Error(
+      `Degeneracy config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_METRICS_CORE_CONFIG = await loadDefaultMetricsCoreConfig();
+const DEFAULT_DEGENERACY_CONFIG = await loadDefaultDegeneracyConfig();
+
+const FALLBACK_FEATURE_ORDER = [
   "agency",
   "strategic_depth",
-  "skill_expression",
+  "seat_imbalance",
   "variety",
   "pacing_tension",
+  "turn_taking_rate",
   "interaction_rate",
 ];
 
-const DEFAULT_DEGENERACY_ORDER = [
+const FALLBACK_DEGENERACY_ORDER = [
   "loop",
   "stalemate",
   "forced-move",
@@ -17,11 +56,24 @@ const DEFAULT_DEGENERACY_ORDER = [
   "non-terminating",
 ];
 
+const DEFAULT_FEATURE_ORDER = Array.isArray(DEFAULT_METRICS_CORE_CONFIG?.featureOrder)
+  ? DEFAULT_METRICS_CORE_CONFIG.featureOrder.slice()
+  : FALLBACK_FEATURE_ORDER;
+
+const DEFAULT_DEGENERACY_ORDER = Array.isArray(DEFAULT_DEGENERACY_CONFIG?.flags)
+  ? DEFAULT_DEGENERACY_CONFIG.flags.slice()
+  : FALLBACK_DEGENERACY_ORDER;
+
+const NON_FINITE_POLICY = DEFAULT_METRICS_CORE_CONFIG?.normalization?.nonFinite ?? "zero";
+
 function safeNumber(value) {
   return Number.isFinite(value) ? value : 0;
 }
 
 function normalizeMetricValue(value) {
+  if (NON_FINITE_POLICY === "zero") {
+    return safeNumber(value);
+  }
   return safeNumber(value);
 }
 

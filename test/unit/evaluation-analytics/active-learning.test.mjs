@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { selectActiveLearningPairs } from "../../../src/evaluation-analytics/active-learning.js";
 
 const baseModelState = {
@@ -73,4 +74,23 @@ test("diversity quota includes underrepresented niches", () => {
   assert.ok(
     pair.candidateA.nicheId === "rare" || pair.candidateB.nicheId === "rare"
   );
+});
+
+test("active learning defaults reflect config file", async () => {
+  const configUrl = new URL("../../../configs/active-learning.json", import.meta.url);
+  const config = JSON.parse(await readFile(configUrl, "utf8"));
+
+  const candidates = [
+    { id: "a", featureVector: { x: 0 } },
+    { id: "b", featureVector: { x: 0 } },
+    { id: "c", featureVector: { x: 0 } },
+    { id: "d", featureVector: { x: 0 } },
+    { id: "e", featureVector: { x: 0 } },
+  ];
+
+  const neutralModel = { ...baseModelState, weights: {}, bias: 0 };
+
+  const selection = selectActiveLearningPairs(candidates, neutralModel, {});
+
+  assert.equal(selection.length, config.maxPairs);
 });

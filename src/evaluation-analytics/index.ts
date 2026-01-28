@@ -52,7 +52,6 @@ export {
 } from "./metrics/core.js";
 
 export {
-  computeBalanceSkew,
   computeComebackPotential,
   computeCoverageActions,
   computeCoverageState,
@@ -63,6 +62,8 @@ export {
   computeMeaningfulChoice,
   computeOutcomeVariance,
 } from "./metrics/extended.js";
+
+export { computeSkillExpressionMetric } from "./metrics/skill-expression.js";
 
 export {
   DEFAULT_DEGENERACY_ORDER,

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/degeneracy.schema.json",
+  "title": "DegeneracyConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "thresholds", "flags", "rejectOn"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loop", "forcedMove", "dominantAction", "trivialWin"],
+      "properties": {
+        "loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repeatedStateRatio", "minRepeatedStates"],
+          "properties": {
+            "repeatedStateRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minRepeatedStates": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "forcedMove": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ratio"],
+          "properties": {
+            "ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "dominantAction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ratio", "minSamples"],
+          "properties": {
+            "ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minSamples": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "trivialWin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["winRate", "maxAvgSteps", "minSamples"],
+          "properties": {
+            "winRate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "maxAvgSteps": { "type": "integer", "minimum": 1 },
+            "minSamples": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "flags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DegeneracyFlag" }
+    },
+    "rejectOn": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DegeneracyFlag" }
+    }
+  },
+  "$defs": {
+    "DegeneracyFlag": {
+      "type": "string",
+      "enum": [
+        "loop",
+        "stalemate",
+        "forced-move",
+        "dominant-action",
+        "trivial-win",
+        "no-choices",
+        "non-terminating"
+      ]
+    }
+  }
+}

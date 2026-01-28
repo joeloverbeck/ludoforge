@@ -8,6 +8,7 @@ import {
   computePacingTension,
   computeSkillExpression,
   computeStrategicDepth,
+  computeTurnTakingRate,
   computeVariety,
 } from "../../../src/evaluation-analytics/metrics/core.js";
 
@@ -21,7 +22,8 @@ function buildSummary({
   return {
     stepCount,
     turnCount,
-    terminalOutcome: { terminated: true, reason: "condition", outcomes },
+    terminalOutcome: { outcomes },
+    terminated: true,
     actionCounts,
     keySteps,
   };
@@ -32,6 +34,14 @@ test("core metrics return zeros for empty input", () => {
   for (const result of results) {
     assert.equal(result.value, 0);
   }
+});
+
+test("core metrics include seat_imbalance and omit skill_expression id", () => {
+  const results = computeCoreMetrics([]);
+  const ids = results.map((result) => result.id);
+  assert.ok(ids.includes("seat_imbalance"));
+  assert.ok(ids.includes("turn_taking_rate"));
+  assert.equal(ids.includes("skill_expression"), false);
 });
 
 test("agency and strategic depth use legal action counts", () => {
@@ -62,7 +72,7 @@ test("variety uses normalized trajectory entropy", () => {
   assert.ok(Math.abs(computeVariety([summaryA, summaryB]) - 0.5) < 1e-9);
 });
 
-test("skill expression reflects win-rate gap", () => {
+test("seat imbalance reflects win-rate gap", () => {
   const balanced = [
     buildSummary({ outcomes: { 1: "win", 2: "lose" } }),
     buildSummary({ outcomes: { 1: "lose", 2: "win" } }),
@@ -76,7 +86,7 @@ test("skill expression reflects win-rate gap", () => {
   assert.ok(Math.abs(computeSkillExpression(skewed) - 1) < 1e-9);
 });
 
-test("skill expression handles draws and sparse player coverage", () => {
+test("seat imbalance handles draws and sparse player coverage", () => {
   const mixed = [
     buildSummary({ outcomes: { 1: "win", 2: "draw" } }),
     buildSummary({ outcomes: { 1: "draw", 2: "draw" } }),
@@ -95,7 +105,7 @@ test("pacing tension uses steps per turn", () => {
   assert.ok(Math.abs(computePacingTension([summary]) - 2) < 1e-9);
 });
 
-test("interaction rate tracks player turn transitions", () => {
+test("turn taking rate tracks player turn transitions", () => {
   const alternating = buildSummary({
     keySteps: [
       { turn: 1, phase: null, playerId: 1 },
@@ -111,6 +121,54 @@ test("interaction rate tracks player turn transitions", () => {
     ],
   });
 
-  assert.ok(Math.abs(computeInteractionRate([alternating]) - 1) < 1e-9);
-  assert.ok(Math.abs(computeInteractionRate([singlePlayer])) < 1e-9);
+  assert.ok(Math.abs(computeTurnTakingRate([alternating]) - 1) < 1e-9);
+  assert.ok(Math.abs(computeTurnTakingRate([singlePlayer])) < 1e-9);
+});
+
+test("interaction rate counts cross-player effects on action steps", () => {
+  const summary = buildSummary({
+    keySteps: [
+      {
+        turn: 1,
+        phase: null,
+        playerId: 1,
+        actionId: "a",
+        affectedPlayerIds: [1],
+      },
+      {
+        turn: 1,
+        phase: null,
+        playerId: 2,
+        actionId: "b",
+        affectedPlayerIds: [1, 2],
+      },
+      {
+        turn: 2,
+        phase: null,
+        playerId: 1,
+        actionId: "c",
+        affectedPlayerIds: [],
+      },
+    ],
+  });
+
+  assert.ok(Math.abs(computeInteractionRate([summary]) - 1 / 3) < 1e-9);
+});
+
+test("interaction rate ignores pass steps and missing affected players", () => {
+  const summary = buildSummary({
+    keySteps: [
+      { turn: 1, phase: null, playerId: 1, actionId: null },
+      { turn: 1, phase: null, playerId: 2, actionId: "b" },
+      {
+        turn: 2,
+        phase: null,
+        playerId: 1,
+        actionId: "c",
+        affectedPlayerIds: [2],
+      },
+    ],
+  });
+
+  assert.ok(Math.abs(computeInteractionRate([summary]) - 1 / 2) < 1e-9);
 });

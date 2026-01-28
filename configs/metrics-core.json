@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "enabled": [
+    "agency",
+    "strategic_depth",
+    "seat_imbalance",
+    "variety",
+    "pacing_tension",
+    "turn_taking_rate",
+    "interaction_rate"
+  ],
+  "normalization": {
+    "nonFinite": "zero"
+  },
+  "featureOrder": [
+    "agency",
+    "strategic_depth",
+    "seat_imbalance",
+    "variety",
+    "pacing_tension",
+    "turn_taking_rate",
+    "interaction_rate"
+  ]
+}

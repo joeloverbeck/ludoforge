@@ -1,4 +1,30 @@
+import { loadConfigFile } from "../config/loader.js";
 import { isDrawForAll } from "./outcomes.js";
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultDegeneracyConfig() {
+  const result = await loadConfigFile({ name: "degeneracy" });
+  if (!result.valid) {
+    throw new Error(
+      `Degeneracy config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_DEGENERACY_CONFIG = await loadDefaultDegeneracyConfig();
 
 function clampNumber(value) {
   return Number.isFinite(value) ? value : 0;
@@ -17,7 +43,7 @@ function isStalemateTermination(summary) {
   );
 }
 
-const DEFAULT_DEGENERACY_THRESHOLDS = {
+const FALLBACK_DEGENERACY_THRESHOLDS = {
   loopRepeatRatio: 0.25,
   minRepeatedStates: 1,
   forcedMoveRatio: 0.8,
@@ -28,16 +54,63 @@ const DEFAULT_DEGENERACY_THRESHOLDS = {
   minTrivialWinSamples: 3,
 };
 
+const FALLBACK_DEGENERACY_FLAGS = [
+  "loop",
+  "stalemate",
+  "forced-move",
+  "dominant-action",
+  "trivial-win",
+  "no-choices",
+  "non-terminating",
+];
+
+function resolveFiniteNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+const DEFAULT_DEGENERACY_THRESHOLDS = {
+  loopRepeatRatio: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.loop?.repeatedStateRatio,
+    FALLBACK_DEGENERACY_THRESHOLDS.loopRepeatRatio
+  ),
+  minRepeatedStates: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.loop?.minRepeatedStates,
+    FALLBACK_DEGENERACY_THRESHOLDS.minRepeatedStates
+  ),
+  forcedMoveRatio: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.forcedMove?.ratio,
+    FALLBACK_DEGENERACY_THRESHOLDS.forcedMoveRatio
+  ),
+  dominantActionRatio: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.dominantAction?.ratio,
+    FALLBACK_DEGENERACY_THRESHOLDS.dominantActionRatio
+  ),
+  minActionSamples: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.dominantAction?.minSamples,
+    FALLBACK_DEGENERACY_THRESHOLDS.minActionSamples
+  ),
+  trivialWinRate: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.trivialWin?.winRate,
+    FALLBACK_DEGENERACY_THRESHOLDS.trivialWinRate
+  ),
+  trivialWinMaxAverageSteps: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.trivialWin?.maxAvgSteps,
+    FALLBACK_DEGENERACY_THRESHOLDS.trivialWinMaxAverageSteps
+  ),
+  minTrivialWinSamples: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.trivialWin?.minSamples,
+    FALLBACK_DEGENERACY_THRESHOLDS.minTrivialWinSamples
+  ),
+};
+
+const DEFAULT_DEGENERACY_FLAGS = Array.isArray(DEFAULT_DEGENERACY_CONFIG?.flags)
+  ? DEFAULT_DEGENERACY_CONFIG.flags.slice()
+  : FALLBACK_DEGENERACY_FLAGS;
+
 const DEFAULT_DEGENERACY_FILTERS = {
-  rejectFlags: [
-    "loop",
-    "stalemate",
-    "forced-move",
-    "dominant-action",
-    "trivial-win",
-    "no-choices",
-    "non-terminating",
-  ],
+  rejectFlags: Array.isArray(DEFAULT_DEGENERACY_CONFIG?.rejectOn)
+    ? DEFAULT_DEGENERACY_CONFIG.rejectOn.slice()
+    : FALLBACK_DEGENERACY_FLAGS,
 };
 
 function detectDegeneracy(summaries, thresholds = {}) {
@@ -79,6 +152,7 @@ function detectDegeneracy(summaries, thresholds = {}) {
   let stalemateCount = 0;
   let nonTerminatingCount = 0;
   let maxTurnsCount = 0;
+  let maxStepsCount = 0;
 
   let forcedSamples = 0;
   let forcedSteps = 0;
@@ -101,7 +175,15 @@ function detectDegeneracy(summaries, thresholds = {}) {
     if (summary?.terminationReason === "max-turns") {
       maxTurnsCount += 1;
     }
-    if (summary?.terminalOutcome?.terminated === false || summary?.terminationReason === "max-turns") {
+    if (summary?.terminationReason === "max-steps") {
+      maxStepsCount += 1;
+    }
+    if (
+      summary?.terminated === false ||
+      summary?.terminationReason === "max-turns" ||
+      summary?.terminationReason === "max-steps" ||
+      summary?.terminationReason === "loop-detected"
+    ) {
       nonTerminatingCount += 1;
     }
 
@@ -180,6 +262,8 @@ function detectDegeneracy(summaries, thresholds = {}) {
     details["non-terminating"] = formatDetail({
       count: nonTerminatingCount,
       max_turns: maxTurnsCount,
+      max_steps: maxStepsCount,
+      loop_detected: loopDetectedCount,
       samples: summaries.length,
     });
   }
@@ -250,9 +334,18 @@ function detectDegeneracy(summaries, thresholds = {}) {
     }
   }
 
+  const enabledFlags = new Set(DEFAULT_DEGENERACY_FLAGS);
+  const filteredFlags = Array.from(flags).filter((flag) => enabledFlags.has(flag));
+  const filteredDetails = {};
+  for (const flag of filteredFlags) {
+    if (Object.prototype.hasOwnProperty.call(details, flag)) {
+      filteredDetails[flag] = details[flag];
+    }
+  }
+
   return {
-    flags: Array.from(flags),
-    details: Object.keys(details).length > 0 ? details : undefined,
+    flags: filteredFlags,
+    details: Object.keys(filteredDetails).length > 0 ? filteredDetails : undefined,
   };
 }
 

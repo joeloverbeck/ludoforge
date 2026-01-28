@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/metrics-extended.schema.json",
+  "title": "MetricsExtendedConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "meaningfulChoice", "comebackPotential", "skillExpression"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "meaningfulChoice": { "$ref": "#/$defs/MeaningfulChoiceConfig" },
+    "comebackPotential": { "$ref": "#/$defs/ComebackPotentialConfig" },
+    "skillExpression": { "$ref": "#/$defs/SkillExpressionConfig" }
+  },
+  "$defs": {
+    "AgentDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["random", "greedy"] },
+        "options": { "type": "object" }
+      }
+    },
+    "AgentRef": {
+      "anyOf": [
+        { "type": "string", "enum": ["random", "greedy"] },
+        { "$ref": "#/$defs/AgentDescriptor" }
+      ]
+    },
+    "MeaningfulChoiceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "decisionSamplesPerRun",
+        "rolloutsPerAction",
+        "rolloutMaxSteps",
+        "maxRolloutsPerRun",
+        "rolloutAgent",
+        "seed"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "decisionSamplesPerRun": { "type": "integer", "minimum": 1 },
+        "rolloutsPerAction": { "type": "integer", "minimum": 1 },
+        "rolloutMaxSteps": { "type": "integer", "minimum": 1 },
+        "maxRolloutsPerRun": { "type": "integer", "minimum": 1 },
+        "rolloutAgent": { "$ref": "#/$defs/AgentRef" },
+        "seed": { "type": "integer" }
+      }
+    },
+    "ComebackPotentialConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "earlyStepPercent"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "earlyStepPercent": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "SkillExpressionConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "matchesPerSeat",
+        "agentTiers",
+        "seed",
+        "maxTurns",
+        "maxSteps"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "matchesPerSeat": { "type": "integer", "minimum": 1 },
+        "agentTiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AgentRef" }
+        },
+        "seed": { "type": ["integer", "null"] },
+        "maxTurns": { "type": ["integer", "null"], "minimum": 1 },
+        "maxSteps": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    }
+  }
+}

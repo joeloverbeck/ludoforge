@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/active-learning.schema.json",
+  "title": "ActiveLearningConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "uncertaintyThreshold",
+    "diversityQuota",
+    "maxPairs",
+    "cadence"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "uncertaintyThreshold": { "type": "number", "minimum": 0 },
+    "diversityQuota": { "type": "integer", "minimum": 0 },
+    "maxPairs": { "type": "integer", "minimum": 1 },
+    "cadence": { "type": "integer", "minimum": 1 }
+  }
+}

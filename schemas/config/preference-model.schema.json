@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/preference-model.schema.json",
+  "title": "PreferenceModelConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "learningRate",
+    "maxHistory",
+    "comparisonWeight",
+    "ratingWeight",
+    "weightDecay",
+    "maxWeightAbs",
+    "maxBiasAbs"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "learningRate": { "type": "number", "minimum": 0 },
+    "maxHistory": { "type": "integer", "minimum": 0 },
+    "comparisonWeight": { "type": "number", "minimum": 0 },
+    "ratingWeight": { "type": "number", "minimum": 0 },
+    "weightDecay": { "type": "number", "minimum": 0 },
+    "maxWeightAbs": { "type": "number", "minimum": 0 },
+    "maxBiasAbs": { "type": "number", "minimum": 0 }
+  }
+}

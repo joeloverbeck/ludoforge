@@ -18,7 +18,7 @@ about the seeded simulation and evolution loop.
 - Safety cutoffs for non-terminating simulations
   - `test/e2e/evolution-pipeline.e2e.test.mjs`
   - Simulations that hit max turns produce `terminationReason = "max-turns"` and
-    `outcome.reason = "max-turns"`.
+    `terminated = false` (no `outcome.reason` field).
 
 - Deterministic evaluation for seeded runs
   - `test/e2e/evolution-pipeline.e2e.test.mjs`
@@ -84,7 +84,9 @@ about the seeded simulation and evolution loop.
 
 - Preference model updates from real feature vectors
   - `test/e2e/preference-model-update.e2e.test.mjs`
-  - Builds feature vectors from real simulation logs and applies comparison updates.
+  - Builds feature vectors from real simulation logs, including `turn_taking_rate` and
+    `interaction_rate`, and applies comparison updates.
+  - Confirms deterministic metric values for identical seeds.
 
 - Mutation + repair orchestration with crossover
   - `test/e2e/evolution-mutation-repair.e2e.test.mjs`

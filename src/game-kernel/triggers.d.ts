@@ -1,10 +1,12 @@
 import type { GameDefinition, TriggerDef } from "../dsl/types.js";
 import type { GameState } from "./state.js";
+import type { EffectImpact } from "./effects.js";
 
 export interface TriggerContext {
   playerId?: number;
   phase?: string | null;
   guard?: TriggerGuard;
+  impact?: EffectImpact;
 }
 
 export interface TriggerGuard {

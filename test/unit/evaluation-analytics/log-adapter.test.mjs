@@ -67,6 +67,8 @@ const step1 = {
   playerId: 1,
   actionId: "pass",
   legalActionCount: 2,
+  affectedPlayerIds: [],
+  affectedGlobal: false,
   state: baseState,
 };
 
@@ -76,17 +78,18 @@ const step2 = {
   playerId: 2,
   actionId: "take",
   legalActionCount: 2,
+  affectedPlayerIds: [2],
+  affectedGlobal: false,
   state: { ...baseState, turn: { currentPlayer: 2, phase: null, turn: 2 } },
 };
 
 const simulationResult = {
-  trajectory: { steps: [step1, step2] },
+  trajectory: { steps: [step1, step2], events: [] },
   outcome: {
-    terminated: true,
-    reason: "condition",
     outcomes: { 1: "draw", 2: "draw" },
   },
   terminationReason: "condition",
+  terminated: true,
 };
 
 const log = {
@@ -109,6 +112,10 @@ test("adaptSimulationLog produces normalized trajectory summaries", () => {
   assert.equal(summary.keySteps.length, 2);
   assert.equal(summary.keySteps[0].actionId, "pass");
   assert.equal(summary.keySteps[1].actionId, "take");
+  assert.deepEqual(summary.keySteps[0].affectedPlayerIds, []);
+  assert.equal(summary.keySteps[0].affectedGlobal, false);
+  assert.deepEqual(summary.keySteps[1].affectedPlayerIds, [2]);
+  assert.equal(summary.keySteps[1].affectedGlobal, false);
 });
 
 test("adaptSimulationLog does not mutate the input log", () => {
@@ -128,7 +135,14 @@ test("adaptSimulationLog returns a typed error for invalid version", () => {
 test("adaptSimulationLog returns a typed error for malformed results", () => {
   const badLog = {
     definition,
-    results: [{ outcome: { terminated: true } }],
+    results: [
+      {
+        trajectory: { steps: [step1], events: [] },
+        outcome: { outcomes: { 1: "draw", 2: "draw" }, reason: "max-turns" },
+        terminationReason: "max-turns",
+        terminated: false,
+      },
+    ],
   };
   const result = adaptSimulationLog({ version: LOG_ADAPTER_VERSION, log: badLog });
   assert.equal(result.ok, false);

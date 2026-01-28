@@ -88,6 +88,7 @@ export function applyTriggers(definition, state, event, context = {}) {
           playerId: context.playerId,
           phase: context.phase,
           variableIndex,
+          impact: context.impact,
         });
         if (!result.ok) {
           return { ok: false, reason: result.reason };

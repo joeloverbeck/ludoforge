@@ -63,11 +63,42 @@ test("preference model updates from real feature vectors", async () => {
     minimalDefinition,
     runSimulations(minimalDefinition, [11, 13, 17])
   );
+  const featureVectorARepeat = buildFeatureVector(
+    choiceDefinition,
+    runSimulations(choiceDefinition, [3, 5, 7])
+  );
 
   const differingKeys = Object.keys(featureVectorA).filter(
     (key) => featureVectorA[key] !== featureVectorB[key]
   );
   assert.ok(differingKeys.length > 0, "Expected distinct feature vectors");
+
+  for (const featureVector of [featureVectorA, featureVectorB]) {
+    assert.ok(
+      Object.hasOwn(featureVector, "turn_taking_rate"),
+      "Expected turn_taking_rate in feature vector"
+    );
+    assert.ok(
+      Object.hasOwn(featureVector, "interaction_rate"),
+      "Expected interaction_rate in feature vector"
+    );
+    assert.equal(
+      featureVector.turn_taking_rate,
+      1,
+      "Expected round-robin fixtures to alternate turns"
+    );
+    assert.equal(
+      featureVector.interaction_rate,
+      0,
+      "Expected global-only effects to yield zero interaction"
+    );
+  }
+
+  assert.deepEqual(
+    featureVectorARepeat,
+    featureVectorA,
+    "Expected deterministic metrics for identical seeds"
+  );
 
   const feedback = assemblePreferenceFeedbackComparison({
     candidateA: { id: "candidate-a", featureVector: featureVectorA },

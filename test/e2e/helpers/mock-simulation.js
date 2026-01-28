@@ -55,6 +55,8 @@ function buildSteps(definition, stepCount, rng) {
       playerId: stepState.turn.currentPlayer ?? null,
       actionId,
       legalActionCount: actionIds.length,
+      affectedPlayerIds: [],
+      affectedGlobal: false,
       state: stepState,
     });
   }
@@ -94,8 +96,6 @@ export function createMockSimulation({
     const steps = buildSteps(definition, stepCount, rng);
     const terminationReason = mode === "cutoff" ? "max-turns" : "condition";
     const outcome = {
-      terminated: true,
-      reason: terminationReason,
       outcomes: buildOutcomes(definition, mode),
     };
 
@@ -103,6 +103,7 @@ export function createMockSimulation({
       trajectory: { steps, events: [] },
       outcome,
       terminationReason,
+      terminated: mode !== "cutoff",
     };
   }
 

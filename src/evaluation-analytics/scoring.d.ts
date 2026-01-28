@@ -4,6 +4,7 @@ export interface CompositeScoreOptions {
   weights?: FeatureVector;
   normalizeWeights?: boolean;
   defaultWeight?: number;
+  defaultWeights?: FeatureVector;
   includeComponents?: boolean;
   objectives?: Record<string, FeatureVector>;
   objectiveDefaultWeight?: number;

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/human-feedback.schema.json",
+  "title": "HumanFeedbackConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "rating", "comparison"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "rating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choices"],
+      "properties": {
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["A", "B", "Tie"]
+          }
+        }
+      }
+    },
+    "promptText": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rating": { "type": "string" },
+        "comparison": { "type": "string" },
+        "tags": { "type": "string" },
+        "rationale": { "type": "string" }
+      }
+    }
+  }
+}

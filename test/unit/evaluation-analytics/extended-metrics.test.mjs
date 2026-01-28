@@ -26,7 +26,8 @@ function buildSummary({
     turnCount,
     terminationReason,
     uniqueStateCount,
-    terminalOutcome: { terminated, reason: "condition", outcomes },
+    terminated,
+    terminalOutcome: { outcomes },
     actionCounts,
     keySteps,
   };
@@ -57,6 +58,16 @@ test("early termination rate treats un-terminated outcomes as early exits", () =
   ];
 
   assert.ok(Math.abs(computeEarlyTerminationRate(summaries) - 0.5) < 1e-9);
+});
+
+test("early termination rate excludes condition-based terminations", () => {
+  const summaries = [
+    buildSummary({ terminationReason: "condition" }),
+    buildSummary({ terminationReason: "max-steps" }),
+    buildSummary({ terminated: false }),
+  ];
+
+  assert.ok(Math.abs(computeEarlyTerminationRate(summaries) - 2 / 3) < 1e-9);
 });
 
 test("outcome variance measures swinginess across runs", () => {

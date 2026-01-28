@@ -75,6 +75,8 @@ const trajectory: Trajectory = {
       playerId: 1,
       actionId: "pass",
       legalActionCount: 1,
+      affectedPlayerIds: [],
+      affectedGlobal: false,
       state,
     },
   ],
@@ -84,11 +86,10 @@ const summary: TrajectorySummary = {
   stepCount: 1,
   turnCount: 1,
   terminalOutcome: {
-    terminated: true,
-    reason: "condition",
     outcomes: { 1: "draw", 2: "draw" },
   },
   terminationReason: "condition",
+  terminated: true,
   actionCounts: { pass: 1 },
   uniqueStateCount: 1,
 };

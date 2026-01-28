@@ -46,16 +46,20 @@ function computePreferenceContribution(preferenceScore, options = {}) {
   return { contribution: clamp(weighted, -cap, cap), cap };
 }
 
-function resolveWeights(featureVector, weights, defaultWeight) {
+function resolveWeights(featureVector, weights, defaultWeight, defaultWeights) {
   const resolved = new Map();
   const defaults = Number.isFinite(defaultWeight) ? defaultWeight : 0;
   const sourceWeights = weights && typeof weights === "object" ? weights : null;
+  const sourceDefaultWeights =
+    defaultWeights && typeof defaultWeights === "object" ? defaultWeights : null;
   const featureKeys = featureVector && typeof featureVector === "object" ? Object.keys(featureVector) : [];
 
   for (const key of featureKeys) {
     const weight = sourceWeights && Object.prototype.hasOwnProperty.call(sourceWeights, key)
       ? sourceWeights[key]
-      : defaults;
+      : sourceDefaultWeights && Object.prototype.hasOwnProperty.call(sourceDefaultWeights, key)
+        ? sourceDefaultWeights[key]
+        : defaults;
     resolved.set(key, safeNumber(weight));
   }
 
@@ -115,12 +119,13 @@ function computeCompositeScore(featureVector, options = {}) {
   const normalize = options.normalizeWeights ?? true;
   const includeComponents = options.includeComponents ?? true;
   const defaultWeight = options.defaultWeight ?? 1;
+  const defaultWeights = options.defaultWeights;
   const weights = options.weights;
   const objectives = computeObjectiveScores(featureVector, options.objectives, options);
 
   let score = 0;
   if (weights && typeof weights === "object" && Object.keys(weights).length > 0) {
-    const resolved = resolveWeights(featureVector, weights, defaultWeight);
+    const resolved = resolveWeights(featureVector, weights, defaultWeight, defaultWeights);
     score = computeWeightedScore(featureVector, resolved, normalize);
   } else if (objectives) {
     const objectiveValues = Object.values(objectives);
@@ -129,7 +134,7 @@ function computeCompositeScore(featureVector, options = {}) {
         ? objectiveValues.reduce((sum, value) => sum + safeNumber(value), 0) / objectiveValues.length
         : 0;
   } else {
-    const resolved = resolveWeights(featureVector, null, defaultWeight);
+    const resolved = resolveWeights(featureVector, null, defaultWeight, defaultWeights);
     score = computeWeightedScore(featureVector, resolved, normalize);
   }
 

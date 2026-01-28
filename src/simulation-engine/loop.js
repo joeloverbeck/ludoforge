@@ -12,8 +12,92 @@ import {
   evaluateTermination,
   computeScoresAtState,
 } from "../game-kernel/index.js";
+import { loadConfigFile } from "../config/loader.js";
 import { createSeededRng } from "./rng.js";
 import { normalizeAgents } from "./agent-serialization.js";
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultSimulationConfig() {
+  const result = await loadConfigFile({ name: "simulation" });
+  if (!result.valid) {
+    throw new Error(
+      `Simulation config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_SIMULATION_CONFIG = await loadDefaultSimulationConfig();
+
+function resolveOptionalNumber(value) {
+  return typeof value === "number" ? value : undefined;
+}
+
+function resolveSimulationDefaults(config) {
+  if (!config || typeof config !== "object") {
+    return config;
+  }
+
+  const defaults = config.simulationConfig ?? DEFAULT_SIMULATION_CONFIG ?? {};
+  const resolved = { ...config };
+
+  const defaultMaxTurns = resolveOptionalNumber(defaults.maxTurns);
+  if (resolved.maxTurns == null && defaultMaxTurns != null) {
+    resolved.maxTurns = defaultMaxTurns;
+  }
+
+  const defaultMaxSteps = resolveOptionalNumber(defaults.maxSteps);
+  if (resolved.maxSteps == null && defaultMaxSteps != null) {
+    resolved.maxSteps = defaultMaxSteps;
+  }
+
+  const defaultSeed =
+    defaults?.rng && typeof defaults.rng.seed === "number" ? defaults.rng.seed : undefined;
+  if (resolved.seed == null && !resolved.rng && defaultSeed != null) {
+    resolved.seed = defaultSeed;
+  }
+
+  const defaultLoopDetection = defaults.loopDetection ?? {};
+  const defaultLoopMax =
+    defaultLoopDetection.enabled === true &&
+    typeof defaultLoopDetection.maxRepeatedStates === "number"
+      ? defaultLoopDetection.maxRepeatedStates
+      : undefined;
+  if (defaultLoopMax != null) {
+    if (!resolved.loopDetection || typeof resolved.loopDetection !== "object") {
+      resolved.loopDetection = { maxRepeatedStates: defaultLoopMax };
+    } else if (resolved.loopDetection.maxRepeatedStates == null) {
+      resolved.loopDetection = {
+        ...resolved.loopDetection,
+        maxRepeatedStates: defaultLoopMax,
+      };
+    }
+  }
+
+  const hasDefinitionPolicy = Boolean(resolved.definition?.turn?.noLegalActions);
+  const hasOverridePolicy = Boolean(resolved.turn?.noLegalActions);
+  const defaultNoLegalActions = defaults.turn?.noLegalActions;
+  if (!hasDefinitionPolicy && !hasOverridePolicy && defaultNoLegalActions) {
+    resolved.turn = {
+      ...resolved.turn,
+      noLegalActions: defaultNoLegalActions,
+    };
+  }
+
+  return resolved;
+}
 
 function cloneState(state) {
   return JSON.parse(JSON.stringify(state));
@@ -107,6 +191,14 @@ function buildTerminationOutcome(definition, state, outcomeDef, activePlayerId, 
   };
 }
 
+function buildSimulationOutcome(termination) {
+  return {
+    outcomes: termination?.outcomes,
+    scores: termination?.scores,
+  };
+}
+
+
 function recordLoopHash(state, tracker) {
   if (!tracker) {
     return { repeated: false };
@@ -143,7 +235,20 @@ function applyAfterActionTriggers(definition, state, context) {
   }
 }
 
-function buildStep(state, actionId, legalActionCount) {
+function createStepImpact() {
+  return { affectedPlayerIds: new Set(), affectedGlobal: false };
+}
+
+function finalizeStepImpact(impact) {
+  const affectedPlayerIds = Array.from(impact?.affectedPlayerIds ?? []).sort((a, b) => a - b);
+  return {
+    affectedPlayerIds,
+    affectedGlobal: impact?.affectedGlobal ?? false,
+  };
+}
+
+function buildStep(state, actionId, legalActionCount, impact) {
+  const impactFields = finalizeStepImpact(impact);
   return {
     turn: state.turn.turn,
     phase: state.turn.phase ?? null,
@@ -151,6 +256,7 @@ function buildStep(state, actionId, legalActionCount) {
     actionId,
     legalActionCount,
     state: cloneState(state),
+    ...impactFields,
   };
 }
 
@@ -186,8 +292,9 @@ function runSimulationLoop(config) {
       });
       return {
         trajectory,
-        outcome: maxStepOutcome,
+        outcome: buildSimulationOutcome(maxStepOutcome),
         terminationReason: "max-steps",
+        terminated: false,
       };
     }
 
@@ -211,13 +318,14 @@ function runSimulationLoop(config) {
     if (termination.terminated) {
       return {
         trajectory,
-        outcome: termination,
+        outcome: buildSimulationOutcome(termination),
         terminationReason: "condition",
+        terminated: true,
       };
     }
 
     if (legalActionCount === 0) {
-      const noLegalActions = definition.turn?.noLegalActions;
+      const noLegalActions = config.turn?.noLegalActions ?? definition.turn?.noLegalActions;
       const policy = noLegalActions?.policy;
 
       if (policy === "error") {
@@ -244,8 +352,9 @@ function runSimulationLoop(config) {
             });
             return {
               trajectory,
-              outcome: maxTurnOutcome,
+              outcome: buildSimulationOutcome(maxTurnOutcome),
               terminationReason: "max-turns",
+              terminated: false,
             };
           }
           if (advanceResult.reason === "state-loop") {
@@ -253,8 +362,9 @@ function runSimulationLoop(config) {
             recordTermination(events, outcome);
             return {
               trajectory,
-              outcome,
+              outcome: buildSimulationOutcome(outcome),
               terminationReason: "loop-detected",
+              terminated: false,
             };
           }
           throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
@@ -266,8 +376,9 @@ function runSimulationLoop(config) {
           recordTermination(events, outcome);
           return {
             trajectory,
-            outcome,
+            outcome: buildSimulationOutcome(outcome),
             terminationReason: "loop-detected",
+            terminated: false,
           };
         }
 
@@ -275,7 +386,7 @@ function runSimulationLoop(config) {
       }
 
       if (policy === "terminate") {
-        const reason = noLegalActions?.reason ?? "no-legal-actions";
+        const detail = noLegalActions?.reason;
         const step = buildStep(state, undefined, 0);
         trajectory.steps.push(step);
         config.stepControl?.onStep?.(step);
@@ -285,13 +396,15 @@ function runSimulationLoop(config) {
           state,
           noLegalActions?.defaultOutcome,
           state.turn.currentPlayer,
-          reason
+          "no-legal-actions"
         );
         recordTermination(events, outcome);
         return {
           trajectory,
-          outcome,
-          terminationReason: reason,
+          outcome: buildSimulationOutcome(outcome),
+          terminationReason: "no-legal-actions",
+          terminationDetail: detail,
+          terminated: true,
         };
       }
 
@@ -302,8 +415,9 @@ function runSimulationLoop(config) {
       recordTermination(events, outcome);
       return {
         trajectory,
-        outcome,
+        outcome: buildSimulationOutcome(outcome),
         terminationReason: "stalemate",
+        terminated: true,
       };
     }
 
@@ -335,11 +449,13 @@ function runSimulationLoop(config) {
       throw new Error(`Agent selected invalid action: ${validation.reason ?? "unknown"}`);
     }
 
-    applyAction(definition, state, action, context);
-    applyAfterActionTriggers(definition, state, context);
+    const impact = createStepImpact();
+    const effectContext = { ...context, impact };
+    applyAction(definition, state, action, effectContext);
+    applyAfterActionTriggers(definition, state, effectContext);
     recordStateUpdate(events, state, { actionId: action.id, playerId: context.playerId });
 
-    const step = buildStep(state, action.id, legalActionCount);
+    const step = buildStep(state, action.id, legalActionCount, impact);
     trajectory.steps.push(step);
     config.stepControl?.onStep?.(step);
     stepsTaken += 1;
@@ -351,8 +467,9 @@ function runSimulationLoop(config) {
     if (postActionTermination.terminated) {
       return {
         trajectory,
-        outcome: postActionTermination,
+        outcome: buildSimulationOutcome(postActionTermination),
         terminationReason: "condition",
+        terminated: true,
       };
     }
 
@@ -369,8 +486,9 @@ function runSimulationLoop(config) {
         });
         return {
           trajectory,
-          outcome: maxTurnOutcome,
+          outcome: buildSimulationOutcome(maxTurnOutcome),
           terminationReason: "max-turns",
+          terminated: false,
         };
       }
       if (advanceResult.reason === "state-loop") {
@@ -378,8 +496,9 @@ function runSimulationLoop(config) {
         recordTermination(events, outcome);
         return {
           trajectory,
-          outcome,
+          outcome: buildSimulationOutcome(outcome),
           terminationReason: "loop-detected",
+          terminated: false,
         };
       }
       throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
@@ -391,19 +510,21 @@ function runSimulationLoop(config) {
       recordTermination(events, outcome);
       return {
         trajectory,
-        outcome,
+        outcome: buildSimulationOutcome(outcome),
         terminationReason: "loop-detected",
+        terminated: false,
       };
     }
   }
 }
 
 export function runSimulation(config) {
-  const definition = config.definition;
-  const agents = normalizeAgents(config.agents ?? []);
+  const resolved = resolveSimulationDefaults(config);
+  const definition = resolved.definition;
+  const agents = normalizeAgents(resolved.agents ?? []);
   const state = createInitialState(definition);
 
-  return runSimulationLoop({ ...config, definition, agents, state });
+  return runSimulationLoop({ ...resolved, definition, agents, state });
 }
 
 export function runRollout(config) {
@@ -420,14 +541,16 @@ export function runRollout(config) {
   const agentInput = config.agent != null ? [config.agent] : [];
   const agents = normalizeAgents(agentInput);
   const state = cloneState(config.state);
+  const resolved = resolveSimulationDefaults({ ...config, definition });
 
   return runSimulationLoop({
     definition,
     agents,
     state,
-    seed: config.seed,
-    rng: config.rng,
-    loopDetection: config.loopDetection,
-    maxSteps: config.maxSteps,
+    seed: resolved.seed,
+    rng: resolved.rng,
+    loopDetection: resolved.loopDetection,
+    maxSteps: resolved.maxSteps,
+    turn: resolved.turn,
   });
 }

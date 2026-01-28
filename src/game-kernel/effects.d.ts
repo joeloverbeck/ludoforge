@@ -6,6 +6,7 @@ export interface EffectContext {
   playerId?: number;
   phase?: string | null;
   variableIndex: Map<string, VariableDef>;
+  impact?: EffectImpact;
 }
 
 export interface ApplyEffectOptions {
@@ -16,6 +17,11 @@ export interface EffectResult {
   ok: boolean;
   reason?: string;
   clamped?: boolean;
+}
+
+export interface EffectImpact {
+  affectedPlayerIds: Set<number>;
+  affectedGlobal: boolean;
 }
 
 export function buildVariableIndex(definition: GameDefinition): Map<string, VariableDef>;

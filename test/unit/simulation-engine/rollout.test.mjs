@@ -25,7 +25,8 @@ test("runRollout simulates from the provided state and keeps input immutable", (
   });
 
   assert.equal(result.terminationReason, "max-steps");
-  assert.equal(result.outcome.reason, "max-turns");
+  assert.equal(result.terminated, false);
+  assert.ok(!("reason" in result.outcome));
   assert.equal(result.trajectory.steps.length, 1);
   assert.equal(result.trajectory.steps[0].state.variables.global.counter, 6);
   assert.equal(JSON.stringify(state), snapshot);

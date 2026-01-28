@@ -16,11 +16,10 @@ const summary = {
   stepCount: 1,
   turnCount: 1,
   terminalOutcome: {
-    terminated: true,
-    reason: "condition",
     outcomes: { 1: "draw" },
   },
   terminationReason: "condition",
+  terminated: true,
   actionCounts: { pass: 1 },
   uniqueStateCount: 1,
 };
@@ -76,6 +75,7 @@ test("serialization is deterministic for the same logical run record", async () 
     summary: {
       terminationReason: "condition",
       terminalOutcome: summary.terminalOutcome,
+      terminated: true,
       actionCounts: { pass: 1 },
       uniqueStateCount: 1,
       stepCount: 1,

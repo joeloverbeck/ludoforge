@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 import {
   createPreferenceModelState,
@@ -159,4 +160,19 @@ test("updatePreferenceModelState applies weight decay and clamps", () => {
   assert.equal(next.weights.agency, 1.5);
   assert.equal(next.weights.variety, -1.5);
   assert.equal(next.bias, 2);
+});
+
+test("preference model defaults reflect config file", async () => {
+  const configUrl = new URL("../../../configs/preference-model.json", import.meta.url);
+  const config = JSON.parse(await readFile(configUrl, "utf8"));
+
+  const created = createPreferenceModelState();
+
+  assert.equal(created.learningRate, config.learningRate);
+  assert.equal(created.maxHistory, config.maxHistory);
+  assert.equal(created.comparisonWeight, config.comparisonWeight);
+  assert.equal(created.ratingWeight, config.ratingWeight);
+  assert.equal(created.weightDecay, config.weightDecay);
+  assert.equal(created.maxWeightAbs, config.maxWeightAbs);
+  assert.equal(created.maxBiasAbs, config.maxBiasAbs);
 });

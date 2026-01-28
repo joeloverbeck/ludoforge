@@ -1,5 +1,31 @@
 import { combineFitnessScores, computeCompositeScore } from "./scoring.js";
 import { computePreferenceScore } from "./preference-scoring.js";
+import { loadConfigFile } from "../config/loader.js";
+
+function formatValidationErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown validation error";
+  }
+  return errors
+    .map((error) => {
+      const path = error.path || "<root>";
+      const message = error.message || "Invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("\n");
+}
+
+async function loadDefaultFitnessConfig() {
+  const result = await loadConfigFile({ name: "fitness" });
+  if (!result.valid) {
+    throw new Error(
+      `Fitness config validation failed:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+  return result.config ?? {};
+}
+
+const DEFAULT_FITNESS_CONFIG = await loadDefaultFitnessConfig();
 
 function resolvePreferenceSampleCount(state, options) {
   if (Number.isFinite(options.preferenceSampleCount)) {
@@ -12,11 +38,42 @@ function resolvePreferenceSampleCount(state, options) {
 }
 
 function computePreferenceAwareFitness(featureVector, options = {}) {
+  const baseCompositeScoreOptions = options.compositeScoreOptions;
+  const baseDefaultWeights =
+    baseCompositeScoreOptions && typeof baseCompositeScoreOptions.defaultWeights === "object"
+      ? baseCompositeScoreOptions.defaultWeights
+      : null;
+  const compositeDefaults = DEFAULT_FITNESS_CONFIG && typeof DEFAULT_FITNESS_CONFIG === "object"
+    ? {
+      weights: DEFAULT_FITNESS_CONFIG.weights,
+      normalizeWeights: DEFAULT_FITNESS_CONFIG.weightNormalization,
+    }
+    : {};
+  const compositeScoreOptions = baseCompositeScoreOptions
+    ? {
+      ...compositeDefaults,
+      ...baseCompositeScoreOptions,
+      defaultWeights: { interaction_rate: 0, ...(baseDefaultWeights ?? {}) },
+    }
+    : {
+      ...compositeDefaults,
+      defaultWeights: { interaction_rate: 0 },
+    };
+
   const compositeScore = options.compositeScore ??
-    computeCompositeScore(featureVector, options.compositeScoreOptions);
+    computeCompositeScore(featureVector, compositeScoreOptions);
   const allowPreference = options.allowPreference ?? true;
   const preferenceModelState = options.preferenceModelState;
   const preferenceSampleCount = resolvePreferenceSampleCount(preferenceModelState, options);
+  const fitnessDefaults = DEFAULT_FITNESS_CONFIG ?? {};
+  const diversityPressure = options.diversityPressure ?? fitnessDefaults.diversityPressure;
+  const preferenceWeight = options.preferenceWeight ?? fitnessDefaults.preferenceWeight;
+  const preferenceCap = options.preferenceCap ?? fitnessDefaults.preferenceCap;
+  const preferenceBootstrapSamples =
+    options.preferenceBootstrapSamples ?? fitnessDefaults.preferenceBootstrapSamples;
+  const preferenceBootstrapCap =
+    options.preferenceBootstrapCap ?? fitnessDefaults.preferenceBootstrapCap;
+  const diversityWeight = options.diversityWeight ?? fitnessDefaults.diversityWeight;
 
   let preferenceScore;
   if (preferenceModelState && allowPreference !== false) {
@@ -26,11 +83,15 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
   const blend = combineFitnessScores(
     compositeScore.score,
     preferenceScore?.score,
-    options.diversityPressure,
+    diversityPressure,
     {
-      ...options,
       allowPreference,
       preferenceSampleCount,
+      preferenceWeight,
+      preferenceCap,
+      preferenceBootstrapSamples,
+      preferenceBootstrapCap,
+      diversityWeight,
     }
   );
 

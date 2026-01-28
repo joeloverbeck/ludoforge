@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "maxTurns": null,
+  "maxSteps": null,
+  "loopDetection": {
+    "enabled": false,
+    "maxRepeatedStates": null
+  },
+  "turn": {
+    "noLegalActions": {
+      "policy": "stalemate",
+      "reason": null
+    }
+  },
+  "rng": {
+    "seed": null,
+    "algorithm": "lcg32"
+  }
+}

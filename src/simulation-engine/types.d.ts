@@ -1,7 +1,45 @@
-import type { ActionDef, GameDefinition } from "../dsl/types.js";
+import type {
+  ActionDef,
+  GameDefinition,
+  ScalarValue,
+  TerminationOutcome,
+} from "../dsl/types.js";
 import type { GameEvent } from "../game-kernel/events.js";
-import type { TerminationResult } from "../game-kernel/termination.js";
+import type { OutcomeType } from "../game-kernel/termination.js";
 import type { GameState } from "../game-kernel/state.js";
+
+export type NoLegalActionsPolicy = "terminate" | "pass" | "error" | "stalemate";
+
+export interface SimulationNoLegalActionsOverride {
+  policy: NoLegalActionsPolicy;
+  reason?: string | null;
+  defaultOutcome?: TerminationOutcome;
+}
+
+export interface SimulationTurnOverrides {
+  noLegalActions?: SimulationNoLegalActionsOverride;
+}
+
+export interface SimulationConfigFile {
+  version?: number;
+  updatedAt?: string;
+  maxTurns?: number | null;
+  maxSteps?: number | null;
+  loopDetection?: {
+    enabled?: boolean;
+    maxRepeatedStates?: number | null;
+  };
+  turn?: {
+    noLegalActions?: {
+      policy?: NoLegalActionsPolicy;
+      reason?: string | null;
+    };
+  };
+  rng?: {
+    seed?: number | string | null;
+    algorithm?: "lcg32";
+  };
+}
 
 export interface SimulationConfig {
   definition: GameDefinition;
@@ -9,8 +47,11 @@ export interface SimulationConfig {
   seed?: number;
   rng?: SeededRng;
   maxTurns?: number;
+  maxSteps?: number;
   loopDetection?: LoopDetectionOptions;
   stepControl?: StepControlOptions;
+  turn?: SimulationTurnOverrides;
+  simulationConfig?: SimulationConfigFile;
 }
 
 export interface AgentContext {
@@ -54,6 +95,8 @@ export interface TrajectoryStep {
   playerId: number | null;
   actionId?: string | null;
   legalActionCount?: number;
+  affectedPlayerIds: number[];
+  affectedGlobal: boolean;
   state: GameState;
 }
 
@@ -62,10 +105,17 @@ export interface Trajectory {
   events?: GameEvent[];
 }
 
+export interface SimulationOutcome {
+  outcomes?: Record<number, OutcomeType>;
+  scores?: Record<number, ScalarValue>;
+}
+
 export interface SimulationResult {
   trajectory: Trajectory;
-  outcome: TerminationResult;
-  terminationReason?: SimulationTerminationReason;
+  outcome: SimulationOutcome;
+  terminationReason: SimulationTerminationReason;
+  terminated: boolean;
+  terminationDetail?: string;
   metrics?: Record<string, number>;
 }
 
@@ -77,12 +127,16 @@ export interface RolloutConfig {
   rng?: SeededRng;
   maxSteps?: number;
   loopDetection?: LoopDetectionOptions;
+  turn?: SimulationTurnOverrides;
+  simulationConfig?: SimulationConfigFile;
 }
 
 export interface RolloutResult {
   trajectory: Trajectory;
-  outcome: TerminationResult;
-  terminationReason?: RolloutTerminationReason;
+  outcome: SimulationOutcome;
+  terminationReason: RolloutTerminationReason;
+  terminated: boolean;
+  terminationDetail?: string;
   metrics?: Record<string, number>;
 }
 
@@ -130,9 +184,9 @@ export interface StepControlOptions {
 export type SimulationTerminationReason =
   | "condition"
   | "max-turns"
+  | "max-steps"
   | "loop-detected"
   | "stalemate"
-  | "no-legal-actions"
-  | (string & {});
+  | "no-legal-actions";
 
 export type RolloutTerminationReason = SimulationTerminationReason | "max-steps";

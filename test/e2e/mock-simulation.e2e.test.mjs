@@ -16,8 +16,8 @@ test("mock simulation returns a terminal outcome within the turn cap", async () 
   const result = helper.run({ definition, mode: "terminal" });
 
   assert.equal(result.terminationReason, "condition");
-  assert.equal(result.outcome.terminated, true);
-  assert.equal(result.outcome.reason, "condition");
+  assert.equal(result.terminated, true);
+  assert.ok(!("reason" in result.outcome));
   assert.equal(result.trajectory.steps.length, 2);
   assert.ok(result.trajectory.steps.length <= 4);
 });
@@ -29,8 +29,8 @@ test("mock simulation uses a max-turns cutoff for non-terminating scenarios", as
   const result = helper.run({ definition, mode: "cutoff" });
 
   assert.equal(result.terminationReason, "max-turns");
-  assert.equal(result.outcome.terminated, true);
-  assert.equal(result.outcome.reason, "max-turns");
+  assert.equal(result.terminated, false);
+  assert.ok(!("reason" in result.outcome));
   assert.equal(result.trajectory.steps.length, 3);
 });
 

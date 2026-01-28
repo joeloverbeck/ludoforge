@@ -69,6 +69,19 @@ test("collectSemanticIssues reports unknown meta ids", () => {
   assert.ok(findRule(issues, "meta-ref-unknown"));
 });
 
+test("collectSemanticIssues rejects meta refs outside expressions", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.actions[0].effects.push({
+    kind: "inc",
+    target: { kind: "meta", id: "legalActionCount" },
+    amount: 1,
+  });
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(findRule(issues, "meta-ref-disallowed"));
+});
+
 test("collectSemanticIssues reports termination conditions even with maxTurns", () => {
   const candidate = structuredClone(baseDefinition);
   candidate.termination.conditions = [];
@@ -116,6 +129,15 @@ test("collectSemanticIssues reports bad int bounds", () => {
   const issues = collectSemanticIssues(candidate);
 
   assert.ok(findRule(issues, "int-bounds"));
+});
+
+test("collectSemanticIssues reports non-numeric int initial values", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.state.variables[0].initial = "not-a-number";
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(findRule(issues, "int-initial-type"));
 });
 
 test("collectSemanticIssues reports out-of-bounds int initial values", () => {

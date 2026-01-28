@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-28T00:00:00Z",
+  "meaningfulChoice": {
+    "enabled": false,
+    "decisionSamplesPerRun": 8,
+    "rolloutsPerAction": 8,
+    "rolloutMaxSteps": 64,
+    "maxRolloutsPerRun": 128,
+    "rolloutAgent": {
+      "kind": "random"
+    },
+    "seed": 0
+  },
+  "comebackPotential": {
+    "enabled": false,
+    "earlyStepPercent": 0.25
+  },
+  "skillExpression": {
+    "enabled": false,
+    "matchesPerSeat": 16,
+    "agentTiers": [
+      "random",
+      "greedy"
+    ],
+    "seed": null,
+    "maxTurns": null,
+    "maxSteps": null
+  }
+}

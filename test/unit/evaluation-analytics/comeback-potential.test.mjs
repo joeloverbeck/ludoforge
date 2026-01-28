@@ -42,7 +42,9 @@ function createRun(definition, earlyScores, outcomes) {
   ];
   return {
     trajectory: { steps },
-    outcome: { terminated: true, outcomes },
+    outcome: { outcomes },
+    terminationReason: "condition",
+    terminated: true,
   };
 }
 

@@ -115,6 +115,21 @@ function clampValue(value, min, max) {
   return next;
 }
 
+function recordImpact(context, variable, playerId) {
+  const impact = context?.impact;
+  if (!impact) {
+    return;
+  }
+  if (variable.scope === "global") {
+    impact.affectedGlobal = true;
+    return;
+  }
+  if (playerId == null) {
+    return;
+  }
+  impact.affectedPlayerIds.add(playerId);
+}
+
 function applyVariableEffect(state, variable, effect, context, options) {
   const current = resolveVarValue(state, variable, context.playerId);
   let next = current;
@@ -165,6 +180,7 @@ function applyVariableEffect(state, variable, effect, context, options) {
   }
 
   writeVarValue(state, variable, context.playerId, next);
+  recordImpact(context, variable, context.playerId);
   return { ok: true, clamped };
 }
 

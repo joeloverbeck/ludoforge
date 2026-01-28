@@ -140,7 +140,7 @@ function computePacingTension(summaries) {
   return average(pacingValues);
 }
 
-function computeInteractionRate(summaries) {
+function computeTurnTakingRate(summaries) {
   const rates = [];
 
   for (const summary of summaries) {
@@ -173,13 +173,44 @@ function computeInteractionRate(summaries) {
   return average(rates);
 }
 
+function computeInteractionRate(summaries) {
+  const rates = [];
+
+  for (const summary of summaries) {
+    const steps = summary.keySteps ?? [];
+    let actionSteps = 0;
+    let interactiveSteps = 0;
+
+    for (const step of steps) {
+      if (step?.actionId == null) {
+        continue;
+      }
+      actionSteps += 1;
+      const affectedPlayerIds = Array.isArray(step.affectedPlayerIds)
+        ? step.affectedPlayerIds
+        : [];
+      const activePlayerId = step?.playerId;
+      if (affectedPlayerIds.some((playerId) => playerId !== activePlayerId)) {
+        interactiveSteps += 1;
+      }
+    }
+
+    if (actionSteps > 0) {
+      rates.push(interactiveSteps / actionSteps);
+    }
+  }
+
+  return average(rates);
+}
+
 function computeCoreMetrics(summaries) {
   return [
     { id: "agency", value: computeAgency(summaries) },
     { id: "strategic_depth", value: computeStrategicDepth(summaries) },
-    { id: "skill_expression", value: computeSkillExpression(summaries) },
+    { id: "seat_imbalance", value: computeSkillExpression(summaries) },
     { id: "variety", value: computeVariety(summaries) },
     { id: "pacing_tension", value: computePacingTension(summaries) },
+    { id: "turn_taking_rate", value: computeTurnTakingRate(summaries) },
     { id: "interaction_rate", value: computeInteractionRate(summaries) },
   ];
 }
@@ -190,6 +221,7 @@ export {
   computeSkillExpression,
   computeVariety,
   computePacingTension,
+  computeTurnTakingRate,
   computeInteractionRate,
   computeCoreMetrics,
 };

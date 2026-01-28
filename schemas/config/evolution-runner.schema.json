@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/evolution-runner.schema.json",
+  "title": "EvolutionRunnerConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "runsRoot", "artifacts", "resume"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "runsRoot": { "type": "string", "minLength": 1 },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runMetadata",
+        "generationDirPattern",
+        "population",
+        "evaluated",
+        "rejected",
+        "mapElites",
+        "shortlist",
+        "feedback",
+        "preferenceModel",
+        "determinism"
+      ],
+      "properties": {
+        "runMetadata": { "type": "string", "minLength": 1 },
+        "generationDirPattern": { "type": "string", "minLength": 1 },
+        "population": { "type": "string", "minLength": 1 },
+        "evaluated": { "type": "string", "minLength": 1 },
+        "rejected": { "type": "string", "minLength": 1 },
+        "mapElites": { "type": "string", "minLength": 1 },
+        "shortlist": { "type": "string", "minLength": 1 },
+        "feedback": { "type": "string", "minLength": 1 },
+        "preferenceModel": { "type": "string", "minLength": 1 },
+        "determinism": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requireConfigMatch", "requireDescriptorMatch"],
+      "properties": {
+        "requireConfigMatch": { "type": "boolean" },
+        "requireDescriptorMatch": { "type": "boolean" }
+      }
+    }
+  }
+}
