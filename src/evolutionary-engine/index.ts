@@ -23,6 +23,7 @@ export type {
   Niche,
   Population,
   PopulationMember,
+  RepairDiagnostics,
   RepairOperator,
   SafetyGate,
   SafetyGateFailure,
@@ -36,11 +37,23 @@ export {
 } from "./serialization.js";
 
 export {
+  actionDuplicateMutation,
+  actionEffectMagnitudeMutation,
+  actionRemoveMutation,
   booleanToggleMutation,
   defaultMutationOperators,
+  enumCycleMutation,
   mutateAndRepairGenome,
   mutateGenome,
   numericTweakMutation,
+  phaseAddMutation,
+  phaseRemoveMutation,
+  preconditionNegationMutation,
+  terminationOutcomeMutation,
+  terminationThresholdMutation,
+  tokenTypeZoneTargetAddMutation,
+  tokenTypeRemoveMutation,
+  zoneRemoveMutation,
 } from "./mutation.js";
 
 export {

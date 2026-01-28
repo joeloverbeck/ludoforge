@@ -80,6 +80,11 @@ export interface RepairOperator<TGenome = Genome> {
   repair: (genome: TGenome, rng?: SeededRng) => TGenome | null;
 }
 
+export interface RepairDiagnostics {
+  applied: ReadonlyArray<string>;
+  failed: boolean;
+}
+
 export interface SafetyGateResult {
   ok: boolean;
   reason?: string;
@@ -100,6 +105,7 @@ export interface SafetyGate<TGenome = Genome> {
 export interface EvaluationDiagnostics {
   validation: GenomeValidationResult;
   safety: ReadonlyArray<SafetyGateFailure>;
+  repair?: RepairDiagnostics;
   evaluation?: Record<string, unknown>;
 }
 
@@ -119,15 +125,19 @@ export interface EvaluationAdapterOptions<
 > {
   evaluator: (genome: TGenome) => EvaluationAdapterOutput<TFitness, TDescriptors>;
   gates?: ReadonlyArray<SafetyGate<TGenome>>;
+  repairOperators?: ReadonlyArray<RepairOperator<TGenome>>;
+  repairRng?: SeededRng;
 }
 
 export interface EvaluationAdapterResult<
   TFitness = FitnessScore,
-  TDescriptors = DescriptorSet
+  TDescriptors = DescriptorSet,
+  TGenome = Genome
 > {
   fitness: TFitness | null;
   descriptors: TDescriptors | null;
   diagnostics: EvaluationDiagnostics;
+  genome?: TGenome;
 }
 
 export interface GenerationLoopOptions<

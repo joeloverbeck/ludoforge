@@ -20,7 +20,8 @@ then repeats.
    - Relevant code: `src/evolutionary-engine/engine.js`, `src/evolutionary-engine/serialization.js`.
 
 2. Evaluate each genome
-   - `evaluateGenome` validates the DSL and runs optional safety gates.
+   - `evaluateGenome` can optionally repair genomes before validation (defaults to no repair).
+   - Validation runs on the repaired definition, and the repaired genome is the one evaluated.
    - If validation or gates fail, the genome is rejected before scoring.
    - Relevant code: `src/evolutionary-engine/evaluation-adapter.js`.
 
@@ -54,6 +55,7 @@ then repeats.
 
 8. Evolution operators (optional between generations)
    - Mutation, crossover, and repair can generate new genomes from elites.
+   - Removal mutations rewrite references (token types/zones) to keep DSL validity rather than leaving dangling ids.
    - Relevant code: `src/evolutionary-engine/mutation.js`, `src/evolutionary-engine/crossover.js`,
      `src/evolutionary-engine/repair.js`.
 

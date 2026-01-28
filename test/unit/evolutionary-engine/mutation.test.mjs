@@ -2,12 +2,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   booleanToggleMutation,
+  actionDuplicateMutation,
+  actionEffectMagnitudeMutation,
+  actionRemoveMutation,
+  enumCycleMutation,
   mutateAndRepairGenome,
   numericTweakMutation,
+  preconditionNegationMutation,
+  phaseAddMutation,
+  phaseRemoveMutation,
+  terminationOutcomeMutation,
+  terminationThresholdMutation,
+  tokenTypeZoneTargetAddMutation,
+  tokenTypeRemoveMutation,
+  zoneRemoveMutation,
 } from "../../../src/evolutionary-engine/mutation.js";
 import { repairGenome } from "../../../src/evolutionary-engine/repair.js";
 import { createSeededRng } from "../../../src/simulation-engine/index.js";
 import { baseDefinition } from "../dsl/fixtures.mjs";
+import { validateGenomeDefinition } from "../../../src/evolutionary-engine/serialization.js";
 
 function cloneDefinition(definition) {
   return structuredClone(definition);
@@ -35,6 +48,77 @@ function makeEnumDefinition() {
   return definition;
 }
 
+function makePreconditionDefinition() {
+  const definition = cloneDefinition(baseDefinition);
+  definition.actions[0].preconditions = {
+    kind: "cmp",
+    op: ">=",
+    left: { kind: "ref", ref: { kind: "var", id: "score" } },
+    right: { kind: "value", value: 1 },
+  };
+  return definition;
+}
+
+function makeTwoActionDefinition() {
+  const definition = cloneDefinition(baseDefinition);
+  const clonedAction = structuredClone(definition.actions[0]);
+  clonedAction.id = "wait";
+  definition.actions.push(clonedAction);
+  return definition;
+}
+
+function makeTokenTypeRemovalDefinition() {
+  const definition = cloneDefinition(baseDefinition);
+  definition.state.tokenTypes.push({ id: "pawn2", attributes: [] });
+  definition.state.zones.push({
+    id: "board2",
+    tokenType: "pawn2",
+    scope: "global",
+    order: "ordered",
+    visibility: "public",
+  });
+  definition.actions[0].targets.push({
+    id: "piece2",
+    kind: "token",
+    selector: {
+      zone: "board2",
+      tokenType: "pawn2",
+      count: 1,
+    },
+  });
+  definition.actions[0].preconditions = {
+    kind: "ref",
+    ref: { kind: "token", id: "pawn" },
+  };
+  definition.actions[0].effects.push({
+    kind: "move",
+    target: { kind: "token", id: "pawn", attribute: "owner" },
+    toZone: "board",
+  });
+  return definition;
+}
+
+function makeZoneRemovalDefinition() {
+  const definition = cloneDefinition(baseDefinition);
+  definition.state.zones.push({
+    id: "board2",
+    tokenType: "pawn",
+    scope: "global",
+    order: "ordered",
+    visibility: "public",
+  });
+  definition.actions[0].preconditions = {
+    kind: "ref",
+    ref: { kind: "zone", id: "board" },
+  };
+  definition.actions[0].effects.push({
+    kind: "move",
+    target: { kind: "token", id: "pawn" },
+    toZone: "board",
+  });
+  return definition;
+}
+
 test("numericTweakMutation adjusts int initial within bounds without mutating input", () => {
   const definition = cloneDefinition(baseDefinition);
   const genome = { definition };
@@ -55,6 +139,153 @@ test("booleanToggleMutation flips boolean variable initial", () => {
   const boolIndex = mutated.definition.state.variables.findIndex((variable) => variable.id === "flag");
   assert.equal(definition.state.variables[boolIndex].initial, false);
   assert.equal(mutated.definition.state.variables[boolIndex].initial, true);
+});
+
+test("enumCycleMutation changes enum initial values", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = enumCycleMutation.mutate(genome, rng);
+
+  assert.equal(definition.state.tokenTypes[0].attributes[0].initial, "a");
+  assert.equal(mutated.definition.state.tokenTypes[0].attributes[0].initial, "b");
+});
+
+test("actionDuplicateMutation clones an action and assigns a new id", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = actionDuplicateMutation.mutate(genome, rng);
+
+  assert.equal(definition.actions.length, 1);
+  assert.equal(mutated.definition.actions.length, 2);
+  assert.equal(definition.actions[0].id, "move");
+  assert.notEqual(mutated.definition.actions[1].id, "move");
+});
+
+test("actionRemoveMutation removes an action when multiple exist", () => {
+  const definition = makeTwoActionDefinition();
+  const genome = { definition };
+  const rng = { nextInt: () => 1 };
+
+  const mutated = actionRemoveMutation.mutate(genome, rng);
+
+  assert.equal(definition.actions.length, 2);
+  assert.equal(mutated.definition.actions.length, 1);
+});
+
+test("actionEffectMagnitudeMutation nudges effect amounts without mutating input", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = actionEffectMagnitudeMutation.mutate(genome, rng);
+
+  assert.equal(definition.actions[0].effects[0].amount, 1);
+  assert.equal(mutated.definition.actions[0].effects[0].amount, 0);
+});
+
+test("preconditionNegationMutation wraps an existing precondition", () => {
+  const definition = makePreconditionDefinition();
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = preconditionNegationMutation.mutate(genome, rng);
+
+  assert.equal(definition.actions[0].preconditions.kind, "cmp");
+  assert.equal(mutated.definition.actions[0].preconditions.kind, "not");
+});
+
+test("terminationThresholdMutation nudges termination thresholds within bounds", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = terminationThresholdMutation.mutate(genome, rng);
+
+  assert.equal(definition.termination.conditions[0].condition.right.value, 10);
+  assert.equal(mutated.definition.termination.conditions[0].condition.right.value, 9);
+});
+
+test("terminationOutcomeMutation changes outcome types", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = terminationOutcomeMutation.mutate(genome, rng);
+
+  assert.equal(definition.termination.conditions[0].outcome.type, "win");
+  assert.notEqual(mutated.definition.termination.conditions[0].outcome.type, "win");
+});
+
+test("phaseAddMutation appends a phase label", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = phaseAddMutation.mutate(genome, rng);
+
+  assert.ok(Array.isArray(mutated.definition.turn.phases));
+  assert.equal(mutated.definition.turn.phases.length, 1);
+});
+
+test("phaseRemoveMutation removes a phase when multiple exist", () => {
+  const definition = cloneDefinition(baseDefinition);
+  definition.turn.phases = ["setup", "main"];
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = phaseRemoveMutation.mutate(genome, rng);
+
+  assert.equal(mutated.definition.turn.phases.length, 1);
+});
+
+test("tokenTypeZoneTargetAddMutation adds referenced token types and zones", () => {
+  const definition = cloneDefinition(baseDefinition);
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = tokenTypeZoneTargetAddMutation.mutate(genome, rng);
+  const validation = validateGenomeDefinition(mutated.definition);
+
+  assert.ok(validation.valid);
+  assert.equal(mutated.definition.state.tokenTypes.length, 2);
+  assert.equal(mutated.definition.state.zones.length, 2);
+  assert.equal(mutated.definition.actions[0].targets.length, 2);
+});
+
+test("tokenTypeRemoveMutation rewrites token references to remaining token types", () => {
+  const definition = makeTokenTypeRemovalDefinition();
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = tokenTypeRemoveMutation.mutate(genome, rng);
+  const validation = validateGenomeDefinition(mutated.definition);
+
+  assert.ok(validation.valid);
+  assert.equal(mutated.definition.state.tokenTypes.length, 1);
+  assert.equal(mutated.definition.state.zones[0].tokenType, "pawn2");
+  assert.equal(mutated.definition.actions[0].targets[0].selector.tokenType, "pawn2");
+  assert.equal(mutated.definition.actions[0].preconditions.ref.id, "pawn2");
+  assert.equal(mutated.definition.actions[0].effects[1].target.id, "pawn2");
+  assert.equal(mutated.definition.actions[0].effects[1].target.attribute, undefined);
+});
+
+test("zoneRemoveMutation rewrites zone references to remaining zones", () => {
+  const definition = makeZoneRemovalDefinition();
+  const genome = { definition };
+  const rng = { nextInt: () => 0 };
+
+  const mutated = zoneRemoveMutation.mutate(genome, rng);
+  const validation = validateGenomeDefinition(mutated.definition);
+
+  assert.ok(validation.valid);
+  assert.equal(mutated.definition.state.zones.length, 1);
+  assert.equal(mutated.definition.actions[0].targets[0].selector.zone, "board2");
+  assert.equal(mutated.definition.actions[0].preconditions.ref.id, "board2");
+  assert.equal(mutated.definition.actions[0].effects[1].toZone, "board2");
 });
 
 test("repairGenome clamps int initial and restores enum defaults", () => {

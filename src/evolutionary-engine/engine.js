@@ -143,12 +143,13 @@ export function runGenerationLoop(options) {
 
   options.population.forEach((genome) => {
     const result = evaluateGenome(genome, options.evaluation);
+    const candidate = result.genome ?? genome;
     if (result.fitness == null || result.descriptors == null) {
-      rejected.push({ genome, diagnostics: result.diagnostics });
+      rejected.push({ genome: candidate, diagnostics: result.diagnostics });
       return;
     }
     evaluated.push({
-      genome,
+      genome: candidate,
       fitness: result.fitness,
       descriptors: result.descriptors,
       diagnostics: result.diagnostics,

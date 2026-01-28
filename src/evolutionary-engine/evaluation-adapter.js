@@ -1,4 +1,9 @@
 import { validateGenomeDefinition } from "./serialization.js";
+import { repairGenome } from "./repair.js";
+
+function collectRepairNames(operators) {
+  return operators.map((operator) => operator?.name ?? "unnamed-repair");
+}
 
 function normalizeSafetyFailure(gate, result) {
   const name = gate?.name ?? "unnamed-gate";
@@ -38,17 +43,45 @@ export function evaluateGenome(genome, options) {
     throw new Error("Evaluation adapter requires an evaluator function");
   }
 
-  const validation = validateGenomeDefinition(genome.definition);
-  const diagnostics = {
-    validation,
-    safety: [],
-  };
+  const operators = Array.isArray(options.repairOperators) ? options.repairOperators : null;
+  const repairDiagnostics =
+    operators && operators.length > 0
+      ? {
+          applied: collectRepairNames(operators),
+          failed: false,
+        }
+      : null;
+  const repaired = operators && operators.length > 0 ? repairGenome(genome, { operators, rng: options.repairRng }) : genome;
 
-  if (!validation.valid) {
+  if (!repaired && repairDiagnostics) {
+    repairDiagnostics.failed = true;
+    const validation = validateGenomeDefinition(genome.definition);
+    const diagnostics = {
+      validation,
+      safety: [],
+      repair: repairDiagnostics,
+    };
     return { fitness: null, descriptors: null, diagnostics };
   }
 
-  const safetyFailures = runSafetyGates(genome, options.gates);
+  const candidate = repaired ?? genome;
+  const validation = validateGenomeDefinition(candidate.definition);
+  const diagnostics = {
+    validation,
+    safety: [],
+    ...(repairDiagnostics ? { repair: repairDiagnostics } : {}),
+  };
+
+  if (!validation.valid) {
+    return {
+      fitness: null,
+      descriptors: null,
+      diagnostics,
+      ...(repairDiagnostics ? { genome: candidate } : {}),
+    };
+  }
+
+  const safetyFailures = runSafetyGates(candidate, options.gates);
   if (safetyFailures.length > 0) {
     return {
       fitness: null,
@@ -57,10 +90,11 @@ export function evaluateGenome(genome, options) {
         ...diagnostics,
         safety: safetyFailures,
       },
+      ...(repairDiagnostics ? { genome: candidate } : {}),
     };
   }
 
-  const evaluation = options.evaluator(genome);
+  const evaluation = options.evaluator(candidate);
   if (!evaluation || evaluation.fitness === undefined || evaluation.descriptors == null) {
     return {
       fitness: null,
@@ -69,6 +103,7 @@ export function evaluateGenome(genome, options) {
         ...diagnostics,
         evaluation: { error: "invalid-evaluator-output" },
       },
+      ...(repairDiagnostics ? { genome: candidate } : {}),
     };
   }
 
@@ -79,5 +114,6 @@ export function evaluateGenome(genome, options) {
       ...diagnostics,
       evaluation: evaluation.diagnostics ?? {},
     },
+    ...(repairDiagnostics ? { genome: candidate } : {}),
   };
 }
