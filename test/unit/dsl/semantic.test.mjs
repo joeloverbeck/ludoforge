@@ -40,6 +40,35 @@ test("collectSemanticIssues reports missing termination conditions", () => {
   assert.ok(findRule(issues, "termination-conditions"));
 });
 
+test("collectSemanticIssues allows valid meta refs in expressions", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.termination.conditions[0].condition = {
+    kind: "cmp",
+    op: "==",
+    left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+    right: { kind: "value", value: 0 },
+  };
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.equal(findRule(issues, "meta-ref-unknown"), false);
+  assert.equal(findRule(issues, "meta-ref-disallowed"), false);
+});
+
+test("collectSemanticIssues reports unknown meta ids", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.termination.conditions[0].condition = {
+    kind: "cmp",
+    op: "==",
+    left: { kind: "ref", ref: { kind: "meta", id: "badMeta" } },
+    right: { kind: "value", value: 0 },
+  };
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(findRule(issues, "meta-ref-unknown"));
+});
+
 test("collectSemanticIssues reports termination conditions even with maxTurns", () => {
   const candidate = structuredClone(baseDefinition);
   candidate.termination.conditions = [];
@@ -57,6 +86,27 @@ test("collectSemanticIssues reports missing maxTurns fallback", () => {
   const issues = collectSemanticIssues(candidate);
 
   assert.ok(findRule(issues, "termination-max-turns"));
+});
+
+test("collectSemanticIssues reports missing noLegalActions defaultOutcome", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.turn.noLegalActions = { policy: "terminate" };
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
+});
+
+test("collectSemanticIssues reports extra noLegalActions defaultOutcome", () => {
+  const candidate = structuredClone(baseDefinition);
+  candidate.turn.noLegalActions = {
+    policy: "pass",
+    defaultOutcome: { type: "draw", players: "all" },
+  };
+
+  const issues = collectSemanticIssues(candidate);
+
+  assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
 });
 
 test("collectSemanticIssues reports bad int bounds", () => {

@@ -29,6 +29,24 @@ function resolveRefValue(ref, context) {
     }
     return resolveVarValue(context.state, variable, context.playerId);
   }
+  if (ref.kind === "meta") {
+    const meta = context.meta;
+    if (!meta) {
+      return undefined;
+    }
+    if (ref.id === "legalActionCount") {
+      return meta.legalActionCount;
+    }
+    if (ref.id === "hasLegalActions") {
+      if (typeof meta.hasLegalActions === "boolean") {
+        return meta.hasLegalActions;
+      }
+      if (typeof meta.legalActionCount === "number") {
+        return meta.legalActionCount > 0;
+      }
+      return undefined;
+    }
+  }
   return undefined;
 }
 
@@ -151,6 +169,7 @@ export function evaluateTermination(definition, state, options = {}) {
         state,
         playerId: activePlayerId,
         variableIndex,
+        meta: options.meta,
       })
     ) {
       matched = { index, outcome: condition.outcome, reason: "condition" };

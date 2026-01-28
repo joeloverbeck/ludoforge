@@ -10,6 +10,7 @@ import {
   recordStateUpdate,
   recordTermination,
   evaluateTermination,
+  computeScoresAtState,
 } from "../game-kernel/index.js";
 import { createSeededRng } from "./rng.js";
 import { normalizeAgents } from "./agent-serialization.js";
@@ -52,6 +53,58 @@ function buildDrawOutcome(definition) {
     outcomes[playerId] = "draw";
   }
   return { terminated: true, outcomes };
+}
+
+function resolveOutcomePlayers(outcome, activePlayerId, playerCount) {
+  if (!outcome?.players || outcome.players === "all") {
+    return Array.from({ length: playerCount }, (_, idx) => idx + 1);
+  }
+  if (outcome.players === "active") {
+    if (activePlayerId == null) {
+      return Array.from({ length: playerCount }, (_, idx) => idx + 1);
+    }
+    return [activePlayerId];
+  }
+  if (Array.isArray(outcome.players)) {
+    return outcome.players.filter((id) => Number.isInteger(id));
+  }
+  return Array.from({ length: playerCount }, (_, idx) => idx + 1);
+}
+
+function resolveDefaultOutcome(type) {
+  if (type === "win") {
+    return "lose";
+  }
+  if (type === "lose") {
+    return "win";
+  }
+  return "draw";
+}
+
+function buildTerminationOutcome(definition, state, outcomeDef, activePlayerId, reason) {
+  const outcome = outcomeDef ?? { type: "draw", players: "all" };
+  const players = resolveOutcomePlayers(outcome, activePlayerId, definition.players.count);
+  const outcomes = {};
+  const defaultOutcome = resolveDefaultOutcome(outcome.type);
+
+  for (let playerId = 1; playerId <= definition.players.count; playerId += 1) {
+    outcomes[playerId] = defaultOutcome;
+  }
+
+  for (const playerId of players) {
+    if (playerId >= 1 && playerId <= definition.players.count) {
+      outcomes[playerId] = outcome.type;
+    }
+  }
+
+  const scores = computeScoresAtState(definition, state);
+
+  return {
+    terminated: true,
+    reason,
+    outcomes,
+    scores,
+  };
 }
 
 function recordLoopHash(state, tracker) {
@@ -138,9 +191,22 @@ function runSimulationLoop(config) {
       };
     }
 
+    const context = {
+      playerId: state.turn.currentPlayer,
+      phase: state.turn.phase ?? null,
+      turn: state.turn.turn,
+    };
+    const legalActions = listLegalActions(definition, state, context);
+    const legalActionCount = legalActions.length;
+    const meta = {
+      legalActionCount,
+      hasLegalActions: legalActionCount > 0,
+    };
+
     const termination = evaluateTermination(definition, state, {
       activePlayerId: state.turn.currentPlayer,
       events,
+      meta,
     });
     if (termination.terminated) {
       return {
@@ -150,14 +216,85 @@ function runSimulationLoop(config) {
       };
     }
 
-    const context = {
-      playerId: state.turn.currentPlayer,
-      phase: state.turn.phase ?? null,
-      turn: state.turn.turn,
-    };
-    const legalActions = listLegalActions(definition, state, context);
+    if (legalActionCount === 0) {
+      const noLegalActions = definition.turn?.noLegalActions;
+      const policy = noLegalActions?.policy;
 
-    if (legalActions.length === 0) {
+      if (policy === "error") {
+        const reason = noLegalActions?.reason ?? "no-legal-actions";
+        throw new Error(`No legal actions: ${reason}`);
+      }
+
+      if (policy === "pass") {
+        const step = buildStep(state, null, 0);
+        trajectory.steps.push(step);
+        config.stepControl?.onStep?.(step);
+        stepsTaken += 1;
+
+        const advanceResult = advanceTurnPhase(definition, state, {
+          maxTurns,
+          stateHistoryLimit: 0,
+        });
+        if (!advanceResult.ok) {
+          if (advanceResult.reason === "max-turns") {
+            const maxTurnOutcome = evaluateTermination(definition, state, {
+              activePlayerId: state.turn.currentPlayer,
+              maxTurnsReached: true,
+              events,
+            });
+            return {
+              trajectory,
+              outcome: maxTurnOutcome,
+              terminationReason: "max-turns",
+            };
+          }
+          if (advanceResult.reason === "state-loop") {
+            const outcome = buildDrawOutcome(definition);
+            recordTermination(events, outcome);
+            return {
+              trajectory,
+              outcome,
+              terminationReason: "loop-detected",
+            };
+          }
+          throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
+        }
+
+        const loopCheck = recordLoopHash(state, tracker);
+        if (loopCheck.repeated) {
+          const outcome = buildDrawOutcome(definition);
+          recordTermination(events, outcome);
+          return {
+            trajectory,
+            outcome,
+            terminationReason: "loop-detected",
+          };
+        }
+
+        continue;
+      }
+
+      if (policy === "terminate") {
+        const reason = noLegalActions?.reason ?? "no-legal-actions";
+        const step = buildStep(state, undefined, 0);
+        trajectory.steps.push(step);
+        config.stepControl?.onStep?.(step);
+        stepsTaken += 1;
+        const outcome = buildTerminationOutcome(
+          definition,
+          state,
+          noLegalActions?.defaultOutcome,
+          state.turn.currentPlayer,
+          reason
+        );
+        recordTermination(events, outcome);
+        return {
+          trajectory,
+          outcome,
+          terminationReason: reason,
+        };
+      }
+
       const step = buildStep(state, undefined, 0);
       trajectory.steps.push(step);
       config.stepControl?.onStep?.(step);
@@ -202,7 +339,7 @@ function runSimulationLoop(config) {
     applyAfterActionTriggers(definition, state, context);
     recordStateUpdate(events, state, { actionId: action.id, playerId: context.playerId });
 
-    const step = buildStep(state, action.id, legalActions.length);
+    const step = buildStep(state, action.id, legalActionCount);
     trajectory.steps.push(step);
     config.stepControl?.onStep?.(step);
     stepsTaken += 1;

@@ -346,8 +346,50 @@
         "stepEffects": {
           "type": "array",
           "items": { "$ref": "#/$defs/TriggerDef" }
-        }
+        },
+        "noLegalActions": { "$ref": "#/$defs/NoLegalActionsDef" }
       }
+    },
+    "NoLegalActionsDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy"],
+      "properties": {
+        "policy": { "type": "string", "enum": ["terminate", "pass", "error"] },
+        "defaultOutcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string", "enum": ["win", "lose", "draw"] },
+            "players": {
+              "oneOf": [
+                { "type": "string", "enum": ["all", "active"] },
+                {
+                  "type": "array",
+                  "items": { "type": "integer" }
+                }
+              ]
+            }
+          }
+        },
+        "reason": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "policy": { "const": "terminate" } } },
+          "then": {
+            "required": ["defaultOutcome"],
+            "properties": { "defaultOutcome": {} }
+          },
+          "else": {
+            "not": {
+              "required": ["defaultOutcome"],
+              "properties": { "defaultOutcome": {} }
+            }
+          }
+        }
+      ]
     },
     "TerminationBlock": {
       "type": "object",
@@ -452,10 +494,22 @@
           "required": ["kind"],
           "properties": {
             "kind": { "const": "ref" },
-            "ref": { "$ref": "#/$defs/Ref" }
+            "ref": { "$ref": "#/$defs/ExprRef" }
           }
         }
       ]
+    },
+    "MetaRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "const": "meta" },
+        "id": { "type": "string", "enum": ["legalActionCount", "hasLegalActions"] }
+      }
+    },
+    "ExprRef": {
+      "oneOf": [{ "$ref": "#/$defs/Ref" }, { "$ref": "#/$defs/MetaRef" }]
     },
     "Ref": {
       "oneOf": [

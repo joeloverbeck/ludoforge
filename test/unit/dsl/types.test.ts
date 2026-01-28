@@ -1,4 +1,10 @@
-import type { Effect, Expr, GameDefinition, Ref } from "../../../src/dsl/types.js";
+import type {
+  Effect,
+  Expr,
+  GameDefinition,
+  NoLegalActionsDef,
+  Ref
+} from "../../../src/dsl/types.js";
 
 const definition: GameDefinition = {
   version: "1.0",
@@ -91,6 +97,11 @@ const definition: GameDefinition = {
         ],
       },
     ],
+    noLegalActions: {
+      policy: "terminate",
+      defaultOutcome: { type: "draw", players: "all" },
+      reason: "no-legal-actions",
+    },
   },
   termination: {
     conditions: [
@@ -133,6 +144,11 @@ const expr: Expr = {
   right: { kind: "ref", ref: { kind: "var", id: "active" } },
 };
 
+const metaExpr: Expr = {
+  kind: "ref",
+  ref: { kind: "meta", id: "legalActionCount" },
+};
+
 const ref: Ref = { kind: "player", id: "p1" };
 
 const effect: Effect = {
@@ -143,6 +159,7 @@ const effect: Effect = {
 
 void definition;
 void expr;
+void metaExpr;
 void ref;
 void effect;
 
@@ -158,5 +175,16 @@ const missingVersion: GameDefinition = {
 // @ts-expect-error - ref id must be a string
 const invalidRef: Ref = { kind: "var", id: 123 };
 
+// @ts-expect-error - meta refs are not allowed as effect targets
+const invalidEffect: Effect = { kind: "set", target: { kind: "meta", id: "hasLegalActions" } };
+
+const invalidNoLegalActions: NoLegalActionsDef = {
+  policy: "pass",
+  // @ts-expect-error - defaultOutcome is only allowed for terminate policy
+  defaultOutcome: { type: "draw", players: "all" },
+};
+
 void missingVersion;
 void invalidRef;
+void invalidEffect;
+void invalidNoLegalActions;

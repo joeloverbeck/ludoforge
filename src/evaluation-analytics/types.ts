@@ -41,7 +41,7 @@ export interface TrajectoryKeyStep {
   turn: number;
   phase: string | null;
   playerId: number | null;
-  actionId?: string;
+  actionId?: string | null;
   legalActionCount?: number;
 }
 

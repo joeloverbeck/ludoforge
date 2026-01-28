@@ -22,17 +22,24 @@
 
 Per step:
 
-1. Evaluate termination conditions (`evaluateTermination`).
-2. List legal actions (`listLegalActions`).
-3. Ask the active agent for an action id or action object.
-4. Validate action legality (`validateActionChoice`).
-5. Apply action costs, then action effects (`applyEffect`).
-6. Apply after-action triggers (`applyTriggers`).
-7. Record state update in the event stream.
-8. Persist the step snapshot (turn, phase, player, action, legalActionCount).
+1. List legal actions (`listLegalActions`).
+2. Build meta (`legalActionCount`, `hasLegalActions`) for termination evaluation.
+3. Evaluate termination conditions (`evaluateTermination`) with meta.
+4. If terminated, stop and return the outcome.
+5. If no legal actions exist, apply the `turn.noLegalActions` policy:
+   - `terminate`: return the configured default outcome with the configured reason.
+   - `pass`: record a pass step (`actionId = null`) and advance the turn/phase.
+   - `error`: throw a structured error.
+   - unset: default to stalemate draw.
+6. Ask the active agent for an action id or action object.
+7. Validate action legality (`validateActionChoice`).
+8. Apply action costs, then action effects (`applyEffect`).
+9. Apply after-action triggers (`applyTriggers`).
+10. Record state update in the event stream.
+11. Persist the step snapshot (turn, phase, player, action, legalActionCount).
 
-If no legal actions exist, the engine returns a draw and terminates with
-`terminationReason = "stalemate"`.
+No-legal-actions handling never prompts the agent. The pass policy does not run
+after-action triggers because no action occurred.
 
 ## Turn Advancement and Cutoffs
 
@@ -60,4 +67,5 @@ Simulation returns:
 - `trajectory.steps`: ordered snapshots including legalActionCount for metrics.
 - `trajectory.events`: internal event stream (state updates and termination).
 - `outcome`: terminal outcome object (per-player win/lose/draw).
-- `terminationReason`: `condition`, `stalemate`, `max-turns`, or `loop-detected`.
+- `terminationReason`: `condition`, `stalemate`, `no-legal-actions`, `max-turns`,
+  `max-steps`, or `loop-detected`.

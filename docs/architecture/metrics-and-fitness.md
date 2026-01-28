@@ -59,7 +59,8 @@ Implemented in `src/evaluation-analytics/degeneracy.js` with default thresholds:
 
 - Loop: any run terminates with `terminationReason = "loop-detected"` OR repeated state ratio
   >= 0.25 with at least 1 repeated state.
-- Stalemate: any run terminates with `terminationReason = "stalemate"`.
+- Stalemate: any run terminates with `terminationReason` in
+  `["stalemate", "no-legal-actions"]` AND the terminal outcome is a draw for all players.
 - Non-terminating: any run has `terminationReason = "max-turns"` or `terminated=false`.
 - Forced move: ratio of steps with `legalActionCount <= 1` >= 0.8.
 - No choices: every sampled step has `legalActionCount <= 1`.

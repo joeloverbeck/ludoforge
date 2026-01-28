@@ -40,10 +40,13 @@ about the seeded simulation and evolution loop.
   - `test/e2e/state-transition.e2e.test.mjs`
   - Confirms action effects alter state consistently between runs.
 
-- Human loop failure on no legal actions
+- No-legal-actions policies (stalemate default, terminate, pass, error)
   - `test/e2e/state-transition.e2e.test.mjs`
-  - The human prompt loop throws "No legal actions available" when the legal action
-    list is empty (simulation engine treats this case as a stalemate draw).
+  - Confirms the default stalemate draw, explicit terminate outcome, pass step, and error throw.
+
+- Human loop skips prompting on pass policy
+  - `test/e2e/human-loop.e2e.test.mjs`
+  - When `turn.noLegalActions.policy = "pass"`, no prompt is emitted and the turn advances.
 
 - DSL validation and deterministic serialization
   - `test/e2e/game-definition.e2e.test.mjs`

@@ -11,6 +11,10 @@ const fixtureNames = [
   "multi-phase-game.json",
   "token-movement-game.json",
   "per-player-vars-game.json",
+  "no-legal-actions-stalemate.json",
+  "no-legal-actions-terminate.json",
+  "no-legal-actions-pass.json",
+  "no-legal-actions-error.json",
   "evo-seed-1.json",
   "evo-seed-2.json",
   "evo-terminates.json",
@@ -67,4 +71,16 @@ test("e2e fixtures include intended feature coverage", async () => {
   const perPlayer = await loadFixture("per-player-vars-game.json");
   const scopes = perPlayer.state.variables.map((variable) => variable.scope);
   assert.ok(scopes.includes("per_player"));
+
+  const noLegalActionsStalemate = await loadFixture("no-legal-actions-stalemate.json");
+  assert.ok(!noLegalActionsStalemate.turn.noLegalActions);
+
+  const noLegalActionsTerminate = await loadFixture("no-legal-actions-terminate.json");
+  assert.equal(noLegalActionsTerminate.turn.noLegalActions?.policy, "terminate");
+
+  const noLegalActionsPass = await loadFixture("no-legal-actions-pass.json");
+  assert.equal(noLegalActionsPass.turn.noLegalActions?.policy, "pass");
+
+  const noLegalActionsError = await loadFixture("no-legal-actions-error.json");
+  assert.equal(noLegalActionsError.turn.noLegalActions?.policy, "error");
 });

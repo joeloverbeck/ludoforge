@@ -91,3 +91,67 @@ test("stalemate ends when no legal actions exist", () => {
   assert.equal(result.trajectory.steps.length, 1);
   assert.equal(result.trajectory.steps[0].legalActionCount, 0);
 });
+
+test("no-legal-actions terminate policy uses default outcome", () => {
+  const definition = createBaseDefinition();
+  definition.actions = [];
+  definition.termination.conditions = [];
+  definition.turn.noLegalActions = {
+    policy: "terminate",
+    defaultOutcome: { type: "win", players: "active" },
+    reason: "no-legal-actions",
+  };
+
+  const engine = createSimulationEngine({
+    definition,
+    agents: [createFirstActionAgent()],
+  });
+
+  const result = engine.run();
+
+  assert.equal(result.terminationReason, "no-legal-actions");
+  assert.equal(result.outcome.terminated, true);
+  assert.equal(result.outcome.reason, "no-legal-actions");
+  assert.deepEqual(result.outcome.outcomes, { 1: "win" });
+  assert.equal(result.trajectory.steps.length, 1);
+  assert.equal(result.trajectory.steps[0].legalActionCount, 0);
+});
+
+test("no-legal-actions pass policy records a pass step and advances", () => {
+  const definition = createBaseDefinition();
+  definition.actions = [];
+  definition.termination.conditions = [];
+  definition.turn.noLegalActions = { policy: "pass" };
+
+  const engine = createSimulationEngine({
+    definition,
+    agents: [createFirstActionAgent()],
+    maxTurns: 1,
+  });
+
+  const result = engine.run();
+
+  assert.equal(result.terminationReason, "max-turns");
+  assert.equal(result.outcome.terminated, true);
+  assert.equal(result.outcome.reason, "max-turns");
+  assert.equal(result.trajectory.steps.length, 1);
+  assert.equal(result.trajectory.steps[0].actionId, null);
+  assert.equal(result.trajectory.steps[0].legalActionCount, 0);
+});
+
+test("no-legal-actions error policy throws", () => {
+  const definition = createBaseDefinition();
+  definition.actions = [];
+  definition.termination.conditions = [];
+  definition.turn.noLegalActions = { policy: "error", reason: "no-legal-actions" };
+
+  const engine = createSimulationEngine({
+    definition,
+    agents: [createFirstActionAgent()],
+  });
+
+  assert.throws(
+    () => engine.run(),
+    (err) => err instanceof Error && err.message.includes("no-legal-actions")
+  );
+});

@@ -23,6 +23,35 @@ test("detectDegeneracy flags loops when repeated states or loop detection occurs
   assert.ok(report.details?.loop?.includes("loop_detected=1"));
 });
 
+test("detectDegeneracy only flags stalemate when outcome is draw-for-all", () => {
+  const summaries = [
+    {
+      stepCount: 4,
+      turnCount: 4,
+      terminationReason: "stalemate",
+      terminalOutcome: { terminated: true, outcomes: { 1: "win", 2: "lose" } },
+    },
+  ];
+
+  const report = detectDegeneracy(summaries);
+  assert.equal(report.flags.includes("stalemate"), false);
+});
+
+test("detectDegeneracy treats no-legal-actions draw as stalemate", () => {
+  const summaries = [
+    {
+      stepCount: 2,
+      turnCount: 2,
+      terminationReason: "no-legal-actions",
+      terminalOutcome: { terminated: true, outcomes: { 1: "draw", 2: "draw" } },
+    },
+  ];
+
+  const report = detectDegeneracy(summaries);
+  assert.ok(report.flags.includes("stalemate"));
+  assert.ok(report.details?.stalemate?.includes("count=1"));
+});
+
 test("detectDegeneracy flags forced-move dominance and no-choices", () => {
   const summaries = [
     {

@@ -81,6 +81,74 @@ test("evaluateTermination returns draw on max-turns fallback", () => {
   assert.deepEqual(result.outcomes, { 1: "draw", 2: "draw" });
 });
 
+test("evaluateTermination resolves meta.legalActionCount in conditions", () => {
+  const definition = {
+    ...baseDefinition,
+    termination: {
+      ...baseDefinition.termination,
+      conditions: [
+        {
+          condition: {
+            kind: "cmp",
+            op: "==",
+            left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+            right: { kind: "value", value: 0 },
+          },
+          outcome: { type: "lose", players: "active" },
+        },
+      ],
+    },
+  };
+  const state = createInitialState(definition);
+
+  const matched = evaluateTermination(definition, state, {
+    activePlayerId: 1,
+    meta: { legalActionCount: 0 },
+  });
+  assert.equal(matched.terminated, true);
+  assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
+
+  const missed = evaluateTermination(definition, state, {
+    activePlayerId: 1,
+    meta: { legalActionCount: 2 },
+  });
+  assert.equal(missed.terminated, false);
+});
+
+test("evaluateTermination derives meta.hasLegalActions from count", () => {
+  const definition = {
+    ...baseDefinition,
+    termination: {
+      ...baseDefinition.termination,
+      conditions: [
+        {
+          condition: {
+            kind: "cmp",
+            op: "==",
+            left: { kind: "ref", ref: { kind: "meta", id: "hasLegalActions" } },
+            right: { kind: "value", value: true },
+          },
+          outcome: { type: "win", players: "active" },
+        },
+      ],
+    },
+  };
+  const state = createInitialState(definition);
+
+  const matched = evaluateTermination(definition, state, {
+    activePlayerId: 2,
+    meta: { legalActionCount: 1 },
+  });
+  assert.equal(matched.terminated, true);
+  assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
+
+  const missed = evaluateTermination(definition, state, {
+    activePlayerId: 2,
+    meta: { legalActionCount: 0 },
+  });
+  assert.equal(missed.terminated, false);
+});
+
 test("event stream ordering records state updates before termination", () => {
   const state = createInitialState(baseDefinition);
   state.variables.global.flag = 1;

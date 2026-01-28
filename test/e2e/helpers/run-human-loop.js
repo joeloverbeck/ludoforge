@@ -59,6 +59,41 @@ export async function runHumanLoopOnce({
     }),
   );
 
+  if (legalActions.length === 0) {
+    const noLegalActions = definition.turn?.noLegalActions;
+    const policy = noLegalActions?.policy;
+    const reason = noLegalActions?.reason ?? "no-legal-actions";
+
+    if (policy === "error") {
+      throw new Error(`No legal actions: ${reason}`);
+    }
+
+    if (policy === "pass") {
+      const advanceResult = advanceTurnPhase(definition, state, advanceOptions ?? {});
+      if (!advanceResult.ok) {
+        throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
+      }
+
+      return {
+        action: null,
+        index: null,
+        legalActions,
+        context: actionContext,
+        advanceResult,
+        passed: true,
+      };
+    }
+
+    return {
+      action: null,
+      index: null,
+      legalActions,
+      context: actionContext,
+      terminated: true,
+      terminationReason: policy === "terminate" ? reason : "stalemate",
+    };
+  }
+
   const result = await promptForAction({
     legalActions,
     io,

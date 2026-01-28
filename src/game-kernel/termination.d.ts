@@ -6,16 +6,22 @@ export type OutcomeType = "win" | "lose" | "draw";
 
 export interface TerminationResult {
   terminated: boolean;
-  reason?: "condition" | "max-turns";
+  reason?: "condition" | "max-turns" | "no-legal-actions" | "no-legal-actions-error" | (string & {});
   conditionIndex?: number;
   outcomes?: Record<number, OutcomeType>;
   scores?: Record<number, ScalarValue>;
+}
+
+export interface TerminationMeta {
+  legalActionCount?: number;
+  hasLegalActions?: boolean;
 }
 
 export interface TerminationOptions {
   activePlayerId?: number;
   maxTurnsReached?: boolean;
   events?: GameEvent[];
+  meta?: TerminationMeta;
 }
 
 export function computeScoresAtState(

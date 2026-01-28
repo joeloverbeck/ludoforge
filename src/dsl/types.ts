@@ -109,6 +109,7 @@ export interface TurnDef {
   scheduler: "round_robin" | "custom";
   phases?: string[];
   stepEffects?: TriggerDef[];
+  noLegalActions?: NoLegalActionsDef;
 }
 
 export interface TerminationBlock {
@@ -119,11 +120,18 @@ export interface TerminationBlock {
 
 export interface TerminationDef {
   condition: Expr;
-  outcome: {
-    type: "win" | "lose" | "draw";
-    players?: "all" | "active" | number[];
-  };
+  outcome: TerminationOutcome;
 }
+
+export interface TerminationOutcome {
+  type: "win" | "lose" | "draw";
+  players?: "all" | "active" | number[];
+}
+
+export type NoLegalActionsDef =
+  | { policy: "terminate"; defaultOutcome: TerminationOutcome; reason?: string }
+  | { policy: "pass"; reason?: string }
+  | { policy: "error"; reason?: string };
 
 export interface ScoreDef {
   perPlayer: Expr;
@@ -135,7 +143,11 @@ export type Expr =
   | { kind: "not"; value?: Expr }
   | { kind: "cmp"; op?: "==" | "!=" | "<" | "<=" | ">" | ">="; left?: Expr; right?: Expr }
   | { kind: "value"; value?: ScalarValue }
-  | { kind: "ref"; ref?: Ref };
+  | { kind: "ref"; ref?: ExprRef };
+
+export type MetaRef = { kind: "meta"; id: "legalActionCount" | "hasLegalActions" };
+
+export type ExprRef = Ref | MetaRef;
 
 export type Ref =
   | { kind: "var"; id: string; attribute?: string }

@@ -164,12 +164,54 @@ export function collectSemanticIssues(definition) {
     );
   }
 
-  function validateRef(ref, path) {
+  const noLegalActions = definition.turn?.noLegalActions;
+  if (noLegalActions && typeof noLegalActions === "object") {
+    const policy = noLegalActions.policy;
+    const defaultOutcome = noLegalActions.defaultOutcome;
+    if (policy === "terminate") {
+      if (!defaultOutcome) {
+        pushIssue(
+          issues,
+          "/turn/noLegalActions/defaultOutcome",
+          "defaultOutcome is required when policy is terminate",
+          "no-legal-actions-default-outcome"
+        );
+      }
+    } else if (policy === "pass" || policy === "error") {
+      if (defaultOutcome) {
+        pushIssue(
+          issues,
+          "/turn/noLegalActions/defaultOutcome",
+          "defaultOutcome is only valid for terminate policy",
+          "no-legal-actions-default-outcome"
+        );
+      }
+    }
+  }
+
+  const allowedMetaIds = new Set(["legalActionCount", "hasLegalActions"]);
+
+  function validateRef(ref, path, options = {}) {
     if (!ref || typeof ref !== "object") {
       return;
     }
     const kind = ref.kind;
     const id = ref.id;
+    if (kind === "meta") {
+      if (!options.allowMeta) {
+        pushIssue(issues, path, "Meta refs are only allowed in expressions", "meta-ref-disallowed");
+        return;
+      }
+      if (typeof id !== "string" || !allowedMetaIds.has(id)) {
+        pushIssue(
+          issues,
+          joinPath(path, "id"),
+          `Unknown meta id: ${id}`,
+          "meta-ref-unknown"
+        );
+      }
+      return;
+    }
     if (kind === "var") {
       if (typeof id === "string") {
         if (!variableIds.has(id)) {
@@ -452,7 +494,7 @@ export function collectSemanticIssues(definition) {
       return;
     }
     if (effect.target) {
-      validateRef(effect.target, joinPath(path, "target"));
+      validateRef(effect.target, joinPath(path, "target"), { allowMeta: false });
     }
     if (typeof effect.toZone === "string" && !zoneIds.has(effect.toZone)) {
       pushIssue(
@@ -495,7 +537,7 @@ export function collectSemanticIssues(definition) {
         break;
       case "ref":
         if (expr.ref) {
-          validateRef(expr.ref, joinPath(path, "ref"));
+          validateRef(expr.ref, joinPath(path, "ref"), { allowMeta: true });
         }
         break;
       default:

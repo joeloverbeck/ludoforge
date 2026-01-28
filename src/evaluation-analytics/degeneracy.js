@@ -1,3 +1,5 @@
+import { isDrawForAll } from "./outcomes.js";
+
 function clampNumber(value) {
   return Number.isFinite(value) ? value : 0;
 }
@@ -6,6 +8,13 @@ function formatDetail(values) {
   return Object.entries(values)
     .map(([key, value]) => `${key}=${value}`)
     .join(" ");
+}
+
+function isStalemateTermination(summary) {
+  return (
+    summary?.terminationReason === "stalemate" ||
+    summary?.terminationReason === "no-legal-actions"
+  );
 }
 
 const DEFAULT_DEGENERACY_THRESHOLDS = {
@@ -86,7 +95,7 @@ function detectDegeneracy(summaries, thresholds = {}) {
     if (summary?.terminationReason === "loop-detected") {
       loopDetectedCount += 1;
     }
-    if (summary?.terminationReason === "stalemate") {
+    if (isStalemateTermination(summary) && isDrawForAll(summary?.terminalOutcome?.outcomes)) {
       stalemateCount += 1;
     }
     if (summary?.terminationReason === "max-turns") {

@@ -52,7 +52,7 @@ export interface TrajectoryStep {
   turn: number;
   phase: string | null;
   playerId: number | null;
-  actionId?: string;
+  actionId?: string | null;
   legalActionCount?: number;
   state: GameState;
 }
@@ -131,6 +131,8 @@ export type SimulationTerminationReason =
   | "condition"
   | "max-turns"
   | "loop-detected"
-  | "stalemate";
+  | "stalemate"
+  | "no-legal-actions"
+  | (string & {});
 
 export type RolloutTerminationReason = SimulationTerminationReason | "max-steps";

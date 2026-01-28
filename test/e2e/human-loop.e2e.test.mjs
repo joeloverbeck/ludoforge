@@ -92,3 +92,21 @@ test("mixed participants route to human and AI selectors", async () => {
   assert.equal(aiResult.action.id, "spend");
   assert.equal(outputs.length, outputCount);
 });
+
+test("human loop skips prompting when no-legal-actions policy is pass", async () => {
+  const definition = await loadFixture("no-legal-actions-pass.json");
+  const state = createInitialState(definition);
+  const { io, outputs } = createMockHumanIo([]);
+
+  const result = await runHumanLoopOnce({
+    definition,
+    state,
+    io,
+    promptLabel: "Pick action",
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.action, null);
+  assert.equal(state.turn.currentPlayer, 2);
+  assert.ok(outputs.every((line) => !line.includes("Pick action")));
+});
