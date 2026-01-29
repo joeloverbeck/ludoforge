@@ -1,3 +1,8 @@
+import {
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG,
+  filterOperatorsByEnabled,
+} from "./operator-config.js";
+
 function normalizeArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -116,7 +121,12 @@ export const dslSafetyRepair = {
   },
 };
 
-export const defaultRepairOperators = [dslSafetyRepair];
+const ALL_REPAIR_OPERATORS = [dslSafetyRepair];
+
+export const defaultRepairOperators = filterOperatorsByEnabled(
+  ALL_REPAIR_OPERATORS,
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG.repair?.enabled,
+);
 
 export function repairGenome(genome, options = {}) {
   const { operators = defaultRepairOperators, rng } = options;

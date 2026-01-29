@@ -1,3 +1,7 @@
+import {
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG,
+  filterOperatorsByEnabled,
+} from "./operator-config.js";
 import { validateGenomeDefinition } from "./serialization.js";
 
 function getRandomIndex(length, rng) {
@@ -72,7 +76,12 @@ export const subtreeSwapCrossover = {
   },
 };
 
-export const defaultCrossoverOperators = [subtreeSwapCrossover];
+const ALL_CROSSOVER_OPERATORS = [subtreeSwapCrossover];
+
+export const defaultCrossoverOperators = filterOperatorsByEnabled(
+  ALL_CROSSOVER_OPERATORS,
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG.crossover?.enabled,
+);
 
 export function crossoverGenome(parentA, parentB, options = {}) {
   const { operators = defaultCrossoverOperators, rng } = options;

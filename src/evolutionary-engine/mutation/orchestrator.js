@@ -1,4 +1,8 @@
 import { repairGenome } from "../repair.js";
+import {
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG,
+  filterOperatorsByEnabled,
+} from "../operator-config.js";
 import { getRandomIndex } from "./random.js";
 import { numericTweakMutation } from "./operators/numeric-tweak.js";
 import { booleanToggleMutation } from "./operators/boolean-toggle.js";
@@ -15,7 +19,7 @@ import { tokenTypeZoneTargetAddMutation } from "./operators/token-zone-target-ad
 import { tokenTypeRemoveMutation } from "./operators/token-type-remove.js";
 import { zoneRemoveMutation } from "./operators/zone-remove.js";
 
-export const defaultMutationOperators = [
+const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
   booleanToggleMutation,
   enumCycleMutation,
@@ -31,6 +35,11 @@ export const defaultMutationOperators = [
   tokenTypeRemoveMutation,
   zoneRemoveMutation,
 ];
+
+export const defaultMutationOperators = filterOperatorsByEnabled(
+  ALL_MUTATION_OPERATORS,
+  DEFAULT_EVOLUTION_OPERATORS_CONFIG.mutation?.enabled,
+);
 
 export function mutateGenome(genome, options = {}) {
   const { operators = defaultMutationOperators, rng } = options;

@@ -89,3 +89,39 @@ Implemented in `src/evolutionary-engine/repair.js`.
 - Rejects genomes when variable or token type repair cannot be applied.
 - Repair is limited to DSL safety (static fixes). Runtime degeneracy and playability
   issues are handled by simulation + degeneracy filters rather than repair.
+
+## Configuration Files
+
+All evolutionary engine modules load validated defaults at module init via
+`loadConfigFile` from `src/config/loader.js`. Caller parameters always override
+config defaults.
+
+### `configs/map-elites.json`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `descriptors` | array | Descriptor axes with `id`, `min`, `max`, `bins` |
+| `fitnessKey` | string \| null | Property name for keyed fitness objects |
+| `tieBreak` | `"keep"` \| `"replace"` | How ties are resolved in niche placement |
+
+Exported as `DEFAULT_MAP_ELITES_CONFIG` from `map-elites.js`.
+
+### `configs/evolution-operators.json`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `mutation.enabled` | string[] | Mutation operator names to include |
+| `mutation.weights` | object | Per-operator weights (reserved, all 1 currently) |
+| `crossover.enabled` | string[] | Crossover operator names to include |
+| `repair.enabled` | string[] | Repair operator names to include |
+
+Loaded once via `operator-config.js` and shared by `orchestrator.js`,
+`crossover.js`, and `repair.js`. Each module filters its hardcoded operator
+registry by the corresponding `enabled` list.
+
+### Override Policy
+
+Caller parameters always take precedence over config-loaded defaults:
+- `engine.js` receives MAP-Elites config from its caller (`options.mapElites`)
+- `mutateGenome`, `crossoverGenome`, `repairGenome` accept `operators` in options
+- When callers omit these options, modules fall back to config-filtered defaults

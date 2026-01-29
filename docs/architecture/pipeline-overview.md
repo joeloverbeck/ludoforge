@@ -24,11 +24,16 @@ then repeats.
    - Validation runs on the repaired definition, and the repaired genome is the one evaluated.
    - If validation or gates fail, the genome is rejected before scoring.
    - Relevant code: `src/evolutionary-engine/evaluation-adapter.js`.
+   - Config: `configs/evolution-operators.json` (repair operator toggles).
 
 3. Simulate and compute analytics
    - Simulation produces trajectories and termination outcomes.
    - Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
    - Relevant code: `src/simulation-engine/loop.js`, `src/evaluation-analytics/*`.
+   - Config: `configs/simulation.json` (cutoffs, loop detection, RNG seed),
+     `configs/metrics-core.json` (enabled metrics, normalization, feature order),
+     `configs/metrics-extended.json` (meaningful choice, comeback, skill expression),
+     `configs/degeneracy.json` (thresholds and rejection flags).
 
 4. Human feedback capture
    - Human ratings or comparisons are collected and stored as preference samples.
@@ -38,16 +43,21 @@ then repeats.
    - Relevant code: `src/human-interface/feedback.js`,
      `src/evaluation-analytics/preference-model.js`,
      `src/evaluation-analytics/active-learning.js`.
+   - Config: `configs/human-feedback.json` (rating range, comparison choices),
+     `configs/preference-model.json` (learning rate, weight caps, history),
+     `configs/active-learning.json` (uncertainty threshold, diversity quota).
 
 5. Fitness computation
    - Metrics + degeneracy flags become a feature vector.
    - Composite score + preference score + diversity pressure blend into fitness.
    - Relevant code: `src/evaluation-analytics/feature-vector.js`, `src/evaluation-analytics/fitness.js`.
+   - Config: `configs/fitness.json` (weights, diversity pressure, preference blending).
 
 6. MAP-Elites placement
    - Evaluated genomes are binned into descriptor niches.
    - The best genome per niche becomes the elite for the next generation.
    - Relevant code: `src/evolutionary-engine/map-elites.js`.
+   - Config: `configs/map-elites.json` (descriptors, tie-break policy).
 
 7. Shortlisting (optional)
    - Elites can be ranked and diversified into a shortlist for human review.
@@ -58,6 +68,11 @@ then repeats.
    - Removal mutations rewrite references (token types/zones) to keep DSL validity rather than leaving dangling ids.
    - Relevant code: `src/evolutionary-engine/mutation.js`, `src/evolutionary-engine/crossover.js`,
      `src/evolutionary-engine/repair.js`.
+   - Config: `configs/evolution-operators.json` (enabled operators and weights).
+
+9. Run orchestration
+   - The runner manages run directories, artifact persistence, and resume compatibility.
+   - Config: `configs/evolution-runner.json` (runs root, artifact layout, resume rules).
 
 ## Determinism Controls
 
