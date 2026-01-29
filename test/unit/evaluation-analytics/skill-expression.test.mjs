@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { computeExtendedMetrics } from "../../../src/evaluation-analytics/metrics/extended.js";
 import { computeSkillExpressionMetric } from "../../../src/evaluation-analytics/metrics/skill-expression.js";
@@ -84,59 +84,65 @@ const strongAgent = {
   },
 };
 
-test("skill expression detects tier separation", () => {
-  const definition = createTierSeparationDefinition();
-  const value = computeSkillExpressionMetric(definition, {
-    enabled: true,
-    agentTiers: [baselineAgent, strongAgent],
-    matchesPerSeat: 2,
-    seed: 5,
+describe("skill-expression", () => {
+  describe("computeSkillExpressionMetric", () => {
+    it("detects tier separation", () => {
+      const definition = createTierSeparationDefinition();
+      const value = computeSkillExpressionMetric(definition, {
+        enabled: true,
+        agentTiers: [baselineAgent, strongAgent],
+        matchesPerSeat: 2,
+        seed: 5,
+      });
+
+      assert.ok(Math.abs(value - 1) < 1e-9);
+    });
+
+    it("returns 0 when tiers are identical", () => {
+      const definition = createTierSeparationDefinition();
+      const value = computeSkillExpressionMetric(definition, {
+        enabled: true,
+        agentTiers: [baselineAgent, baselineAgent],
+        matchesPerSeat: 2,
+        seed: 7,
+      });
+
+      assert.ok(Math.abs(value) < 1e-9);
+    });
+
+    it("cancels seat bias", () => {
+      const definition = createSeatBiasDefinition();
+      const value = computeSkillExpressionMetric(definition, {
+        enabled: true,
+        agentTiers: [baselineAgent, strongAgent],
+        matchesPerSeat: 2,
+        seed: 11,
+      });
+
+      assert.ok(Math.abs(value) < 1e-9);
+    });
   });
 
-  assert.ok(Math.abs(value - 1) < 1e-9);
-});
+  describe("computeExtendedMetrics integration", () => {
+    it("only emits skill_expression when enabled", () => {
+      const definition = createTierSeparationDefinition();
+      const disabled = computeExtendedMetrics(definition, [], {});
+      assert.equal(
+        disabled.some((metric) => metric.id === "skill_expression"),
+        false
+      );
 
-test("skill expression returns 0 when tiers are identical", () => {
-  const definition = createTierSeparationDefinition();
-  const value = computeSkillExpressionMetric(definition, {
-    enabled: true,
-    agentTiers: [baselineAgent, baselineAgent],
-    matchesPerSeat: 2,
-    seed: 7,
+      const enabled = computeExtendedMetrics(definition, [], {
+        skillExpression: {
+          enabled: true,
+          agentTiers: [baselineAgent, strongAgent],
+          matchesPerSeat: 1,
+          seed: 13,
+        },
+      });
+      const entry = enabled.find((metric) => metric.id === "skill_expression");
+      assert.ok(entry);
+      assert.ok(Math.abs(entry.value - 1) < 1e-9);
+    });
   });
-
-  assert.ok(Math.abs(value) < 1e-9);
-});
-
-test("skill expression cancels seat bias", () => {
-  const definition = createSeatBiasDefinition();
-  const value = computeSkillExpressionMetric(definition, {
-    enabled: true,
-    agentTiers: [baselineAgent, strongAgent],
-    matchesPerSeat: 2,
-    seed: 11,
-  });
-
-  assert.ok(Math.abs(value) < 1e-9);
-});
-
-test("extended metrics only emit skill_expression when enabled", () => {
-  const definition = createTierSeparationDefinition();
-  const disabled = computeExtendedMetrics(definition, [], {});
-  assert.equal(
-    disabled.some((metric) => metric.id === "skill_expression"),
-    false
-  );
-
-  const enabled = computeExtendedMetrics(definition, [], {
-    skillExpression: {
-      enabled: true,
-      agentTiers: [baselineAgent, strongAgent],
-      matchesPerSeat: 1,
-      seed: 13,
-    },
-  });
-  const entry = enabled.find((metric) => metric.id === "skill_expression");
-  assert.ok(entry);
-  assert.ok(Math.abs(entry.value - 1) < 1e-9);
 });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { adaptSimulationLog, LOG_ADAPTER_VERSION } from "../../src/evaluation-analytics/log-adapter.js";
 import { computeExtendedMetrics } from "../../src/evaluation-analytics/metrics/extended.js";
@@ -85,29 +85,31 @@ function buildSummaries(definition) {
   return logResult.value.trajectorySummaries;
 }
 
-test("skill expression metric is gated via extended metrics integration path", () => {
-  const definition = createTierSeparationDefinition();
-  const summaries = buildSummaries(definition);
+describe("skill-expression-metric", () => {
+  it("is gated via extended metrics integration path", () => {
+    const definition = createTierSeparationDefinition();
+    const summaries = buildSummaries(definition);
 
-  const disabled = computeExtendedMetrics(definition, summaries, {
-    skillExpression: { enabled: false },
+    const disabled = computeExtendedMetrics(definition, summaries, {
+      skillExpression: { enabled: false },
+    });
+    assert.equal(
+      disabled.some((metric) => metric.id === "skill_expression"),
+      false
+    );
+
+    const enabled = computeExtendedMetrics(definition, summaries, {
+      skillExpression: {
+        enabled: true,
+        agentTiers: [createFirstActionAgent(), createLastActionAgent()],
+        matchesPerSeat: 1,
+        seed: 21,
+      },
+    });
+
+    const metric = enabled.find((entry) => entry.id === "skill_expression");
+    assert.ok(metric);
+    assert.ok(Number.isFinite(metric.value));
+    assert.ok(metric.value >= 0 && metric.value <= 1);
   });
-  assert.equal(
-    disabled.some((metric) => metric.id === "skill_expression"),
-    false
-  );
-
-  const enabled = computeExtendedMetrics(definition, summaries, {
-    skillExpression: {
-      enabled: true,
-      agentTiers: [createFirstActionAgent(), createLastActionAgent()],
-      matchesPerSeat: 1,
-      seed: 21,
-    },
-  });
-
-  const metric = enabled.find((entry) => entry.id === "skill_expression");
-  assert.ok(metric);
-  assert.ok(Number.isFinite(metric.value));
-  assert.ok(metric.value >= 0 && metric.value <= 1);
 });

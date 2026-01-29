@@ -9,6 +9,7 @@ export interface DegeneracyThresholds {
   trivialWinRate?: number;
   trivialWinMaxAverageSteps?: number;
   minTrivialWinSamples?: number;
+  minStepsForNoChoices?: number;
 }
 
 export interface DegeneracyFilterOptions {
@@ -32,3 +33,13 @@ export function applyDegeneracyFilters(
   report: DegeneracyReport,
   options?: DegeneracyFilterOptions
 ): DegeneracyFilterDecision;
+
+export interface DegeneracyPenaltyConfig {
+  policyByFlag?: Partial<Record<DegeneracyFlag, "reject" | "penalize" | "ignore">>;
+  penalties?: Partial<Record<string, { weight: number; freeRatio?: number }>>;
+}
+
+export function computeDegeneracyPenalty(
+  report: DegeneracyReport,
+  penaltyConfig?: DegeneracyPenaltyConfig
+): number;

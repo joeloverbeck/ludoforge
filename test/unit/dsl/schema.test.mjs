@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import Ajv from "ajv/dist/2020.js";
@@ -29,91 +29,97 @@ function assertInvalid(definition) {
   assert.equal(ok, false, "Expected schema validation to fail");
 }
 
-test("accepts a valid game definition", () => {
-  assertValid(cloneDefinition(baseDefinition));
-});
+describe("schema", () => {
+  describe("valid definitions", () => {
+    it("accepts a valid game definition", () => {
+      assertValid(cloneDefinition(baseDefinition));
+    });
 
-test("accepts the minimal example definition", () => {
-  assertValid(cloneDefinition(exampleDefinition));
-});
+    it("accepts the minimal example definition", () => {
+      assertValid(cloneDefinition(exampleDefinition));
+    });
 
-test("rejects missing version", () => {
-  const candidate = structuredClone(baseDefinition);
-  delete candidate.version;
-  assertInvalid(candidate);
-});
+    it("accepts meta refs in expressions", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.termination.conditions[0].condition = {
+        kind: "cmp",
+        op: "==",
+        left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+        right: { kind: "value", value: 0 },
+      };
+      assertValid(candidate);
+    });
 
-test("rejects missing termination fixture", () => {
-  assertInvalid(cloneDefinition(missingTerminationDefinition));
-});
+    it("accepts noLegalActions terminate with defaultOutcome", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn.noLegalActions = {
+        policy: "terminate",
+        defaultOutcome: { type: "draw", players: "all" },
+        reason: "no-legal-actions",
+      };
+      assertValid(candidate);
+    });
+  });
 
-test("rejects invalid enum values", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].actor = "npc";
-  assertInvalid(candidate);
-});
+  describe("rejected definitions", () => {
+    it("rejects missing version", () => {
+      const candidate = structuredClone(baseDefinition);
+      delete candidate.version;
+      assertInvalid(candidate);
+    });
 
-test("accepts meta refs in expressions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
-    right: { kind: "value", value: 0 },
-  };
-  assertValid(candidate);
-});
+    it("rejects missing termination fixture", () => {
+      assertInvalid(cloneDefinition(missingTerminationDefinition));
+    });
 
-test("rejects invalid meta ids in expressions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "unknownMeta" } },
-    right: { kind: "value", value: 0 },
-  };
-  assertInvalid(candidate);
-});
+    it("rejects invalid enum values", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].actor = "npc";
+      assertInvalid(candidate);
+    });
 
-test("rejects meta refs as effect targets", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].effects[0].target = { kind: "meta", id: "legalActionCount" };
-  assertInvalid(candidate);
-});
+    it("rejects invalid meta ids in expressions", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.termination.conditions[0].condition = {
+        kind: "cmp",
+        op: "==",
+        left: { kind: "ref", ref: { kind: "meta", id: "unknownMeta" } },
+        right: { kind: "value", value: 0 },
+      };
+      assertInvalid(candidate);
+    });
 
-test("accepts noLegalActions terminate with defaultOutcome", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.turn.noLegalActions = {
-    policy: "terminate",
-    defaultOutcome: { type: "draw", players: "all" },
-    reason: "no-legal-actions",
-  };
-  assertValid(candidate);
-});
+    it("rejects meta refs as effect targets", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects[0].target = { kind: "meta", id: "legalActionCount" };
+      assertInvalid(candidate);
+    });
 
-test("rejects noLegalActions terminate without defaultOutcome", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.turn.noLegalActions = { policy: "terminate" };
-  assertInvalid(candidate);
-});
+    it("rejects noLegalActions terminate without defaultOutcome", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn.noLegalActions = { policy: "terminate" };
+      assertInvalid(candidate);
+    });
 
-test("rejects noLegalActions pass with defaultOutcome", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.turn.noLegalActions = {
-    policy: "pass",
-    defaultOutcome: { type: "draw", players: "all" },
-  };
-  assertInvalid(candidate);
-});
+    it("rejects noLegalActions pass with defaultOutcome", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn.noLegalActions = {
+        policy: "pass",
+        defaultOutcome: { type: "draw", players: "all" },
+      };
+      assertInvalid(candidate);
+    });
 
-test("rejects missing required state variables", () => {
-  const candidate = structuredClone(baseDefinition);
-  delete candidate.state.variables;
-  assertInvalid(candidate);
-});
+    it("rejects missing required state variables", () => {
+      const candidate = structuredClone(baseDefinition);
+      delete candidate.state.variables;
+      assertInvalid(candidate);
+    });
 
-test("rejects player count below 1", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.players.count = 0;
-  assertInvalid(candidate);
+    it("rejects player count below 1", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.players.count = 0;
+      assertInvalid(candidate);
+    });
+  });
 });

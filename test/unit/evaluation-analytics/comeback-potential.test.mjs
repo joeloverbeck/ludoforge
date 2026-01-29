@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { computeComebackPotential } from "../../../src/evaluation-analytics/metrics/extended.js";
 import { createInitialState } from "../../../src/game-kernel/index.js";
@@ -48,29 +48,33 @@ function createRun(definition, earlyScores, outcomes) {
   };
 }
 
-test("comeback potential returns 0 when early advantage perfectly predicts outcomes", () => {
-  const definition = createComebackDefinition({ withScoring: true });
-  const runs = [
-    createRun(definition, { 1: 5, 2: 1 }, { 1: "win", 2: "lose" }),
-    createRun(definition, { 1: 1, 2: 4 }, { 1: "win", 2: "lose" }),
-  ];
+describe("comeback-potential", () => {
+  describe("computeComebackPotential", () => {
+    it("returns 0 when early advantage perfectly predicts outcomes", () => {
+      const definition = createComebackDefinition({ withScoring: true });
+      const runs = [
+        createRun(definition, { 1: 5, 2: 1 }, { 1: "win", 2: "lose" }),
+        createRun(definition, { 1: 1, 2: 4 }, { 1: "win", 2: "lose" }),
+      ];
 
-  const value = computeComebackPotential(definition, runs, {
-    enabled: true,
-    earlyStepPercent: 0.5,
+      const value = computeComebackPotential(definition, runs, {
+        enabled: true,
+        earlyStepPercent: 0.5,
+      });
+
+      assert.equal(value, 0);
+    });
+
+    it("returns 0 when scoring expressions are missing", () => {
+      const definition = createComebackDefinition({ withScoring: false });
+      const runs = [createRun(definition, { 1: 5, 2: 1 }, { 1: "win", 2: "lose" })];
+
+      const value = computeComebackPotential(definition, runs, {
+        enabled: true,
+        earlyStepPercent: 0.5,
+      });
+
+      assert.equal(value, 0);
+    });
   });
-
-  assert.equal(value, 0);
-});
-
-test("comeback potential returns 0 when scoring expressions are missing", () => {
-  const definition = createComebackDefinition({ withScoring: false });
-  const runs = [createRun(definition, { 1: 5, 2: 1 }, { 1: "win", 2: "lose" })];
-
-  const value = computeComebackPotential(definition, runs, {
-    enabled: true,
-    earlyStepPercent: 0.5,
-  });
-
-  assert.equal(value, 0);
 });

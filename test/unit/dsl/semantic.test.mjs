@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { collectSemanticIssues, validateSemanticDefinition } from "../../../src/dsl/semantic.js";
 import {
@@ -17,288 +17,306 @@ function findRule(issues, rule) {
   return issues.some((issue) => issue.rule === rule);
 }
 
-test("collectSemanticIssues returns an empty list for valid definitions", () => {
-  const issues = collectSemanticIssues(cloneDefinition(baseDefinition));
-  assert.deepEqual(issues, []);
-});
+describe("semantic", () => {
+  describe("validateSemanticDefinition", () => {
+    it("returns valid true for valid definitions", () => {
+      const result = validateSemanticDefinition(cloneDefinition(baseDefinition));
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.issues, []);
+    });
 
-test("validateSemanticDefinition returns valid true for valid definitions", () => {
-  const result = validateSemanticDefinition(cloneDefinition(baseDefinition));
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.issues, []);
-});
-
-test("validateSemanticDefinition returns valid true for the minimal example", () => {
-  const result = validateSemanticDefinition(cloneDefinition(exampleDefinition));
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.issues, []);
-});
-
-test("collectSemanticIssues reports missing termination conditions", () => {
-  const issues = collectSemanticIssues(cloneDefinition(missingTerminationDefinition));
-
-  assert.ok(findRule(issues, "termination-conditions"));
-});
-
-test("collectSemanticIssues allows valid meta refs in expressions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
-    right: { kind: "value", value: 0 },
-  };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.equal(findRule(issues, "meta-ref-unknown"), false);
-  assert.equal(findRule(issues, "meta-ref-disallowed"), false);
-});
-
-test("collectSemanticIssues reports unknown meta ids", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "badMeta" } },
-    right: { kind: "value", value: 0 },
-  };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "meta-ref-unknown"));
-});
-
-test("collectSemanticIssues rejects meta refs outside expressions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].effects.push({
-    kind: "inc",
-    target: { kind: "meta", id: "legalActionCount" },
-    amount: 1,
+    it("returns valid true for the minimal example", () => {
+      const result = validateSemanticDefinition(cloneDefinition(exampleDefinition));
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.issues, []);
+    });
   });
 
-  const issues = collectSemanticIssues(candidate);
+  describe("collectSemanticIssues", () => {
+    it("returns an empty list for valid definitions", () => {
+      const issues = collectSemanticIssues(cloneDefinition(baseDefinition));
+      assert.deepEqual(issues, []);
+    });
 
-  assert.ok(findRule(issues, "meta-ref-disallowed"));
-});
+    describe("termination rules", () => {
+      it("reports missing termination conditions", () => {
+        const issues = collectSemanticIssues(cloneDefinition(missingTerminationDefinition));
 
-test("collectSemanticIssues reports termination conditions even with maxTurns", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.termination.conditions = [];
-  candidate.termination.maxTurns = 10;
+        assert.ok(findRule(issues, "termination-conditions"));
+      });
 
-  const issues = collectSemanticIssues(candidate);
+      it("reports termination conditions even with maxTurns", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.termination.conditions = [];
+        candidate.termination.maxTurns = 10;
 
-  assert.ok(findRule(issues, "termination-conditions"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports missing maxTurns fallback", () => {
-  const candidate = structuredClone(baseDefinition);
-  delete candidate.termination.maxTurns;
+        assert.ok(findRule(issues, "termination-conditions"));
+      });
 
-  const issues = collectSemanticIssues(candidate);
+      it("reports missing maxTurns fallback", () => {
+        const candidate = structuredClone(baseDefinition);
+        delete candidate.termination.maxTurns;
 
-  assert.ok(findRule(issues, "termination-max-turns"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports missing noLegalActions defaultOutcome", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.turn.noLegalActions = { policy: "terminate" };
+        assert.ok(findRule(issues, "termination-max-turns"));
+      });
+    });
 
-  const issues = collectSemanticIssues(candidate);
+    describe("meta refs", () => {
+      it("allows valid meta refs in expressions", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.termination.conditions[0].condition = {
+          kind: "cmp",
+          op: "==",
+          left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+          right: { kind: "value", value: 0 },
+        };
 
-  assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports extra noLegalActions defaultOutcome", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.turn.noLegalActions = {
-    policy: "pass",
-    defaultOutcome: { type: "draw", players: "all" },
-  };
+        assert.equal(findRule(issues, "meta-ref-unknown"), false);
+        assert.equal(findRule(issues, "meta-ref-disallowed"), false);
+      });
 
-  const issues = collectSemanticIssues(candidate);
+      it("reports unknown meta ids", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.termination.conditions[0].condition = {
+          kind: "cmp",
+          op: "==",
+          left: { kind: "ref", ref: { kind: "meta", id: "badMeta" } },
+          right: { kind: "value", value: 0 },
+        };
 
-  assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports bad int bounds", () => {
-  const candidate = structuredClone(baseDefinition);
-  delete candidate.state.variables[0].type.max;
+        assert.ok(findRule(issues, "meta-ref-unknown"));
+      });
 
-  const issues = collectSemanticIssues(candidate);
+      it("rejects meta refs outside expressions", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects.push({
+          kind: "inc",
+          target: { kind: "meta", id: "legalActionCount" },
+          amount: 1,
+        });
 
-  assert.ok(findRule(issues, "int-bounds"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports non-numeric int initial values", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.variables[0].initial = "not-a-number";
+        assert.ok(findRule(issues, "meta-ref-disallowed"));
+      });
+    });
 
-  const issues = collectSemanticIssues(candidate);
+    describe("noLegalActions", () => {
+      it("reports missing noLegalActions defaultOutcome", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn.noLegalActions = { policy: "terminate" };
 
-  assert.ok(findRule(issues, "int-initial-type"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports out-of-bounds int initial values", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.variables[0].initial = 99;
-  candidate.state.tokenTypes[0].attributes = [
-    {
-      id: "count",
-      scope: "global",
-      type: { kind: "int", min: 0, max: 2 },
-      initial: 5,
-    },
-  ];
+        assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
+      });
 
-  const issues = collectSemanticIssues(candidate);
+      it("reports extra noLegalActions defaultOutcome", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn.noLegalActions = {
+          policy: "pass",
+          defaultOutcome: { type: "draw", players: "all" },
+        };
 
-  assert.ok(findRule(issues, "int-initial-bounds"));
-});
+        const issues = collectSemanticIssues(candidate);
 
-test("collectSemanticIssues reports reference and usage violations", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.variables.push({
-    id: "unused",
-    scope: "global",
-    type: { kind: "int", min: 0, max: 1 },
-    initial: 0,
+        assert.ok(findRule(issues, "no-legal-actions-default-outcome"));
+      });
+    });
+
+    describe("int variable rules", () => {
+      it("reports bad int bounds", () => {
+        const candidate = structuredClone(baseDefinition);
+        delete candidate.state.variables[0].type.max;
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "int-bounds"));
+      });
+
+      it("reports non-numeric int initial values", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables[0].initial = "not-a-number";
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "int-initial-type"));
+      });
+
+      it("reports out-of-bounds int initial values", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables[0].initial = 99;
+        candidate.state.tokenTypes[0].attributes = [
+          {
+            id: "count",
+            scope: "global",
+            type: { kind: "int", min: 0, max: 2 },
+            initial: 5,
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "int-initial-bounds"));
+      });
+    });
+
+    describe("reference and usage violations", () => {
+      it("reports reference and usage violations", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables.push({
+          id: "unused",
+          scope: "global",
+          type: { kind: "int", min: 0, max: 1 },
+          initial: 0,
+        });
+        candidate.state.tokenTypes.push({
+          id: "unusedToken",
+          attributes: [
+            {
+              id: "flag",
+              scope: "global",
+              type: { kind: "bool" },
+              initial: false,
+            },
+          ],
+        });
+        candidate.state.zones[0].tokenType = "missingToken";
+        candidate.actions[0].effects[0].target = { kind: "var", id: "missingVar" };
+        candidate.actions[0].targets[0].selector.zone = "missingZone";
+        candidate.actions[0].targets[0].selector.tokenType = "missingTokenType";
+        candidate.termination.conditions[0].condition.left = {
+          kind: "ref",
+          ref: { kind: "token", id: "pawn", attribute: "missingAttr" },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+        assert.ok(findRule(issues, "zone-unknown"));
+        assert.ok(findRule(issues, "token-type-unknown"));
+        assert.ok(findRule(issues, "token-attribute-unknown"));
+        assert.ok(findRule(issues, "unused-variable"));
+        assert.ok(findRule(issues, "unused-token-type"));
+      });
+
+      it("reports unused zones", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.zones.push({
+          id: "unusedZone",
+          tokenType: "pawn",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+        });
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "unused-zone"));
+      });
+    });
+
+    describe("action rules", () => {
+      it("reports free lunch actions", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].targets = [];
+        delete candidate.actions[0].preconditions;
+        candidate.actions[0].costs = [];
+        candidate.actions[0].effects = [
+          {
+            kind: "spawn",
+            target: { kind: "token", id: "pawn" },
+            toZone: "board",
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "free-lunch"));
+      });
+
+      it("allows beneficial actions with costs", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].targets = [];
+        delete candidate.actions[0].preconditions;
+        candidate.actions[0].effects = [
+          {
+            kind: "spawn",
+            target: { kind: "token", id: "pawn" },
+            toZone: "board",
+          },
+        ];
+        candidate.actions[0].costs = [
+          {
+            kind: "dec",
+            target: { kind: "var", id: "score" },
+            amount: 1,
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.equal(findRule(issues, "free-lunch"), false);
+      });
+
+      it("reports unsatisfiable action preconditions", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].preconditions = { kind: "value", value: false };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "action-precondition-unsatisfiable"));
+      });
+
+      it("reports unsatisfiable comparisons against bounds", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables[0].type = { kind: "int", min: 0, max: 3 };
+        candidate.actions[0].preconditions = {
+          kind: "cmp",
+          op: ">",
+          left: { kind: "ref", ref: { kind: "var", id: "score" } },
+          right: { kind: "value", value: 5 },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "action-precondition-unsatisfiable"));
+      });
+
+      it("allows satisfiable comparisons within bounds", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables[0].type = { kind: "int", min: 0, max: 3 };
+        candidate.actions[0].preconditions = {
+          kind: "cmp",
+          op: ">=",
+          left: { kind: "ref", ref: { kind: "var", id: "score" } },
+          right: { kind: "value", value: 0 },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.equal(findRule(issues, "action-precondition-unsatisfiable"), false);
+      });
+
+      it("reports dominant actions", () => {
+        const issues = collectSemanticIssues(cloneDefinition(dominantActionDefinition));
+
+        assert.ok(findRule(issues, "dominant-action"));
+      });
+
+      it("reports no meaningful actions when all are unsatisfiable", () => {
+        const issues = collectSemanticIssues(cloneDefinition(noMeaningfulActionsDefinition));
+
+        assert.ok(findRule(issues, "no-meaningful-actions"));
+      });
+    });
   });
-  candidate.state.tokenTypes.push({
-    id: "unusedToken",
-    attributes: [
-      {
-        id: "flag",
-        scope: "global",
-        type: { kind: "bool" },
-        initial: false,
-      },
-    ],
-  });
-  candidate.state.zones[0].tokenType = "missingToken";
-  candidate.actions[0].effects[0].target = { kind: "var", id: "missingVar" };
-  candidate.actions[0].targets[0].selector.zone = "missingZone";
-  candidate.actions[0].targets[0].selector.tokenType = "missingTokenType";
-  candidate.termination.conditions[0].condition.left = {
-    kind: "ref",
-    ref: { kind: "token", id: "pawn", attribute: "missingAttr" },
-  };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "ref-unknown"));
-  assert.ok(findRule(issues, "zone-unknown"));
-  assert.ok(findRule(issues, "token-type-unknown"));
-  assert.ok(findRule(issues, "token-attribute-unknown"));
-  assert.ok(findRule(issues, "unused-variable"));
-  assert.ok(findRule(issues, "unused-token-type"));
-});
-
-test("collectSemanticIssues reports unused zones", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.zones.push({
-    id: "unusedZone",
-    tokenType: "pawn",
-    scope: "global",
-    order: "ordered",
-    visibility: "public",
-  });
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "unused-zone"));
-});
-
-test("collectSemanticIssues reports free lunch actions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].targets = [];
-  delete candidate.actions[0].preconditions;
-  candidate.actions[0].costs = [];
-  candidate.actions[0].effects = [
-    {
-      kind: "spawn",
-      target: { kind: "token", id: "pawn" },
-      toZone: "board",
-    },
-  ];
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "free-lunch"));
-});
-
-test("collectSemanticIssues allows beneficial actions with costs", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].targets = [];
-  delete candidate.actions[0].preconditions;
-  candidate.actions[0].effects = [
-    {
-      kind: "spawn",
-      target: { kind: "token", id: "pawn" },
-      toZone: "board",
-    },
-  ];
-  candidate.actions[0].costs = [
-    {
-      kind: "dec",
-      target: { kind: "var", id: "score" },
-      amount: 1,
-    },
-  ];
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.equal(findRule(issues, "free-lunch"), false);
-});
-
-test("collectSemanticIssues reports unsatisfiable action preconditions", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.actions[0].preconditions = { kind: "value", value: false };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "action-precondition-unsatisfiable"));
-});
-
-test("collectSemanticIssues reports unsatisfiable comparisons against bounds", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.variables[0].type = { kind: "int", min: 0, max: 3 };
-  candidate.actions[0].preconditions = {
-    kind: "cmp",
-    op: ">",
-    left: { kind: "ref", ref: { kind: "var", id: "score" } },
-    right: { kind: "value", value: 5 },
-  };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.ok(findRule(issues, "action-precondition-unsatisfiable"));
-});
-
-test("collectSemanticIssues allows satisfiable comparisons within bounds", () => {
-  const candidate = structuredClone(baseDefinition);
-  candidate.state.variables[0].type = { kind: "int", min: 0, max: 3 };
-  candidate.actions[0].preconditions = {
-    kind: "cmp",
-    op: ">=",
-    left: { kind: "ref", ref: { kind: "var", id: "score" } },
-    right: { kind: "value", value: 0 },
-  };
-
-  const issues = collectSemanticIssues(candidate);
-
-  assert.equal(findRule(issues, "action-precondition-unsatisfiable"), false);
-});
-
-test("collectSemanticIssues reports dominant actions", () => {
-  const issues = collectSemanticIssues(cloneDefinition(dominantActionDefinition));
-
-  assert.ok(findRule(issues, "dominant-action"));
-});
-
-test("collectSemanticIssues reports no meaningful actions when all are unsatisfiable", () => {
-  const issues = collectSemanticIssues(cloneDefinition(noMeaningfulActionsDefinition));
-
-  assert.ok(findRule(issues, "no-meaningful-actions"));
 });

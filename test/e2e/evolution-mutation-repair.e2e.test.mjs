@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createSeededRng } from "../../src/simulation-engine/rng.js";
@@ -27,49 +27,51 @@ function buildParentB(definition) {
   return clone;
 }
 
-test("mutation + repair produces valid children after crossover", async () => {
-  const baseDefinition = await loadFixture("choice-game.json");
+describe("evolution-mutation-repair", () => {
+  it("mutation + repair produces valid children after crossover", async () => {
+    const baseDefinition = await loadFixture("choice-game.json");
 
-  const parentA = { id: "parent-a", definition: baseDefinition };
-  const parentB = { id: "parent-b", definition: buildParentB(baseDefinition) };
+    const parentA = { id: "parent-a", definition: baseDefinition };
+    const parentB = { id: "parent-b", definition: buildParentB(baseDefinition) };
 
-  const crossoverChild = crossoverGenome(parentA, parentB, {
-    operators: [subtreeSwapCrossover],
-    rng: createSeededRng(2),
-  });
+    const crossoverChild = crossoverGenome(parentA, parentB, {
+      operators: [subtreeSwapCrossover],
+      rng: createSeededRng(2),
+    });
 
-  assert.ok(crossoverChild, "Expected crossover to return a child genome");
-  assert.ok(validateGenomeDefinition(crossoverChild.definition).valid);
+    assert.ok(crossoverChild, "Expected crossover to return a child genome");
+    assert.ok(validateGenomeDefinition(crossoverChild.definition).valid);
 
-  const invalidChild = structuredClone(crossoverChild);
-  invalidChild.definition.state.variables[0].initial = 99;
+    const invalidChild = structuredClone(crossoverChild);
+    invalidChild.definition.state.variables[0].initial = 99;
 
-  const mutated = mutateAndRepairGenome(invalidChild, {
-    operators: [actionDuplicateMutation],
-    repairOperators: [dslSafetyRepair],
-    rng: createSeededRng(11),
-  });
-
-  assert.ok(mutated, "Expected mutation + repair to return a genome");
-  assert.ok(validateGenomeDefinition(mutated.definition).valid);
-
-  const variable = mutated.definition.state.variables[0];
-  assert.equal(variable.initial, variable.type.max);
-  assert.equal(
-    mutated.definition.actions.length,
-    crossoverChild.definition.actions.length + 1
-  );
-
-  const children = Array.from({ length: 20 }, (_, index) =>
-    mutateAndRepairGenome(invalidChild, {
+    const mutated = mutateAndRepairGenome(invalidChild, {
       operators: [actionDuplicateMutation],
       repairOperators: [dslSafetyRepair],
-      rng: createSeededRng(index + 1),
-    })
-  );
+      rng: createSeededRng(11),
+    });
 
-  children.forEach((child) => {
-    assert.ok(child, "Expected every child to be generated");
-    assert.ok(validateGenomeDefinition(child.definition).valid);
+    assert.ok(mutated, "Expected mutation + repair to return a genome");
+    assert.ok(validateGenomeDefinition(mutated.definition).valid);
+
+    const variable = mutated.definition.state.variables[0];
+    assert.equal(variable.initial, variable.type.max);
+    assert.equal(
+      mutated.definition.actions.length,
+      crossoverChild.definition.actions.length + 1
+    );
+
+    const children = Array.from({ length: 20 }, (_, index) =>
+      mutateAndRepairGenome(invalidChild, {
+        operators: [actionDuplicateMutation],
+        repairOperators: [dslSafetyRepair],
+        rng: createSeededRng(index + 1),
+      })
+    );
+
+    children.forEach((child) => {
+      assert.ok(child, "Expected every child to be generated");
+      assert.ok(validateGenomeDefinition(child.definition).valid);
+    });
   });
 });

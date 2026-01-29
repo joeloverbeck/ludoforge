@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   collectSemanticIssues,
@@ -96,247 +96,259 @@ function assertValidMatchesIssues(result) {
   assert.equal(result.valid, result.issues.length === 0);
 }
 
-test("integration: reports int bounds and initial bounds issues", () => {
-  const definition = baseDefinition();
-  delete definition.state.variables[0].type.max;
-  definition.state.tokenTypes[0].attributes.push({
-    id: "count",
-    scope: "global",
-    type: { kind: "int", min: 0, max: 1 },
-    initial: 5,
-  });
-
-  const result = validateSemanticDefinition(definition);
-
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "int-bounds"));
-  assert.ok(hasRule(result.issues, "int-initial-bounds"));
-});
-
-test("integration: reports unknown refs and unused ids", () => {
-  const definition = baseDefinition();
-  definition.state.variables.push({
-    id: "unusedVar",
-    scope: "global",
-    type: { kind: "int", min: 0, max: 1 },
-    initial: 0,
-  });
-  definition.state.tokenTypes.push({
-    id: "unusedToken",
-    attributes: [
-      {
-        id: "flag",
+describe("dsl-semantic", () => {
+  describe("bounds validation", () => {
+    it("reports int bounds and initial bounds issues", () => {
+      const definition = baseDefinition();
+      delete definition.state.variables[0].type.max;
+      definition.state.tokenTypes[0].attributes.push({
+        id: "count",
         scope: "global",
-        type: { kind: "bool" },
-        initial: false,
-      },
-    ],
-  });
-  definition.state.zones.push({
-    id: "unusedZone",
-    tokenType: "pawn",
-    scope: "global",
-    order: "ordered",
-    visibility: "public",
-  });
-  definition.actions[0].effects.push({
-    kind: "dec",
-    target: { kind: "var", id: "missingVar" },
-    amount: 1,
-  });
-  definition.actions[0].targets.push({
-    id: "ghost",
-    kind: "token",
-    selector: {
-      zone: "missingZone",
-      tokenType: "pawn",
-      count: 1,
-    },
-  });
-  definition.actions[0].targets.push({
-    id: "wrongType",
-    kind: "token",
-    selector: {
-      zone: "board",
-      tokenType: "missingTokenType",
-      count: 1,
-    },
-  });
-  definition.termination.conditions.push({
-    condition: {
-      kind: "cmp",
-      op: "==",
-      left: {
-        kind: "ref",
-        ref: { kind: "token", id: "pawn", attribute: "missingAttr" },
-      },
-      right: { kind: "value", value: 1 },
-    },
-    outcome: {
-      type: "draw",
-      players: "all",
-    },
+        type: { kind: "int", min: 0, max: 1 },
+        initial: 5,
+      });
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "int-bounds"));
+      assert.ok(hasRule(result.issues, "int-initial-bounds"));
+    });
   });
 
-  const result = validateSemanticDefinition(definition);
-
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "ref-unknown"));
-  assert.ok(hasRule(result.issues, "zone-unknown"));
-  assert.ok(hasRule(result.issues, "token-type-unknown"));
-  assert.ok(hasRule(result.issues, "token-attribute-unknown"));
-  assert.ok(hasRule(result.issues, "unused-variable"));
-  assert.ok(hasRule(result.issues, "unused-token-type"));
-  assert.ok(hasRule(result.issues, "unused-zone"));
-});
-
-test("integration: allows known meta refs in expressions", () => {
-  const definition = baseDefinition();
-  definition.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
-    right: { kind: "value", value: 0 },
-  };
-
-  const issues = collectSemanticIssues(definition);
-
-  assert.equal(hasRule(issues, "meta-ref-unknown"), false);
-  assert.equal(hasRule(issues, "meta-ref-disallowed"), false);
-});
-
-test("integration: rejects unknown meta refs in expressions", () => {
-  const definition = baseDefinition();
-  definition.termination.conditions[0].condition = {
-    kind: "cmp",
-    op: "==",
-    left: { kind: "ref", ref: { kind: "meta", id: "badMeta" } },
-    right: { kind: "value", value: 0 },
-  };
-
-  const result = validateSemanticDefinition(definition);
-
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "meta-ref-unknown"));
-});
-
-test("integration: reports unsatisfiable action preconditions", () => {
-  const definition = baseDefinition();
-  definition.state.variables[0].type = { kind: "int", min: 0, max: 1 };
-  definition.actions[0].preconditions = {
-    kind: "cmp",
-    op: ">",
-    left: { kind: "ref", ref: { kind: "var", id: "score" } },
-    right: { kind: "value", value: 5 },
-  };
-  definition.actions.push({
-    id: "wait",
-    actor: "player",
-    effects: [],
-    targets: [],
-  });
-
-  const result = validateSemanticDefinition(definition);
-
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "action-precondition-unsatisfiable"));
-});
-
-test("integration: reports free-lunch actions", () => {
-  const definition = baseDefinition();
-  definition.actions = [
-    {
-      id: "free",
-      actor: "player",
-      effects: [
-        {
-          kind: "spawn",
-          target: { kind: "token", id: "pawn" },
-          toZone: "board",
-        },
-      ],
-      targets: [],
-      costs: [],
-    },
-  ];
-
-  const result = validateSemanticDefinition(definition);
-
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "free-lunch"));
-});
-
-test("integration: reports dominant actions", () => {
-  const definition = baseDefinition();
-  definition.actions = [
-    {
-      id: "free",
-      actor: "player",
-      effects: [
-        {
-          kind: "spawn",
-          target: { kind: "token", id: "pawn" },
-          toZone: "board",
-        },
-      ],
-      targets: [],
-      costs: [],
-    },
-    {
-      id: "limited",
-      actor: "player",
-      effects: [
-        {
-          kind: "inc",
-          target: { kind: "var", id: "score" },
-          amount: 1,
-        },
-      ],
-      targets: [
-        {
-          id: "piece",
-          kind: "token",
-          selector: {
-            zone: "board",
-            tokenType: "pawn",
-            count: 1,
+  describe("reference validation", () => {
+    it("reports unknown refs and unused ids", () => {
+      const definition = baseDefinition();
+      definition.state.variables.push({
+        id: "unusedVar",
+        scope: "global",
+        type: { kind: "int", min: 0, max: 1 },
+        initial: 0,
+      });
+      definition.state.tokenTypes.push({
+        id: "unusedToken",
+        attributes: [
+          {
+            id: "flag",
+            scope: "global",
+            type: { kind: "bool" },
+            initial: false,
           },
+        ],
+      });
+      definition.state.zones.push({
+        id: "unusedZone",
+        tokenType: "pawn",
+        scope: "global",
+        order: "ordered",
+        visibility: "public",
+      });
+      definition.actions[0].effects.push({
+        kind: "dec",
+        target: { kind: "var", id: "missingVar" },
+        amount: 1,
+      });
+      definition.actions[0].targets.push({
+        id: "ghost",
+        kind: "token",
+        selector: {
+          zone: "missingZone",
+          tokenType: "pawn",
+          count: 1,
         },
-      ],
-    },
-  ];
+      });
+      definition.actions[0].targets.push({
+        id: "wrongType",
+        kind: "token",
+        selector: {
+          zone: "board",
+          tokenType: "missingTokenType",
+          count: 1,
+        },
+      });
+      definition.termination.conditions.push({
+        condition: {
+          kind: "cmp",
+          op: "==",
+          left: {
+            kind: "ref",
+            ref: { kind: "token", id: "pawn", attribute: "missingAttr" },
+          },
+          right: { kind: "value", value: 1 },
+        },
+        outcome: {
+          type: "draw",
+          players: "all",
+        },
+      });
 
-  const result = validateSemanticDefinition(definition);
+      const result = validateSemanticDefinition(definition);
 
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "dominant-action"));
-});
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "ref-unknown"));
+      assert.ok(hasRule(result.issues, "zone-unknown"));
+      assert.ok(hasRule(result.issues, "token-type-unknown"));
+      assert.ok(hasRule(result.issues, "token-attribute-unknown"));
+      assert.ok(hasRule(result.issues, "unused-variable"));
+      assert.ok(hasRule(result.issues, "unused-token-type"));
+      assert.ok(hasRule(result.issues, "unused-zone"));
+    });
+  });
 
-test("integration: reports no meaningful actions", () => {
-  const definition = baseDefinition();
-  definition.actions = [];
+  describe("meta refs", () => {
+    it("allows known meta refs in expressions", () => {
+      const definition = baseDefinition();
+      definition.termination.conditions[0].condition = {
+        kind: "cmp",
+        op: "==",
+        left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+        right: { kind: "value", value: 0 },
+      };
 
-  const result = validateSemanticDefinition(definition);
+      const issues = collectSemanticIssues(definition);
 
-  assertValidMatchesIssues(result);
-  assert.ok(hasRule(result.issues, "no-meaningful-actions"));
-});
+      assert.equal(hasRule(issues, "meta-ref-unknown"), false);
+      assert.equal(hasRule(issues, "meta-ref-disallowed"), false);
+    });
 
-test("integration: enforces no-legal-actions defaultOutcome policy", () => {
-  const missingOutcome = baseDefinition();
-  missingOutcome.turn.noLegalActions = { policy: "terminate" };
+    it("rejects unknown meta refs in expressions", () => {
+      const definition = baseDefinition();
+      definition.termination.conditions[0].condition = {
+        kind: "cmp",
+        op: "==",
+        left: { kind: "ref", ref: { kind: "meta", id: "badMeta" } },
+        right: { kind: "value", value: 0 },
+      };
 
-  const extraOutcome = baseDefinition();
-  extraOutcome.turn.noLegalActions = {
-    policy: "pass",
-    defaultOutcome: { type: "draw", players: "all" },
-  };
+      const result = validateSemanticDefinition(definition);
 
-  const resultMissing = validateSemanticDefinition(missingOutcome);
-  const resultExtra = validateSemanticDefinition(extraOutcome);
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "meta-ref-unknown"));
+    });
+  });
 
-  assertValidMatchesIssues(resultMissing);
-  assertValidMatchesIssues(resultExtra);
-  assert.ok(hasRule(resultMissing.issues, "no-legal-actions-default-outcome"));
-  assert.ok(hasRule(resultExtra.issues, "no-legal-actions-default-outcome"));
+  describe("action validation", () => {
+    it("reports unsatisfiable action preconditions", () => {
+      const definition = baseDefinition();
+      definition.state.variables[0].type = { kind: "int", min: 0, max: 1 };
+      definition.actions[0].preconditions = {
+        kind: "cmp",
+        op: ">",
+        left: { kind: "ref", ref: { kind: "var", id: "score" } },
+        right: { kind: "value", value: 5 },
+      };
+      definition.actions.push({
+        id: "wait",
+        actor: "player",
+        effects: [],
+        targets: [],
+      });
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "action-precondition-unsatisfiable"));
+    });
+
+    it("reports free-lunch actions", () => {
+      const definition = baseDefinition();
+      definition.actions = [
+        {
+          id: "free",
+          actor: "player",
+          effects: [
+            {
+              kind: "spawn",
+              target: { kind: "token", id: "pawn" },
+              toZone: "board",
+            },
+          ],
+          targets: [],
+          costs: [],
+        },
+      ];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "free-lunch"));
+    });
+
+    it("reports dominant actions", () => {
+      const definition = baseDefinition();
+      definition.actions = [
+        {
+          id: "free",
+          actor: "player",
+          effects: [
+            {
+              kind: "spawn",
+              target: { kind: "token", id: "pawn" },
+              toZone: "board",
+            },
+          ],
+          targets: [],
+          costs: [],
+        },
+        {
+          id: "limited",
+          actor: "player",
+          effects: [
+            {
+              kind: "inc",
+              target: { kind: "var", id: "score" },
+              amount: 1,
+            },
+          ],
+          targets: [
+            {
+              id: "piece",
+              kind: "token",
+              selector: {
+                zone: "board",
+                tokenType: "pawn",
+                count: 1,
+              },
+            },
+          ],
+        },
+      ];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "dominant-action"));
+    });
+
+    it("reports no meaningful actions", () => {
+      const definition = baseDefinition();
+      definition.actions = [];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "no-meaningful-actions"));
+    });
+  });
+
+  describe("no-legal-actions policy", () => {
+    it("enforces no-legal-actions defaultOutcome policy", () => {
+      const missingOutcome = baseDefinition();
+      missingOutcome.turn.noLegalActions = { policy: "terminate" };
+
+      const extraOutcome = baseDefinition();
+      extraOutcome.turn.noLegalActions = {
+        policy: "pass",
+        defaultOutcome: { type: "draw", players: "all" },
+      };
+
+      const resultMissing = validateSemanticDefinition(missingOutcome);
+      const resultExtra = validateSemanticDefinition(extraOutcome);
+
+      assertValidMatchesIssues(resultMissing);
+      assertValidMatchesIssues(resultExtra);
+      assert.ok(hasRule(resultMissing.issues, "no-legal-actions-default-outcome"));
+      assert.ok(hasRule(resultExtra.issues, "no-legal-actions-default-outcome"));
+    });
+  });
 });

@@ -15,7 +15,7 @@ Default parameters are loaded from config files under `configs/`:
 
 - `configs/metrics-core.json` for feature ordering and normalization policy.
 - `configs/metrics-extended.json` for optional metric parameters and enabled flags.
-- `configs/degeneracy.json` for thresholds, enabled flags, and reject lists.
+- `configs/degeneracy.json` for thresholds, policy-per-flag, penalty weights, and `minStepsForNoChoices` guard.
 - `configs/fitness.json` for weights and preference/diversity blending defaults.
 
 Explicit options passed into metric/fitness helpers override config defaults.
@@ -93,10 +93,15 @@ Implemented in `src/evaluation-analytics/degeneracy.js` with defaults from
 - Stalemate: any run terminates with `terminationReason` in
   `["stalemate", "no-legal-actions"]` AND the terminal outcome is a draw for all players.
 - Non-terminating: any run has `terminationReason = "max-turns"` or `terminated=false`.
-- Forced move: ratio of steps with `legalActionCount <= 1` >= 0.8.
-- No choices: every sampled step has `legalActionCount <= 1`.
+- Forced move: ratio of full trajectory steps with `legalActionCount <= 1` >= 0.8.
+- No choices: every full trajectory step has `legalActionCount <= 1`, subject to the
+  `minStepsForNoChoices` guard (games with fewer total steps than the guard are never
+  flagged as no-choices).
 - Dominant action: top action frequency / total actions >= 0.8 with >= 10 samples.
 - Trivial win: one player wins >= 0.9 of samples and average steps <= 3.
+
+Note: `forcedMove` and `noChoices` are preference/policy knobs, not genre-truth.
+Some game designs legitimately have constrained action spaces.
 
 Degeneracy flags and filters are configured by:
 
@@ -105,8 +110,16 @@ Degeneracy flags and filters are configured by:
 - `thresholds.dominantAction.ratio`, `thresholds.dominantAction.minSamples`
 - `thresholds.trivialWin.winRate`, `thresholds.trivialWin.maxAvgSteps`,
   `thresholds.trivialWin.minSamples`
-- `flags`: enabled degeneracy flags
-- `rejectOn`: flags that trigger rejection in filters
+- `enabledFlags`: which degeneracy flags are active
+- `policyByFlag`: per-flag policy with three semantics:
+  - `"reject"` — genome is filtered out entirely (hard gate)
+  - `"penalize"` — genome receives a fitness penalty (soft pressure)
+  - `"ignore"` — flag is detected but has no effect on fitness or filtering
+- `penalties`: per-flag penalty configuration (`weight` and optional `freeRatio`)
+- `minStepsForNoChoices`: minimum total trajectory steps required before the no-choices
+  flag can fire (guards against false positives on very short games)
+
+Default policies: `loop` and `non-terminating` → reject; all others → penalize.
 
 ## Feature Vector Assembly
 
@@ -156,4 +169,9 @@ Implemented in `src/evaluation-analytics/fitness.js` and `scoring.js`:
 - Bootstrap: if sample count < `preferenceBootstrapSamples`, cap is reduced to
   `preferenceBootstrapCap`.
 
-Final fitness = base + diversity + preference.
+Final fitness = base + diversity + preference - degeneracyPenalty.
+
+The degeneracy penalty is computed by summing per-flag penalties for all raised flags
+whose policy is `"penalize"`. Each flag's penalty entry specifies a `weight` and an
+optional `freeRatio` (portion of the flag's severity that is forgiven). Flags with
+policy `"reject"` or `"ignore"` do not contribute to the penalty.

@@ -1,5 +1,6 @@
 import type {
   CompositeScore,
+  DegeneracyReport,
   FeatureVector,
   PreferenceModelState,
   PreferenceScore,
@@ -9,11 +10,13 @@ import type {
   FitnessBlendComponents,
   FitnessBlendOptions,
 } from "./scoring.js";
+import type { DegeneracyPenaltyConfig } from "./degeneracy.js";
 
 export interface PreferenceFitnessDiagnostics {
   preferenceScore: number | null;
   preferenceConfidence: number | null;
   blend: FitnessBlendComponents;
+  degeneracyPenalty: number;
 }
 
 export interface PreferenceFitnessResult {
@@ -28,6 +31,8 @@ export interface PreferenceFitnessOptions extends FitnessBlendOptions {
   compositeScoreOptions?: CompositeScoreOptions;
   preferenceModelState?: PreferenceModelState;
   diversityPressure?: number;
+  degeneracyReport?: DegeneracyReport;
+  degeneracyPenaltyConfig?: DegeneracyPenaltyConfig;
 }
 
 export function computePreferenceAwareFitness(

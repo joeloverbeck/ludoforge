@@ -153,14 +153,16 @@ function combineFitnessScores(compositeScore, preferenceScore, diversityPressure
     preferenceScore,
     options
   );
+  const degeneracyPenalty = Math.max(0, safeNumber(options.degeneracyPenalty));
 
   return {
-    score: base + diversityContribution + preferenceContribution,
+    score: base + diversityContribution + preferenceContribution - degeneracyPenalty,
     components: {
       base,
       preference: preferenceContribution,
       diversity: diversityContribution,
       preferenceCap: cap,
+      degeneracyPenalty,
     },
   };
 }

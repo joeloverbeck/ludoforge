@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,77 +9,85 @@ import {
   writeGameDefinitionJsonl,
 } from "../../../src/data-persistence/game-definition-store.js";
 
-const definition = {
-  version: "0.1.0",
-  players: { count: 2 },
-  actions: [],
-  state: { variables: [] },
-  termination: { conditions: [] },
-  turn: { scheduler: "round_robin" },
-};
-
-function createRecord(overrides = {}) {
-  return {
-    id: "game-1",
-    version: "1.0",
-    createdAt: "2025-01-01T00:00:00Z",
-    definition,
-    descriptors: {
-      name: "Sample",
-      tags: ["beta", "alpha", "beta"],
-    },
-    ...overrides,
+describe("game-definition-store", () => {
+  const definition = {
+    version: "0.1.0",
+    players: { count: 2 },
+    actions: [],
+    state: { variables: [] },
+    termination: { conditions: [] },
+    turn: { scheduler: "round_robin" },
   };
-}
 
-test("writes and reads normalized game definition JSONL", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
-  const filePath = join(dir, "games.jsonl");
+  function createRecord(overrides = {}) {
+    return {
+      id: "game-1",
+      version: "1.0",
+      createdAt: "2025-01-01T00:00:00Z",
+      definition,
+      descriptors: {
+        name: "Sample",
+        tags: ["beta", "alpha", "beta"],
+      },
+      ...overrides,
+    };
+  }
 
-  await writeGameDefinitionJsonl(filePath, [createRecord()]);
+  describe("writeGameDefinitionJsonl / readGameDefinitionJsonl", () => {
+    it("writes and reads normalized game definition JSONL", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
+      const filePath = join(dir, "games.jsonl");
 
-  const records = await readGameDefinitionJsonl(filePath);
-  assert.equal(records.length, 1);
-  assert.deepEqual(records[0].descriptors.tags, ["alpha", "beta"]);
-});
+      await writeGameDefinitionJsonl(filePath, [createRecord()]);
 
-test("serialization is deterministic for the same logical record", async () => {
-  const recordA = createRecord({
-    definition: {
-      players: { count: 2 },
-      version: "0.1.0",
-      state: { variables: [] },
-      actions: [],
-      termination: { conditions: [] },
-      turn: { scheduler: "round_robin" },
-    },
+      const records = await readGameDefinitionJsonl(filePath);
+      assert.equal(records.length, 1);
+      assert.deepEqual(records[0].descriptors.tags, ["alpha", "beta"]);
+    });
   });
 
-  const recordB = {
-    version: "1.0",
-    id: "game-1",
-    createdAt: "2025-01-01T00:00:00Z",
-    descriptors: { tags: ["alpha", "beta"], name: "Sample" },
-    definition,
-  };
+  describe("serializeGameDefinitionRecord", () => {
+    it("serialization is deterministic for the same logical record", async () => {
+      const recordA = createRecord({
+        definition: {
+          players: { count: 2 },
+          version: "0.1.0",
+          state: { variables: [] },
+          actions: [],
+          termination: { conditions: [] },
+          turn: { scheduler: "round_robin" },
+        },
+      });
 
-  const serializedA = serializeGameDefinitionRecord(recordA);
-  const serializedB = serializeGameDefinitionRecord(recordB);
+      const recordB = {
+        version: "1.0",
+        id: "game-1",
+        createdAt: "2025-01-01T00:00:00Z",
+        descriptors: { tags: ["alpha", "beta"], name: "Sample" },
+        definition,
+      };
 
-  assert.equal(serializedA, serializedB);
-});
+      const serializedA = serializeGameDefinitionRecord(recordA);
+      const serializedB = serializeGameDefinitionRecord(recordB);
 
-test("rejects missing required metadata", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
-  const filePath = join(dir, "games.jsonl");
+      assert.equal(serializedA, serializedB);
+    });
+  });
 
-  await assert.rejects(
-    () => writeGameDefinitionJsonl(filePath, [createRecord({ id: "" })]),
-    /required metadata: id/i,
-  );
+  describe("validation", () => {
+    it("rejects missing required metadata", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "ludoforge-"));
+      const filePath = join(dir, "games.jsonl");
 
-  assert.throws(
-    () => serializeGameDefinitionRecord(createRecord({ version: "" })),
-    /required metadata: version/i,
-  );
+      await assert.rejects(
+        () => writeGameDefinitionJsonl(filePath, [createRecord({ id: "" })]),
+        /required metadata: id/i,
+      );
+
+      assert.throws(
+        () => serializeGameDefinitionRecord(createRecord({ version: "" })),
+        /required metadata: version/i,
+      );
+    });
+  });
 });

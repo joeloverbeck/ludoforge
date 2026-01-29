@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { routeTurn } from "../../../src/human-interface/router.js";
 import { createBaseDefinition, createIncrementAction } from "../simulation-engine/fixtures.mjs";
@@ -69,58 +69,66 @@ function createIo(inputs = []) {
   };
 }
 
-test("router prompts the active human and keeps private zones scoped", async () => {
-  const definition = createBaseDefinition();
-  definition.players.count = 2;
-  definition.actions = [createIncrementAction()];
-  const state = baseState();
-  const io = createIo(["1"]);
+describe("router", () => {
+  describe("routeTurn", () => {
+    describe("human participants", () => {
+      it("prompts the active human and keeps private zones scoped", async () => {
+        const definition = createBaseDefinition();
+        definition.players.count = 2;
+        definition.actions = [createIncrementAction()];
+        const state = baseState();
+        const io = createIo(["1"]);
 
-  const result = await routeTurn({
-    definition,
-    state,
-    participants: [
-      { kind: "human", playerId: 1, name: "Alice", io },
-      { kind: "human", playerId: 2, name: "Bob", io: createIo(["1"]) },
-    ],
+        const result = await routeTurn({
+          definition,
+          state,
+          participants: [
+            { kind: "human", playerId: 1, name: "Alice", io },
+            { kind: "human", playerId: 2, name: "Bob", io: createIo(["1"]) },
+          ],
+        });
+
+        assert.equal(result.action.id, "tick");
+        const output = io.lines.join("\n");
+        assert.ok(output.includes("secret (per_player/private/unordered)"));
+        assert.ok(output.includes("Player 1: t8"));
+        assert.ok(!output.includes("Player 2: t9"));
+      });
+    });
+
+    describe("AI participants", () => {
+      it("delegates to AI providers without prompting humans", async () => {
+        const definition = createBaseDefinition();
+        definition.players.count = 2;
+        definition.actions = [createIncrementAction()];
+        const state = baseState();
+        state.turn.currentPlayer = 2;
+        let calls = 0;
+        const aiProvider = ({ legalActions }) => {
+          calls += 1;
+          return legalActions[0].id;
+        };
+        const unusedIo = {
+          readLine: async () => {
+            throw new Error("Human IO should not be used for AI turns.");
+          },
+          writeLine: () => {
+            throw new Error("Human IO should not be used for AI turns.");
+          },
+        };
+
+        const result = await routeTurn({
+          definition,
+          state,
+          participants: [
+            { kind: "human", playerId: 1, name: "Alice", io: unusedIo },
+            { kind: "ai", playerId: 2, name: "Bot", actionProvider: aiProvider },
+          ],
+        });
+
+        assert.equal(result.action.id, "tick");
+        assert.equal(calls, 1);
+      });
+    });
   });
-
-  assert.equal(result.action.id, "tick");
-  const output = io.lines.join("\n");
-  assert.ok(output.includes("secret (per_player/private/unordered)"));
-  assert.ok(output.includes("Player 1: t8"));
-  assert.ok(!output.includes("Player 2: t9"));
-});
-
-test("router delegates to AI providers without prompting humans", async () => {
-  const definition = createBaseDefinition();
-  definition.players.count = 2;
-  definition.actions = [createIncrementAction()];
-  const state = baseState();
-  state.turn.currentPlayer = 2;
-  let calls = 0;
-  const aiProvider = ({ legalActions }) => {
-    calls += 1;
-    return legalActions[0].id;
-  };
-  const unusedIo = {
-    readLine: async () => {
-      throw new Error("Human IO should not be used for AI turns.");
-    },
-    writeLine: () => {
-      throw new Error("Human IO should not be used for AI turns.");
-    },
-  };
-
-  const result = await routeTurn({
-    definition,
-    state,
-    participants: [
-      { kind: "human", playerId: 1, name: "Alice", io: unusedIo },
-      { kind: "ai", playerId: 2, name: "Bot", actionProvider: aiProvider },
-    ],
-  });
-
-  assert.equal(result.action.id, "tick");
-  assert.equal(calls, 1);
 });

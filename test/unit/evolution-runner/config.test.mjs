@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { validateRunnerConfig } from "../../../src/evolution-runner/config.js";
 
@@ -35,72 +35,76 @@ function compareErrors(left, right) {
   return 0;
 }
 
-test("validateRunnerConfig returns valid true for a minimal config", () => {
-  const result = validateRunnerConfig(cloneConfig(baseConfig));
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.errors, []);
-});
+describe("config", () => {
+  describe("validateRunnerConfig", () => {
+    it("returns valid true for a minimal config", () => {
+      const result = validateRunnerConfig(cloneConfig(baseConfig));
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
 
-test("validateRunnerConfig returns sorted, structured errors", () => {
-  const candidate = cloneConfig(baseConfig);
-  delete candidate.version;
-  candidate.runner.generations = 0;
+    it("returns sorted, structured errors", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.version;
+      candidate.runner.generations = 0;
 
-  const result = validateRunnerConfig(candidate);
+      const result = validateRunnerConfig(candidate);
 
-  assert.equal(result.valid, false);
-  assert.ok(result.errors.length >= 2);
-  assert.ok(result.errors.some((error) => error.path === "/version"));
+      assert.equal(result.valid, false);
+      assert.ok(result.errors.length >= 2);
+      assert.ok(result.errors.some((error) => error.path === "/version"));
 
-  const sorted = [...result.errors].sort(compareErrors);
-  assert.deepEqual(result.errors, sorted);
-});
+      const sorted = [...result.errors].sort(compareErrors);
+      assert.deepEqual(result.errors, sorted);
+    });
 
-test("validateRunnerConfig reports descriptor range violations", () => {
-  const candidate = cloneConfig(baseConfig);
-  candidate.mapElites.descriptors[0].min = 5;
-  candidate.mapElites.descriptors[0].max = 1;
+    it("reports descriptor range violations", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.mapElites.descriptors[0].min = 5;
+      candidate.mapElites.descriptors[0].max = 1;
 
-  const result = validateRunnerConfig(candidate);
+      const result = validateRunnerConfig(candidate);
 
-  assert.equal(result.valid, false);
-  assert.ok(
-    result.errors.some(
-      (error) =>
-        error.path === "/mapElites/descriptors/0" &&
-        /max must be greater than min/i.test(error.message),
-    ),
-  );
-});
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/mapElites/descriptors/0" &&
+            /max must be greater than min/i.test(error.message),
+        ),
+      );
+    });
 
-test("validateRunnerConfig reports duplicate descriptor ids", () => {
-  const candidate = cloneConfig(baseConfig);
-  candidate.mapElites.descriptors.push({ id: "balance", min: 0, max: 10, bins: 4 });
+    it("reports duplicate descriptor ids", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.mapElites.descriptors.push({ id: "balance", min: 0, max: 10, bins: 4 });
 
-  const result = validateRunnerConfig(candidate);
+      const result = validateRunnerConfig(candidate);
 
-  assert.equal(result.valid, false);
-  assert.ok(
-    result.errors.some(
-      (error) =>
-        error.path === "/mapElites/descriptors/1/id" &&
-        /duplicated/i.test(error.message),
-    ),
-  );
-});
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/mapElites/descriptors/1/id" &&
+            /duplicated/i.test(error.message),
+        ),
+      );
+    });
 
-test("validateRunnerConfig reports schema violations for descriptors", () => {
-  const candidate = cloneConfig(baseConfig);
-  candidate.mapElites.descriptors[0].bins = 0;
+    it("reports schema violations for descriptors", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.mapElites.descriptors[0].bins = 0;
 
-  const result = validateRunnerConfig(candidate);
+      const result = validateRunnerConfig(candidate);
 
-  assert.equal(result.valid, false);
-  assert.ok(
-    result.errors.some(
-      (error) =>
-        error.path === "/mapElites/descriptors/0/bins" &&
-        /must be >= 1/i.test(error.message),
-    ),
-  );
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/mapElites/descriptors/0/bins" &&
+            /must be >= 1/i.test(error.message),
+        ),
+      );
+    });
+  });
 });

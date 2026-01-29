@@ -1,6 +1,6 @@
 # DEGFILISS-004: Add `computeDegeneracyPenalty()` and wire into fitness blend
 
-**Status:** Open
+**Status:** Done
 **Depends on:** DEGFILISS-001, DEGFILISS-002
 **Blocks:** DEGFILISS-005
 
@@ -77,3 +77,10 @@ Penalty formulas:
 - [ ] Policy semantics: reject = rejected before scoring; penalize = fitness decreased; ignore = no effect
 - [ ] Determinism invariant holds
 - [ ] `npm run test:unit` passes
+
+## Outcome
+
+- Function signature is `computeDegeneracyPenalty(report, penaltyConfig)` — 2 args, not 3 as originally specified. The `analytics` param was unnecessary because `detectDegeneracy` now returns a `ratios` field with numeric values (e.g., `ratios["forced-move"]`), making the report self-contained.
+- `DegeneracyReport` gained an optional `ratios?: Partial<Record<string, number>>` field.
+- `preference-evaluator.d.ts` needed no changes — `PreferenceEvaluatorOptions` extends `PreferenceFitnessOptions`, so new fields flow automatically.
+- All 329 unit tests pass including 12 new tests (9 degeneracy, 2 scoring, 1 fitness).

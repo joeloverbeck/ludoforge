@@ -18,6 +18,7 @@ export interface FitnessBlendOptions {
   preferenceSampleCount?: number;
   diversityWeight?: number;
   allowPreference?: boolean;
+  degeneracyPenalty?: number;
 }
 
 export interface FitnessBlendComponents {
@@ -25,6 +26,7 @@ export interface FitnessBlendComponents {
   preference: number;
   diversity: number;
   preferenceCap: number;
+  degeneracyPenalty: number;
 }
 
 export interface FitnessBlendResult {

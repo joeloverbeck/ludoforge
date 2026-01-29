@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { subtreeSwapCrossover } from "../../../src/evolutionary-engine/crossover.js";
@@ -16,29 +16,33 @@ function makeRenamedVariableDefinition() {
   return definition;
 }
 
-test("subtreeSwapCrossover swaps action lists without mutating parents", () => {
-  const parentA = { definition: cloneDefinition(baseDefinition) };
-  const parentBDefinition = cloneDefinition(baseDefinition);
-  const baseAction = structuredClone(baseDefinition.actions[0]);
-  parentBDefinition.actions = [{ ...baseAction, id: "pass" }];
-  const parentB = { definition: parentBDefinition };
-  const rng = { nextInt: () => 1 };
+describe("crossover", () => {
+  describe("subtreeSwapCrossover", () => {
+    it("swaps action lists without mutating parents", () => {
+      const parentA = { definition: cloneDefinition(baseDefinition) };
+      const parentBDefinition = cloneDefinition(baseDefinition);
+      const baseAction = structuredClone(baseDefinition.actions[0]);
+      parentBDefinition.actions = [{ ...baseAction, id: "pass" }];
+      const parentB = { definition: parentBDefinition };
+      const rng = { nextInt: () => 1 };
 
-  const child = subtreeSwapCrossover.crossover(parentA, parentB, rng);
+      const child = subtreeSwapCrossover.crossover(parentA, parentB, rng);
 
-  assert.ok(child);
-  assert.equal(parentA.definition.actions[0].id, "move");
-  assert.equal(parentB.definition.actions[0].id, "pass");
-  assert.equal(child.definition.actions[0].id, "pass");
-  assert.notStrictEqual(child.definition.actions, parentA.definition.actions);
-});
+      assert.ok(child);
+      assert.equal(parentA.definition.actions[0].id, "move");
+      assert.equal(parentB.definition.actions[0].id, "pass");
+      assert.equal(child.definition.actions[0].id, "pass");
+      assert.notStrictEqual(child.definition.actions, parentA.definition.actions);
+    });
 
-test("subtreeSwapCrossover returns null when swap breaks DSL references", () => {
-  const parentA = { definition: cloneDefinition(baseDefinition) };
-  const parentB = { definition: makeRenamedVariableDefinition() };
-  const rng = { nextInt: () => 0 };
+    it("returns null when swap breaks DSL references", () => {
+      const parentA = { definition: cloneDefinition(baseDefinition) };
+      const parentB = { definition: makeRenamedVariableDefinition() };
+      const rng = { nextInt: () => 0 };
 
-  const child = subtreeSwapCrossover.crossover(parentA, parentB, rng);
+      const child = subtreeSwapCrossover.crossover(parentA, parentB, rng);
 
-  assert.equal(child, null);
+      assert.equal(child, null);
+    });
+  });
 });

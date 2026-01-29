@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { validateGameDefinition } from "../../src/dsl/validate.js";
@@ -26,41 +26,47 @@ function reorderKeys(value) {
   return value;
 }
 
-test("game definitions validate and serialize deterministically", async () => {
-  const definition = await loadFixture("minimal-game.json");
+describe("game-definition", () => {
+  describe("validation and serialization", () => {
+    it("game definitions validate and serialize deterministically", async () => {
+      const definition = await loadFixture("minimal-game.json");
 
-  const schemaResult = validateGameDefinition(definition);
-  assert.equal(
-    schemaResult.valid,
-    true,
-    `Schema validation failed: ${JSON.stringify(schemaResult.errors)}`,
-  );
+      const schemaResult = validateGameDefinition(definition);
+      assert.equal(
+        schemaResult.valid,
+        true,
+        `Schema validation failed: ${JSON.stringify(schemaResult.errors)}`,
+      );
 
-  const semanticResult = validateSemanticDefinition(definition);
-  assert.equal(
-    semanticResult.valid,
-    true,
-    `Semantic validation failed: ${JSON.stringify(semanticResult.issues)}`,
-  );
+      const semanticResult = validateSemanticDefinition(definition);
+      assert.equal(
+        semanticResult.valid,
+        true,
+        `Semantic validation failed: ${JSON.stringify(semanticResult.issues)}`,
+      );
 
-  const serialized = serializeGameDefinition(definition);
-  const reorderedSerialized = serializeGameDefinition(reorderKeys(definition));
+      const serialized = serializeGameDefinition(definition);
+      const reorderedSerialized = serializeGameDefinition(reorderKeys(definition));
 
-  assert.equal(serialized, reorderedSerialized);
-  assert.equal(serialized, serializeGameDefinition(definition));
-});
+      assert.equal(serialized, reorderedSerialized);
+      assert.equal(serialized, serializeGameDefinition(definition));
+    });
+  });
 
-test("game definition validation fails when required fields are missing", async () => {
-  const definition = await loadFixture("minimal-game.json");
-  delete definition.players;
+  describe("validation errors", () => {
+    it("game definition validation fails when required fields are missing", async () => {
+      const definition = await loadFixture("minimal-game.json");
+      delete definition.players;
 
-  const schemaResult = validateGameDefinition(definition);
-  assert.equal(schemaResult.valid, false);
-  assert.ok(
-    schemaResult.errors?.some(
-      (error) =>
-        error.keyword === "required" &&
-        error.params?.missingProperty === "players",
-    ),
-  );
+      const schemaResult = validateGameDefinition(definition);
+      assert.equal(schemaResult.valid, false);
+      assert.ok(
+        schemaResult.errors?.some(
+          (error) =>
+            error.keyword === "required" &&
+            error.params?.missingProperty === "players",
+        ),
+      );
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { adaptSimulationLog, LOG_ADAPTER_VERSION } from "../../src/evaluation-analytics/log-adapter.js";
 import { computeExtendedMetrics } from "../../src/evaluation-analytics/metrics/extended.js";
@@ -77,34 +77,36 @@ function getMetric(metrics, id) {
   return metric.value;
 }
 
-test("extended metrics integrate length, outcome, and coverage summaries", () => {
-  const definition = createWinLoseDefinition();
-  const winEngine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
-  });
-  const loseEngine = createSimulationEngine({
-    definition,
-    agents: [createLastActionAgent()],
-  });
-
-  const results = [winEngine.run(), loseEngine.run()];
-  const logResult = adaptSimulationLog({
-    version: LOG_ADAPTER_VERSION,
-    log: {
+describe("extended-metrics", () => {
+  it("integrates length, outcome, and coverage summaries", () => {
+    const definition = createWinLoseDefinition();
+    const winEngine = createSimulationEngine({
       definition,
-      results,
-    },
+      agents: [createFirstActionAgent()],
+    });
+    const loseEngine = createSimulationEngine({
+      definition,
+      agents: [createLastActionAgent()],
+    });
+
+    const results = [winEngine.run(), loseEngine.run()];
+    const logResult = adaptSimulationLog({
+      version: LOG_ADAPTER_VERSION,
+      log: {
+        definition,
+        results,
+      },
+    });
+
+    assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
+    const summaries = logResult.value.trajectorySummaries;
+    const metrics = computeExtendedMetrics(definition, summaries);
+
+    assert.ok(Math.abs(getMetric(metrics, "length_mean") - 1) < 1e-9);
+    assert.ok(Math.abs(getMetric(metrics, "length_variance") - 0) < 1e-9);
+    assert.ok(Math.abs(getMetric(metrics, "early_termination_rate") - 0) < 1e-9);
+    assert.ok(Math.abs(getMetric(metrics, "outcome_variance") - 0.25) < 1e-9);
+    assert.ok(Math.abs(getMetric(metrics, "coverage_actions") - 1) < 1e-9);
+    assert.ok(Math.abs(getMetric(metrics, "coverage_state") - 1) < 1e-9);
   });
-
-  assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
-  const summaries = logResult.value.trajectorySummaries;
-  const metrics = computeExtendedMetrics(definition, summaries);
-
-  assert.ok(Math.abs(getMetric(metrics, "length_mean") - 1) < 1e-9);
-  assert.ok(Math.abs(getMetric(metrics, "length_variance") - 0) < 1e-9);
-  assert.ok(Math.abs(getMetric(metrics, "early_termination_rate") - 0) < 1e-9);
-  assert.ok(Math.abs(getMetric(metrics, "outcome_variance") - 0.25) < 1e-9);
-  assert.ok(Math.abs(getMetric(metrics, "coverage_actions") - 1) < 1e-9);
-  assert.ok(Math.abs(getMetric(metrics, "coverage_state") - 1) < 1e-9);
 });

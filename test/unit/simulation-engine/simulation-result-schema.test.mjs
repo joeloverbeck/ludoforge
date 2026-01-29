@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import Ajv from "ajv/dist/2020.js";
@@ -42,25 +42,31 @@ function buildMaxTurnResult() {
   return engine.run();
 }
 
-test("SimulationResult validates against the schema", () => {
-  const result = buildMaxTurnResult();
-  assertValid(result);
-});
+describe("simulation-result-schema", () => {
+  describe("schema validation", () => {
+    it("SimulationResult validates against the schema", () => {
+      const result = buildMaxTurnResult();
+      assertValid(result);
+    });
 
-test("schema rejects outcome.reason", () => {
-  const result = buildMaxTurnResult();
-  const candidate = structuredClone(result);
-  candidate.outcome.reason = "max-turns";
-  assertInvalid(candidate);
-});
+    it("rejects outcome.reason", () => {
+      const result = buildMaxTurnResult();
+      const candidate = structuredClone(result);
+      candidate.outcome.reason = "max-turns";
+      assertInvalid(candidate);
+    });
+  });
 
-test("schema rejects steps missing affected fields", () => {
-  const result = buildMaxTurnResult();
-  const missingIds = structuredClone(result);
-  delete missingIds.trajectory.steps[0].affectedPlayerIds;
-  assertInvalid(missingIds);
+  describe("required fields", () => {
+    it("rejects steps missing affected fields", () => {
+      const result = buildMaxTurnResult();
+      const missingIds = structuredClone(result);
+      delete missingIds.trajectory.steps[0].affectedPlayerIds;
+      assertInvalid(missingIds);
 
-  const missingGlobal = structuredClone(result);
-  delete missingGlobal.trajectory.steps[0].affectedGlobal;
-  assertInvalid(missingGlobal);
+      const missingGlobal = structuredClone(result);
+      delete missingGlobal.trajectory.steps[0].affectedGlobal;
+      assertInvalid(missingGlobal);
+    });
+  });
 });

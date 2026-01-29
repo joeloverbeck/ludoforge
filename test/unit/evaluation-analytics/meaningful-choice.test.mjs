@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { computeMeaningfulChoice } from "../../../src/evaluation-analytics/metrics/extended.js";
 import { createSimulationEngine } from "../../../src/simulation-engine/index.js";
@@ -84,36 +84,40 @@ function createSingleActionDefinition() {
   };
 }
 
-test("meaningful choice spread reflects action value differences", () => {
-  const definition = createMeaningfulChoiceDefinition();
-  const engine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
+describe("meaningful-choice", () => {
+  describe("computeMeaningfulChoice", () => {
+    it("spread reflects action value differences", () => {
+      const definition = createMeaningfulChoiceDefinition();
+      const engine = createSimulationEngine({
+        definition,
+        agents: [createFirstActionAgent()],
+      });
+      const result = engine.run();
+
+      const value = computeMeaningfulChoice(definition, [result], {
+        enabled: true,
+        decisionSamplesPerRun: 2,
+        rolloutsPerAction: 1,
+        rolloutMaxSteps: 4,
+        maxRolloutsPerRun: 4,
+        rolloutAgent: { kind: "random" },
+        seed: 42,
+      });
+
+      assert.ok(Math.abs(value - 2) < 1e-9);
+    });
+
+    it("returns 0 when no valid decision points exist", () => {
+      const definition = createSingleActionDefinition();
+      const engine = createSimulationEngine({
+        definition,
+        agents: [createFirstActionAgent()],
+      });
+      const result = engine.run();
+
+      const value = computeMeaningfulChoice(definition, [result], { enabled: true });
+
+      assert.equal(value, 0);
+    });
   });
-  const result = engine.run();
-
-  const value = computeMeaningfulChoice(definition, [result], {
-    enabled: true,
-    decisionSamplesPerRun: 2,
-    rolloutsPerAction: 1,
-    rolloutMaxSteps: 4,
-    maxRolloutsPerRun: 4,
-    rolloutAgent: { kind: "random" },
-    seed: 42,
-  });
-
-  assert.ok(Math.abs(value - 2) < 1e-9);
-});
-
-test("meaningful choice returns 0 when no valid decision points exist", () => {
-  const definition = createSingleActionDefinition();
-  const engine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
-  });
-  const result = engine.run();
-
-  const value = computeMeaningfulChoice(definition, [result], { enabled: true });
-
-  assert.equal(value, 0);
 });

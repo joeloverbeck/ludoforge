@@ -17,6 +17,7 @@ export function createPreferenceEvaluator(computeAnalytics, options = {}) {
       ...fitnessOptions,
       compositeScore: analytics.compositeScore ?? fitnessOptions.compositeScore,
       allowPreference,
+      degeneracyReport: analytics.degeneracy,
     });
 
     return {

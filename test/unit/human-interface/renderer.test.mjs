@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { renderState } from "../../../src/human-interface/renderer.js";
 
@@ -57,54 +57,64 @@ const baseState = () => ({
   },
 });
 
-test("renderer hides private zones when viewer is not the active player", () => {
-  const output = renderState({ state: baseState(), viewerPlayerId: 2 });
+describe("renderer", () => {
+  describe("renderState", () => {
+    describe("visibility", () => {
+      it("hides private zones when viewer is not the active player", () => {
+        const output = renderState({ state: baseState(), viewerPlayerId: 2 });
 
-  assert.ok(output.includes("table (global/public/unordered)"));
-  assert.ok(output.includes("hand (per_player/public/unordered)"));
-  assert.ok(!output.includes("deck (global/private/ordered)"));
-  assert.ok(!output.includes("secret (per_player/private/unordered)"));
-});
+        assert.ok(output.includes("table (global/public/unordered)"));
+        assert.ok(output.includes("hand (per_player/public/unordered)"));
+        assert.ok(!output.includes("deck (global/private/ordered)"));
+        assert.ok(!output.includes("secret (per_player/private/unordered)"));
+      });
 
-test("renderer shows private zones when viewer is the active player", () => {
-  const output = renderState({ state: baseState(), viewerPlayerId: 1 });
+      it("shows private zones when viewer is the active player", () => {
+        const output = renderState({ state: baseState(), viewerPlayerId: 1 });
 
-  assert.ok(output.includes("deck (global/private/ordered)"));
-  assert.ok(output.includes("secret (per_player/private/unordered)"));
-  assert.ok(output.includes("Player 1: t8"));
-  assert.ok(!output.includes("Player 2: t9"));
-});
+        assert.ok(output.includes("deck (global/private/ordered)"));
+        assert.ok(output.includes("secret (per_player/private/unordered)"));
+        assert.ok(output.includes("Player 1: t8"));
+        assert.ok(!output.includes("Player 2: t9"));
+      });
+    });
 
-test("renderer collapses large zone output", () => {
-  const state = baseState();
-  state.zones.table.tokens = ["t1", "t2", "t3", "t4"];
+    describe("formatting", () => {
+      it("collapses large zone output", () => {
+        const state = baseState();
+        state.zones.table.tokens = ["t1", "t2", "t3", "t4"];
 
-  const output = renderState({
-    state,
-    viewerPlayerId: 1,
-    options: { collapseLimit: 2 },
+        const output = renderState({
+          state,
+          viewerPlayerId: 1,
+          options: { collapseLimit: 2 },
+        });
+
+        assert.ok(output.includes("t1, t2 (+2 more)"));
+      });
+    });
+
+    describe("deltas", () => {
+      it("highlights variable and token deltas", () => {
+        const previousState = baseState();
+        const state = baseState();
+
+        state.variables.global.score = 5;
+        state.variables.perPlayer[1].health = 8;
+        state.zones.table.tokens = ["t2", "t3"];
+
+        const output = renderState({
+          state,
+          previousState,
+          viewerPlayerId: 1,
+        });
+
+        assert.ok(output.includes("Global Variables:"));
+        assert.ok(output.includes("score: 0 -> 5"));
+        assert.ok(output.includes("Player 1 Variables:"));
+        assert.ok(output.includes("health: 10 -> 8"));
+        assert.ok(output.includes("table: +t3 -t1"));
+      });
+    });
   });
-
-  assert.ok(output.includes("t1, t2 (+2 more)"));
-});
-
-test("renderer highlights variable and token deltas", () => {
-  const previousState = baseState();
-  const state = baseState();
-
-  state.variables.global.score = 5;
-  state.variables.perPlayer[1].health = 8;
-  state.zones.table.tokens = ["t2", "t3"];
-
-  const output = renderState({
-    state,
-    previousState,
-    viewerPlayerId: 1,
-  });
-
-  assert.ok(output.includes("Global Variables:"));
-  assert.ok(output.includes("score: 0 -> 5"));
-  assert.ok(output.includes("Player 1 Variables:"));
-  assert.ok(output.includes("health: 10 -> 8"));
-  assert.ok(output.includes("table: +t3 -t1"));
 });

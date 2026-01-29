@@ -4,9 +4,9 @@
   "title": "DegeneracyConfigFile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "thresholds", "flags", "rejectOn"],
+  "required": ["version", "thresholds", "enabledFlags", "policyByFlag", "penalties"],
   "properties": {
-    "version": { "type": "integer", "minimum": 1 },
+    "version": { "type": "integer", "minimum": 2 },
     "updatedAt": { "type": "string" },
     "thresholds": {
       "type": "object",
@@ -51,13 +51,74 @@
         }
       }
     },
-    "flags": {
+    "enabledFlags": {
       "type": "array",
       "items": { "$ref": "#/$defs/DegeneracyFlag" }
     },
-    "rejectOn": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/DegeneracyFlag" }
+    "policyByFlag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loop": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "stalemate": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "forced-move": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "dominant-action": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "trivial-win": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "no-choices": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "non-terminating": { "$ref": "#/$defs/DegeneracyPolicy" }
+      }
+    },
+    "penalties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forced-move": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight", "freeRatio"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 },
+            "freeRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "no-choices": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "dominant-action": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "trivial-win": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "stalemate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "minStepsForNoChoices": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10
     }
   },
   "$defs": {
@@ -72,6 +133,10 @@
         "no-choices",
         "non-terminating"
       ]
+    },
+    "DegeneracyPolicy": {
+      "type": "string",
+      "enum": ["reject", "penalize", "ignore"]
     }
   }
 }

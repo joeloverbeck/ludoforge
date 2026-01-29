@@ -52,6 +52,7 @@ const FALLBACK_DEGENERACY_THRESHOLDS = {
   trivialWinRate: 0.9,
   trivialWinMaxAverageSteps: 3,
   minTrivialWinSamples: 3,
+  minStepsForNoChoices: 10,
 };
 
 const FALLBACK_DEGENERACY_FLAGS = [
@@ -101,21 +102,33 @@ const DEFAULT_DEGENERACY_THRESHOLDS = {
     DEFAULT_DEGENERACY_CONFIG?.thresholds?.trivialWin?.minSamples,
     FALLBACK_DEGENERACY_THRESHOLDS.minTrivialWinSamples
   ),
+  minStepsForNoChoices: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.minStepsForNoChoices,
+    FALLBACK_DEGENERACY_THRESHOLDS.minStepsForNoChoices
+  ),
 };
 
-const DEFAULT_DEGENERACY_FLAGS = Array.isArray(DEFAULT_DEGENERACY_CONFIG?.flags)
-  ? DEFAULT_DEGENERACY_CONFIG.flags.slice()
+const DEFAULT_DEGENERACY_FLAGS = Array.isArray(DEFAULT_DEGENERACY_CONFIG?.enabledFlags)
+  ? DEFAULT_DEGENERACY_CONFIG.enabledFlags.slice()
   : FALLBACK_DEGENERACY_FLAGS;
 
+function deriveRejectFlags(policyByFlag) {
+  if (policyByFlag && typeof policyByFlag === "object") {
+    return Object.entries(policyByFlag)
+      .filter(([, policy]) => policy === "reject")
+      .map(([flag]) => flag);
+  }
+  return FALLBACK_DEGENERACY_FLAGS;
+}
+
 const DEFAULT_DEGENERACY_FILTERS = {
-  rejectFlags: Array.isArray(DEFAULT_DEGENERACY_CONFIG?.rejectOn)
-    ? DEFAULT_DEGENERACY_CONFIG.rejectOn.slice()
-    : FALLBACK_DEGENERACY_FLAGS,
+  rejectFlags: deriveRejectFlags(DEFAULT_DEGENERACY_CONFIG?.policyByFlag),
 };
 
 function detectDegeneracy(summaries, thresholds = {}) {
   const flags = new Set();
   const details = {};
+  const ratios = {};
 
   const loopRepeatRatio = clampNumber(
     thresholds.loopRepeatRatio ?? DEFAULT_DEGENERACY_THRESHOLDS.loopRepeatRatio
@@ -141,6 +154,9 @@ function detectDegeneracy(summaries, thresholds = {}) {
   );
   const minTrivialWinSamples = clampNumber(
     thresholds.minTrivialWinSamples ?? DEFAULT_DEGENERACY_THRESHOLDS.minTrivialWinSamples
+  );
+  const minStepsForNoChoices = clampNumber(
+    thresholds.minStepsForNoChoices ?? DEFAULT_DEGENERACY_THRESHOLDS.minStepsForNoChoices
   );
 
   let loopDetectedCount = 0;
@@ -270,6 +286,7 @@ function detectDegeneracy(summaries, thresholds = {}) {
 
   if (forcedSamples > 0) {
     const ratio = forcedSteps / forcedSamples;
+    ratios["forced-move"] = ratio;
     if (ratio >= forcedMoveRatio) {
       flags.add("forced-move");
       details["forced-move"] = formatDetail({
@@ -279,7 +296,7 @@ function detectDegeneracy(summaries, thresholds = {}) {
         samples: forcedSamples,
       });
     }
-    if (forcedSteps === forcedSamples) {
+    if (forcedSteps === forcedSamples && forcedSamples >= minStepsForNoChoices) {
       flags.add("no-choices");
       details["no-choices"] = formatDetail({
         forced_steps: forcedSteps,
@@ -346,6 +363,7 @@ function detectDegeneracy(summaries, thresholds = {}) {
   return {
     flags: filteredFlags,
     details: Object.keys(filteredDetails).length > 0 ? filteredDetails : undefined,
+    ratios: Object.keys(ratios).length > 0 ? ratios : undefined,
   };
 }
 
@@ -359,9 +377,38 @@ function applyDegeneracyFilters(report, options = {}) {
   };
 }
 
+function computeDegeneracyPenalty(report, penaltyConfig) {
+  const config = penaltyConfig ?? DEFAULT_DEGENERACY_CONFIG;
+  const policyByFlag = config?.policyByFlag ?? {};
+  const penalties = config?.penalties ?? {};
+  const flagSet = new Set(report?.flags ?? []);
+
+  let total = 0;
+
+  for (const [flag, policy] of Object.entries(policyByFlag)) {
+    if (policy !== "penalize" || !flagSet.has(flag)) {
+      continue;
+    }
+    const penaltyDef = penalties[flag];
+    if (!penaltyDef || !Number.isFinite(penaltyDef.weight)) {
+      continue;
+    }
+    if (flag === "forced-move") {
+      const ratio = report?.ratios?.["forced-move"] ?? 0;
+      const freeRatio = Number.isFinite(penaltyDef.freeRatio) ? penaltyDef.freeRatio : 0;
+      total += Math.max(0, ratio - freeRatio) * penaltyDef.weight;
+    } else {
+      total += penaltyDef.weight;
+    }
+  }
+
+  return Math.max(0, total);
+}
+
 export {
   DEFAULT_DEGENERACY_THRESHOLDS,
   DEFAULT_DEGENERACY_FILTERS,
   detectDegeneracy,
   applyDegeneracyFilters,
+  computeDegeneracyPenalty,
 };

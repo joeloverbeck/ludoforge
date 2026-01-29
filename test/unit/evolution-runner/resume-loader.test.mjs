@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -69,58 +69,62 @@ async function createRunFixture({ baseDir, runId, config }) {
   return { runDir };
 }
 
-test("loadResumeState loads latest generation population and preference model", async () => {
-  const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
-  const runId = createRunId();
-  const config = createRunnerConfig("v1");
+describe("resume-loader", () => {
+  describe("loadResumeState", () => {
+    it("loads latest generation population and preference model", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
 
-  await createRunFixture({ baseDir, runId, config });
+      await createRunFixture({ baseDir, runId, config });
 
-  const resumeState = await loadResumeState({ baseDir, runId, config });
+      const resumeState = await loadResumeState({ baseDir, runId, config });
 
-  assert.equal(resumeState.runId, runId);
-  assert.equal(resumeState.generation, 2);
-  assert.deepEqual(
-    resumeState.population.map((entry) => entry.id),
-    ["genome-a", "genome-b"],
-  );
-  assert.equal(resumeState.preferenceModel.id, "snapshot-2");
-});
+      assert.equal(resumeState.runId, runId);
+      assert.equal(resumeState.generation, 2);
+      assert.deepEqual(
+        resumeState.population.map((entry) => entry.id),
+        ["genome-a", "genome-b"],
+      );
+      assert.equal(resumeState.preferenceModel.id, "snapshot-2");
+    });
 
-test("loadResumeState rejects config version mismatches", async () => {
-  const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
-  const runId = createRunId();
-  const config = createRunnerConfig("v1");
+    it("rejects config version mismatches", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
 
-  await createRunFixture({ baseDir, runId, config });
+      await createRunFixture({ baseDir, runId, config });
 
-  await assert.rejects(
-    () => loadResumeState({ baseDir, runId, config: createRunnerConfig("v2") }),
-    /config version/i,
-  );
-});
+      await assert.rejects(
+        () => loadResumeState({ baseDir, runId, config: createRunnerConfig("v2") }),
+        /config version/i,
+      );
+    });
 
-test("loadResumeState rejects missing preference-model snapshot", async () => {
-  const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
-  const runId = createRunId();
-  const config = createRunnerConfig("v1");
-  const runDir = resolveRunDir(baseDir, runId);
+    it("rejects missing preference-model snapshot", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+      const runDir = resolveRunDir(baseDir, runId);
 
-  await mkdir(runDir, { recursive: true });
-  await writeRunMetadata(baseDir, runId, { config });
+      await mkdir(runDir, { recursive: true });
+      await writeRunMetadata(baseDir, runId, { config });
 
-  const generationDir = resolveRunPath(runDir, "generation-1");
-  await mkdir(generationDir, { recursive: true });
+      const generationDir = resolveRunPath(runDir, "generation-1");
+      await mkdir(generationDir, { recursive: true });
 
-  const populationPath = resolveRunPath(runDir, "generation-1", "population.jsonl");
-  await writeFile(
-    populationPath,
-    `${JSON.stringify({ id: "genome-x", definition: { title: "x" } })}\n`,
-    "utf8",
-  );
+      const populationPath = resolveRunPath(runDir, "generation-1", "population.jsonl");
+      await writeFile(
+        populationPath,
+        `${JSON.stringify({ id: "genome-x", definition: { title: "x" } })}\n`,
+        "utf8",
+      );
 
-  await assert.rejects(
-    () => loadResumeState({ baseDir, runId, config }),
-    /preference-model\.jsonl/i,
-  );
+      await assert.rejects(
+        () => loadResumeState({ baseDir, runId, config }),
+        /preference-model\.jsonl/i,
+      );
+    });
+  });
 });

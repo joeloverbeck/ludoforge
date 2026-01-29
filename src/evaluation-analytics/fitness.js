@@ -1,5 +1,6 @@
 import { combineFitnessScores, computeCompositeScore } from "./scoring.js";
 import { computePreferenceScore } from "./preference-scoring.js";
+import { computeDegeneracyPenalty } from "./degeneracy.js";
 import { loadConfigFile } from "../config/loader.js";
 
 function formatValidationErrors(errors) {
@@ -80,6 +81,10 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
     preferenceScore = computePreferenceScore(preferenceModelState, featureVector);
   }
 
+  const degeneracyPenaltyValue = options.degeneracyReport
+    ? computeDegeneracyPenalty(options.degeneracyReport, options.degeneracyPenaltyConfig)
+    : 0;
+
   const blend = combineFitnessScores(
     compositeScore.score,
     preferenceScore?.score,
@@ -92,6 +97,7 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
       preferenceBootstrapSamples,
       preferenceBootstrapCap,
       diversityWeight,
+      degeneracyPenalty: degeneracyPenaltyValue,
     }
   );
 
@@ -103,6 +109,7 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
       preferenceScore: preferenceScore?.score ?? null,
       preferenceConfidence: preferenceScore?.confidence ?? null,
       blend: blend.components,
+      degeneracyPenalty: degeneracyPenaltyValue,
     },
   };
 }

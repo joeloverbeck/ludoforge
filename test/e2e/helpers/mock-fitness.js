@@ -73,6 +73,10 @@ export function createMockFitness(options = {}) {
     const allowPreference =
       baseAllowPreference && degeneracyDecision.allow && (!gateOnSafety || safetyFailures.length === 0);
 
+    const degeneracyReport = overrides.degeneracyReport ?? options.degeneracyReport ?? undefined;
+    const degeneracyPenaltyConfig =
+      overrides.degeneracyPenaltyConfig ?? options.degeneracyPenaltyConfig ?? undefined;
+
     const preferenceFitness = computePreferenceAwareFitness(featureVector, {
       ...(options.fitnessOptions ?? {}),
       ...(overrides.fitnessOptions ?? {}),
@@ -84,6 +88,8 @@ export function createMockFitness(options = {}) {
       diversityPressure:
         overrides.diversityPressure ?? options.diversityPressure ?? artifacts.diversityPressure,
       allowPreference,
+      degeneracyReport,
+      degeneracyPenaltyConfig,
     });
 
     return {

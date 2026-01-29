@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createInitialState } from "../../../src/game-kernel/state.js";
 import {
@@ -38,126 +38,134 @@ const baseDefinition = {
   triggers: [],
 };
 
-test("evaluateTermination returns outcomes and scores for all agents", () => {
-  const state = createInitialState(baseDefinition);
-  state.variables.global.flag = 1;
-  state.variables.perPlayer[1].score = 3;
-  state.variables.perPlayer[2].score = 1;
+describe("termination", () => {
+  describe("evaluateTermination", () => {
+    it("returns outcomes and scores for all agents", () => {
+      const state = createInitialState(baseDefinition);
+      state.variables.global.flag = 1;
+      state.variables.perPlayer[1].score = 3;
+      state.variables.perPlayer[2].score = 1;
 
-  const result = evaluateTermination(baseDefinition, state, { activePlayerId: 2 });
-  assert.equal(result.terminated, true);
-  assert.equal(result.reason, "condition");
-  assert.equal(result.conditionIndex, 0);
-  assert.deepEqual(result.outcomes, { 1: "lose", 2: "win" });
-  assert.deepEqual(result.scores, { 1: 3, 2: 1 });
-});
+      const result = evaluateTermination(baseDefinition, state, { activePlayerId: 2 });
+      assert.equal(result.terminated, true);
+      assert.equal(result.reason, "condition");
+      assert.equal(result.conditionIndex, 0);
+      assert.deepEqual(result.outcomes, { 1: "lose", 2: "win" });
+      assert.deepEqual(result.scores, { 1: 3, 2: 1 });
+    });
 
-test("computeScoresAtState returns per-player scores from termination scoring", () => {
-  const state = createInitialState(baseDefinition);
-  state.variables.perPlayer[1].score = 5;
-  state.variables.perPlayer[2].score = 2;
+    it("returns draw on max-turns fallback", () => {
+      const state = createInitialState(baseDefinition);
 
-  const scores = computeScoresAtState(baseDefinition, state);
-  assert.deepEqual(scores, { 1: 5, 2: 2 });
-});
+      const result = evaluateTermination(baseDefinition, state, { maxTurnsReached: true });
+      assert.equal(result.terminated, true);
+      assert.equal(result.reason, "max-turns");
+      assert.deepEqual(result.outcomes, { 1: "draw", 2: "draw" });
+    });
 
-test("computeScoresAtState returns undefined when no scoring expression is configured", () => {
-  const definition = {
-    ...baseDefinition,
-    termination: { ...baseDefinition.termination, scoring: undefined },
-  };
-  const state = createInitialState(definition);
-
-  const scores = computeScoresAtState(definition, state);
-  assert.equal(scores, undefined);
-});
-
-test("evaluateTermination returns draw on max-turns fallback", () => {
-  const state = createInitialState(baseDefinition);
-
-  const result = evaluateTermination(baseDefinition, state, { maxTurnsReached: true });
-  assert.equal(result.terminated, true);
-  assert.equal(result.reason, "max-turns");
-  assert.deepEqual(result.outcomes, { 1: "draw", 2: "draw" });
-});
-
-test("evaluateTermination resolves meta.legalActionCount in conditions", () => {
-  const definition = {
-    ...baseDefinition,
-    termination: {
-      ...baseDefinition.termination,
-      conditions: [
-        {
-          condition: {
-            kind: "cmp",
-            op: "==",
-            left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
-            right: { kind: "value", value: 0 },
-          },
-          outcome: { type: "lose", players: "active" },
+    it("resolves meta.legalActionCount in conditions", () => {
+      const definition = {
+        ...baseDefinition,
+        termination: {
+          ...baseDefinition.termination,
+          conditions: [
+            {
+              condition: {
+                kind: "cmp",
+                op: "==",
+                left: { kind: "ref", ref: { kind: "meta", id: "legalActionCount" } },
+                right: { kind: "value", value: 0 },
+              },
+              outcome: { type: "lose", players: "active" },
+            },
+          ],
         },
-      ],
-    },
-  };
-  const state = createInitialState(definition);
+      };
+      const state = createInitialState(definition);
 
-  const matched = evaluateTermination(definition, state, {
-    activePlayerId: 1,
-    meta: { legalActionCount: 0 },
-  });
-  assert.equal(matched.terminated, true);
-  assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
+      const matched = evaluateTermination(definition, state, {
+        activePlayerId: 1,
+        meta: { legalActionCount: 0 },
+      });
+      assert.equal(matched.terminated, true);
+      assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
 
-  const missed = evaluateTermination(definition, state, {
-    activePlayerId: 1,
-    meta: { legalActionCount: 2 },
-  });
-  assert.equal(missed.terminated, false);
-});
+      const missed = evaluateTermination(definition, state, {
+        activePlayerId: 1,
+        meta: { legalActionCount: 2 },
+      });
+      assert.equal(missed.terminated, false);
+    });
 
-test("evaluateTermination derives meta.hasLegalActions from count", () => {
-  const definition = {
-    ...baseDefinition,
-    termination: {
-      ...baseDefinition.termination,
-      conditions: [
-        {
-          condition: {
-            kind: "cmp",
-            op: "==",
-            left: { kind: "ref", ref: { kind: "meta", id: "hasLegalActions" } },
-            right: { kind: "value", value: true },
-          },
-          outcome: { type: "win", players: "active" },
+    it("derives meta.hasLegalActions from count", () => {
+      const definition = {
+        ...baseDefinition,
+        termination: {
+          ...baseDefinition.termination,
+          conditions: [
+            {
+              condition: {
+                kind: "cmp",
+                op: "==",
+                left: { kind: "ref", ref: { kind: "meta", id: "hasLegalActions" } },
+                right: { kind: "value", value: true },
+              },
+              outcome: { type: "win", players: "active" },
+            },
+          ],
         },
-      ],
-    },
-  };
-  const state = createInitialState(definition);
+      };
+      const state = createInitialState(definition);
 
-  const matched = evaluateTermination(definition, state, {
-    activePlayerId: 2,
-    meta: { legalActionCount: 1 },
+      const matched = evaluateTermination(definition, state, {
+        activePlayerId: 2,
+        meta: { legalActionCount: 1 },
+      });
+      assert.equal(matched.terminated, true);
+      assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
+
+      const missed = evaluateTermination(definition, state, {
+        activePlayerId: 2,
+        meta: { legalActionCount: 0 },
+      });
+      assert.equal(missed.terminated, false);
+    });
   });
-  assert.equal(matched.terminated, true);
-  assert.deepEqual(matched.outcomes, { 1: "lose", 2: "win" });
 
-  const missed = evaluateTermination(definition, state, {
-    activePlayerId: 2,
-    meta: { legalActionCount: 0 },
+  describe("computeScoresAtState", () => {
+    it("returns per-player scores from termination scoring", () => {
+      const state = createInitialState(baseDefinition);
+      state.variables.perPlayer[1].score = 5;
+      state.variables.perPlayer[2].score = 2;
+
+      const scores = computeScoresAtState(baseDefinition, state);
+      assert.deepEqual(scores, { 1: 5, 2: 2 });
+    });
+
+    it("returns undefined when no scoring expression is configured", () => {
+      const definition = {
+        ...baseDefinition,
+        termination: { ...baseDefinition.termination, scoring: undefined },
+      };
+      const state = createInitialState(definition);
+
+      const scores = computeScoresAtState(definition, state);
+      assert.equal(scores, undefined);
+    });
   });
-  assert.equal(missed.terminated, false);
-});
 
-test("event stream ordering records state updates before termination", () => {
-  const state = createInitialState(baseDefinition);
-  state.variables.global.flag = 1;
-  const events = createEventStream();
+  describe("event stream", () => {
+    it("records state updates before termination", () => {
+      const state = createInitialState(baseDefinition);
+      state.variables.global.flag = 1;
+      const events = createEventStream();
 
-  recordStateUpdate(events, state, { phase: "main" });
-  evaluateTermination(baseDefinition, state, { activePlayerId: 1, events });
+      recordStateUpdate(events, state, { phase: "main" });
+      evaluateTermination(baseDefinition, state, { activePlayerId: 1, events });
 
-  assert.equal(events.length, 2);
-  assert.equal(events[0].type, "state_update");
-  assert.equal(events[1].type, "termination");
+      assert.equal(events.length, 2);
+      assert.equal(events[0].type, "state_update");
+      assert.equal(events[1].type, "termination");
+    });
+  });
 });

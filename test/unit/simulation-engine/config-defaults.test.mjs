@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -35,47 +35,53 @@ async function writeSimulationConfig(overrides = {}) {
   return result.config;
 }
 
-test("simulation config defaults apply when per-run values are missing", async () => {
-  const simulationConfig = await writeSimulationConfig({
-    maxTurns: 1,
-    turn: { noLegalActions: { policy: "pass", reason: null } },
+describe("config-defaults", () => {
+  describe("simulationConfig defaults", () => {
+    it("applies config defaults when per-run values are missing", async () => {
+      const simulationConfig = await writeSimulationConfig({
+        maxTurns: 1,
+        turn: { noLegalActions: { policy: "pass", reason: null } },
+      });
+
+      const definition = createBaseDefinition();
+      definition.actions = [];
+      definition.termination.conditions = [];
+
+      const engine = createSimulationEngine({
+        definition,
+        agents: [createFirstActionAgent()],
+        simulationConfig,
+      });
+
+      const result = engine.run();
+
+      assert.equal(result.terminationReason, "max-turns");
+      assert.equal(result.terminated, false);
+      assert.equal(result.trajectory.steps.length, 1);
+      assert.equal(result.trajectory.steps[0].actionId, null);
+    });
   });
 
-  const definition = createBaseDefinition();
-  definition.actions = [];
-  definition.termination.conditions = [];
+  describe("per-run overrides", () => {
+    it("per-run maxSteps overrides simulation config defaults", async () => {
+      const simulationConfig = await writeSimulationConfig({ maxSteps: 1 });
 
-  const engine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
-    simulationConfig,
+      const definition = createBaseDefinition();
+      definition.actions = [createIncrementAction()];
+      definition.termination.conditions = [];
+
+      const engine = createSimulationEngine({
+        definition,
+        agents: [createFirstActionAgent()],
+        maxSteps: 2,
+        simulationConfig,
+      });
+
+      const result = engine.run();
+
+      assert.equal(result.terminationReason, "max-steps");
+      assert.equal(result.terminated, false);
+      assert.equal(result.trajectory.steps.length, 2);
+    });
   });
-
-  const result = engine.run();
-
-  assert.equal(result.terminationReason, "max-turns");
-  assert.equal(result.terminated, false);
-  assert.equal(result.trajectory.steps.length, 1);
-  assert.equal(result.trajectory.steps[0].actionId, null);
-});
-
-test("per-run maxSteps overrides simulation config defaults", async () => {
-  const simulationConfig = await writeSimulationConfig({ maxSteps: 1 });
-
-  const definition = createBaseDefinition();
-  definition.actions = [createIncrementAction()];
-  definition.termination.conditions = [];
-
-  const engine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
-    maxSteps: 2,
-    simulationConfig,
-  });
-
-  const result = engine.run();
-
-  assert.equal(result.terminationReason, "max-steps");
-  assert.equal(result.terminated, false);
-  assert.equal(result.trajectory.steps.length, 2);
 });

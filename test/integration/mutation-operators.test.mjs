@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   actionDuplicateMutation,
@@ -38,238 +38,268 @@ function countChangedInitials(before, after) {
   return changes;
 }
 
-test("numericTweakMutation tweaks a single int initial deterministically", () => {
-  const beforeDefinition = cloneDefinition(genomeBasicDefinition);
-  const genome = { definition: beforeDefinition };
-  const first = numericTweakMutation.mutate(genome, createSeededRng(12));
-  const second = numericTweakMutation.mutate(
-    { definition: cloneDefinition(genomeBasicDefinition) },
-    createSeededRng(12)
-  );
+describe("mutation-operators", () => {
+  describe("numericTweakMutation", () => {
+    it("tweaks a single int initial deterministically", () => {
+      const beforeDefinition = cloneDefinition(genomeBasicDefinition);
+      const genome = { definition: beforeDefinition };
+      const first = numericTweakMutation.mutate(genome, createSeededRng(12));
+      const second = numericTweakMutation.mutate(
+        { definition: cloneDefinition(genomeBasicDefinition) },
+        createSeededRng(12)
+      );
 
-  const beforeInitials = beforeDefinition.state.variables.map((variable) => variable.initial);
-  const firstInitials = first.definition.state.variables.map((variable) => variable.initial);
-  const secondInitials = second.definition.state.variables.map((variable) => variable.initial);
+      const beforeInitials = beforeDefinition.state.variables.map((variable) => variable.initial);
+      const firstInitials = first.definition.state.variables.map((variable) => variable.initial);
+      const secondInitials = second.definition.state.variables.map((variable) => variable.initial);
 
-  assert.deepEqual(firstInitials, secondInitials);
-  assert.equal(countChangedInitials(beforeInitials, firstInitials), 1);
-});
+      assert.deepEqual(firstInitials, secondInitials);
+      assert.equal(countChangedInitials(beforeInitials, firstInitials), 1);
+    });
+  });
 
-test("booleanToggleMutation flips a bool initial", () => {
-  const definition = {
-    state: {
-      variables: [
-        {
-          id: "flag",
-          scope: "global",
-          type: { kind: "bool" },
-          initial: true,
+  describe("booleanToggleMutation", () => {
+    it("flips a bool initial", () => {
+      const definition = {
+        state: {
+          variables: [
+            {
+              id: "flag",
+              scope: "global",
+              type: { kind: "bool" },
+              initial: true,
+            },
+          ],
         },
-      ],
-    },
-  };
+      };
 
-  const mutated = booleanToggleMutation.mutate({ definition }, createSeededRng(1));
-  assert.equal(mutated.definition.state.variables[0].initial, false);
-});
+      const mutated = booleanToggleMutation.mutate({ definition }, createSeededRng(1));
+      assert.equal(mutated.definition.state.variables[0].initial, false);
+    });
+  });
 
-test("actionDuplicateMutation clones an action with a unique id after the target", () => {
-  const definition = cloneDefinition(genomeActionsDefinition);
-  const mutated = actionDuplicateMutation.mutate({ definition }, createSeededRng(8));
+  describe("actionDuplicateMutation", () => {
+    it("clones an action with a unique id after the target", () => {
+      const definition = cloneDefinition(genomeActionsDefinition);
+      const mutated = actionDuplicateMutation.mutate({ definition }, createSeededRng(8));
 
-  const beforeActions = definition.actions;
-  const afterActions = mutated.definition.actions;
+      const beforeActions = definition.actions;
+      const afterActions = mutated.definition.actions;
 
-  assert.equal(afterActions.length, beforeActions.length + 1);
-  assert.equal(afterActions[0].id, beforeActions[0].id);
-  assert.ok(afterActions[1].id.startsWith(`${beforeActions[0].id}-variant`));
-  assert.equal(new Set(afterActions.map((action) => action.id)).size, afterActions.length);
-});
+      assert.equal(afterActions.length, beforeActions.length + 1);
+      assert.equal(afterActions[0].id, beforeActions[0].id);
+      assert.ok(afterActions[1].id.startsWith(`${beforeActions[0].id}-variant`));
+      assert.equal(new Set(afterActions.map((action) => action.id)).size, afterActions.length);
+    });
+  });
 
-test("actionRemoveMutation is a no-op when only one action exists", () => {
-  const definition = cloneDefinition(genomeActionsDefinition);
-  const mutated = actionRemoveMutation.mutate({ definition }, createSeededRng(9));
+  describe("actionRemoveMutation", () => {
+    it("is a no-op when only one action exists", () => {
+      const definition = cloneDefinition(genomeActionsDefinition);
+      const mutated = actionRemoveMutation.mutate({ definition }, createSeededRng(9));
 
-  assert.equal(mutated.definition.actions.length, definition.actions.length);
-  assert.deepEqual(mutated.definition.actions, definition.actions);
-});
+      assert.equal(mutated.definition.actions.length, definition.actions.length);
+      assert.deepEqual(mutated.definition.actions, definition.actions);
+    });
 
-test("actionRemoveMutation removes an action when multiple exist", () => {
-  const definition = cloneDefinition(genomeActionsDefinition);
-  definition.actions.push({ id: "skip", actor: "player", effects: [] });
+    it("removes an action when multiple exist", () => {
+      const definition = cloneDefinition(genomeActionsDefinition);
+      definition.actions.push({ id: "skip", actor: "player", effects: [] });
 
-  const mutated = actionRemoveMutation.mutate({ definition }, createSeededRng(10));
-  const remainingIds = mutated.definition.actions.map((action) => action.id);
+      const mutated = actionRemoveMutation.mutate({ definition }, createSeededRng(10));
+      const remainingIds = mutated.definition.actions.map((action) => action.id);
 
-  assert.equal(mutated.definition.actions.length, 1);
-  assert.ok(remainingIds.includes("wait") || remainingIds.includes("skip"));
-});
+      assert.equal(mutated.definition.actions.length, 1);
+      assert.ok(remainingIds.includes("wait") || remainingIds.includes("skip"));
+    });
+  });
 
-test("actionEffectMagnitudeMutation tweaks an effect amount", () => {
-  const definition = cloneDefinition(genomeActionsDefinition);
-  const mutated = actionEffectMagnitudeMutation.mutate({ definition }, createSeededRng(11));
+  describe("actionEffectMagnitudeMutation", () => {
+    it("tweaks an effect amount", () => {
+      const definition = cloneDefinition(genomeActionsDefinition);
+      const mutated = actionEffectMagnitudeMutation.mutate({ definition }, createSeededRng(11));
 
-  const nextAmount = mutated.definition.actions[0].effects[0].amount;
-  assert.equal(nextAmount, 1);
-  assert.ok(nextAmount >= 0);
-});
+      const nextAmount = mutated.definition.actions[0].effects[0].amount;
+      assert.equal(nextAmount, 1);
+      assert.ok(nextAmount >= 0);
+    });
+  });
 
-test("enumCycleMutation picks a different enum value deterministically", () => {
-  const beforeDefinition = cloneDefinition(genomeBasicDefinition);
-  const originalValue = beforeDefinition.state.tokenTypes[0].attributes[0].initial;
+  describe("enumCycleMutation", () => {
+    it("picks a different enum value deterministically", () => {
+      const beforeDefinition = cloneDefinition(genomeBasicDefinition);
+      const originalValue = beforeDefinition.state.tokenTypes[0].attributes[0].initial;
 
-  const first = enumCycleMutation.mutate(
-    { definition: beforeDefinition },
-    createSeededRng(7)
-  );
-  const second = enumCycleMutation.mutate(
-    { definition: cloneDefinition(genomeBasicDefinition) },
-    createSeededRng(7)
-  );
+      const first = enumCycleMutation.mutate(
+        { definition: beforeDefinition },
+        createSeededRng(7)
+      );
+      const second = enumCycleMutation.mutate(
+        { definition: cloneDefinition(genomeBasicDefinition) },
+        createSeededRng(7)
+      );
 
-  const firstValue = first.definition.state.tokenTypes[0].attributes[0].initial;
-  const secondValue = second.definition.state.tokenTypes[0].attributes[0].initial;
+      const firstValue = first.definition.state.tokenTypes[0].attributes[0].initial;
+      const secondValue = second.definition.state.tokenTypes[0].attributes[0].initial;
 
-  assert.notEqual(firstValue, originalValue);
-  assert.equal(firstValue, secondValue);
-  assert.ok(["a", "b", "c"].includes(firstValue));
-});
+      assert.notEqual(firstValue, originalValue);
+      assert.equal(firstValue, secondValue);
+      assert.ok(["a", "b", "c"].includes(firstValue));
+    });
+  });
 
-test("tokenTypeZoneTargetAddMutation adds a token type, zone, and target", () => {
-  const definition = cloneDefinition(genomeActionsDefinition);
-  const mutated = tokenTypeZoneTargetAddMutation.mutate({ definition }, createSeededRng(12));
+  describe("tokenTypeZoneTargetAddMutation", () => {
+    it("adds a token type, zone, and target", () => {
+      const definition = cloneDefinition(genomeActionsDefinition);
+      const mutated = tokenTypeZoneTargetAddMutation.mutate({ definition }, createSeededRng(12));
 
-  const beforeTokenTypeIds = new Set(definition.state.tokenTypes.map((tokenType) => tokenType.id));
-  const beforeZoneIds = new Set(definition.state.zones.map((zone) => zone.id));
+      const beforeTokenTypeIds = new Set(definition.state.tokenTypes.map((tokenType) => tokenType.id));
+      const beforeZoneIds = new Set(definition.state.zones.map((zone) => zone.id));
 
-  const afterTokenTypes = mutated.definition.state.tokenTypes;
-  const afterZones = mutated.definition.state.zones;
-  const afterTargets = mutated.definition.actions[0].targets;
+      const afterTokenTypes = mutated.definition.state.tokenTypes;
+      const afterZones = mutated.definition.state.zones;
+      const afterTargets = mutated.definition.actions[0].targets;
 
-  assert.equal(afterTokenTypes.length, definition.state.tokenTypes.length + 1);
-  assert.equal(afterZones.length, definition.state.zones.length + 1);
-  assert.equal(afterTargets.length, definition.actions[0].targets.length + 1);
+      assert.equal(afterTokenTypes.length, definition.state.tokenTypes.length + 1);
+      assert.equal(afterZones.length, definition.state.zones.length + 1);
+      assert.equal(afterTargets.length, definition.actions[0].targets.length + 1);
 
-  const newTokenType = afterTokenTypes[afterTokenTypes.length - 1];
-  const newZone = afterZones[afterZones.length - 1];
-  const newTarget = afterTargets[afterTargets.length - 1];
+      const newTokenType = afterTokenTypes[afterTokenTypes.length - 1];
+      const newZone = afterZones[afterZones.length - 1];
+      const newTarget = afterTargets[afterTargets.length - 1];
 
-  assert.ok(!beforeTokenTypeIds.has(newTokenType.id));
-  assert.ok(!beforeZoneIds.has(newZone.id));
-  assert.equal(newZone.tokenType, newTokenType.id);
-  assert.equal(newTarget.selector.zone, newZone.id);
-  assert.equal(newTarget.selector.tokenType, newTokenType.id);
-});
+      assert.ok(!beforeTokenTypeIds.has(newTokenType.id));
+      assert.ok(!beforeZoneIds.has(newZone.id));
+      assert.equal(newZone.tokenType, newTokenType.id);
+      assert.equal(newTarget.selector.zone, newZone.id);
+      assert.equal(newTarget.selector.tokenType, newTokenType.id);
+    });
+  });
 
-test("tokenTypeRemoveMutation removes a token type and rebinds references", () => {
-  const definition = cloneDefinition(genomeZonesDefinition);
-  const mutated = tokenTypeRemoveMutation.mutate({ definition }, createSeededRng(13));
+  describe("tokenTypeRemoveMutation", () => {
+    it("removes a token type and rebinds references", () => {
+      const definition = cloneDefinition(genomeZonesDefinition);
+      const mutated = tokenTypeRemoveMutation.mutate({ definition }, createSeededRng(13));
 
-  const remainingTokenTypes = mutated.definition.state.tokenTypes;
-  assert.equal(remainingTokenTypes.length, 1);
+      const remainingTokenTypes = mutated.definition.state.tokenTypes;
+      assert.equal(remainingTokenTypes.length, 1);
 
-  const remainingId = remainingTokenTypes[0].id;
-  const removedId = definition.state.tokenTypes.find((tokenType) => tokenType.id !== remainingId)?.id;
+      const remainingId = remainingTokenTypes[0].id;
+      const removedId = definition.state.tokenTypes.find((tokenType) => tokenType.id !== remainingId)?.id;
 
-  assert.ok(remainingId);
-  assert.ok(removedId);
-  assert.ok(mutated.definition.state.zones.every((zone) => zone.tokenType === remainingId));
-  assert.equal(mutated.definition.actions[0].targets[0].selector.tokenType, remainingId);
-  assert.equal(mutated.definition.actions[0].effects[0].target.id, remainingId);
-  assert.ok(!mutated.definition.state.zones.some((zone) => zone.tokenType === removedId));
-});
+      assert.ok(remainingId);
+      assert.ok(removedId);
+      assert.ok(mutated.definition.state.zones.every((zone) => zone.tokenType === remainingId));
+      assert.equal(mutated.definition.actions[0].targets[0].selector.tokenType, remainingId);
+      assert.equal(mutated.definition.actions[0].effects[0].target.id, remainingId);
+      assert.ok(!mutated.definition.state.zones.some((zone) => zone.tokenType === removedId));
+    });
+  });
 
-test("preconditionNegationMutation wraps action preconditions", () => {
-  const definition = {
-    actions: [
-      {
-        id: "act",
-        actor: "player",
-        preconditions: {
-          kind: "cmp",
-          op: ">=",
-          left: { kind: "ref", ref: { kind: "var", id: "score" } },
-          right: { kind: "value", value: 1 },
-        },
-      },
-    ],
-  };
+  describe("preconditionNegationMutation", () => {
+    it("wraps action preconditions", () => {
+      const definition = {
+        actions: [
+          {
+            id: "act",
+            actor: "player",
+            preconditions: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 1 },
+            },
+          },
+        ],
+      };
 
-  const mutated = preconditionNegationMutation.mutate({ definition }, createSeededRng(2));
-  assert.equal(mutated.definition.actions[0].preconditions.kind, "not");
-  assert.deepEqual(
-    mutated.definition.actions[0].preconditions.value,
-    definition.actions[0].preconditions
-  );
-});
+      const mutated = preconditionNegationMutation.mutate({ definition }, createSeededRng(2));
+      assert.equal(mutated.definition.actions[0].preconditions.kind, "not");
+      assert.deepEqual(
+        mutated.definition.actions[0].preconditions.value,
+        definition.actions[0].preconditions
+      );
+    });
+  });
 
-test("zoneRemoveMutation removes a zone and rebinds references", () => {
-  const definition = cloneDefinition(genomeZonesDefinition);
-  const mutated = zoneRemoveMutation.mutate({ definition }, createSeededRng(14));
+  describe("zoneRemoveMutation", () => {
+    it("removes a zone and rebinds references", () => {
+      const definition = cloneDefinition(genomeZonesDefinition);
+      const mutated = zoneRemoveMutation.mutate({ definition }, createSeededRng(14));
 
-  const remainingZones = mutated.definition.state.zones;
-  assert.equal(remainingZones.length, 1);
+      const remainingZones = mutated.definition.state.zones;
+      assert.equal(remainingZones.length, 1);
 
-  const remainingId = remainingZones[0].id;
-  const removedId = definition.state.zones.find((zone) => zone.id !== remainingId)?.id;
+      const remainingId = remainingZones[0].id;
+      const removedId = definition.state.zones.find((zone) => zone.id !== remainingId)?.id;
 
-  assert.ok(remainingId);
-  assert.ok(removedId);
-  assert.equal(mutated.definition.actions[0].targets[0].selector.zone, remainingId);
-  assert.equal(mutated.definition.actions[0].effects[0].toZone, remainingId);
-  assert.ok(!mutated.definition.state.zones.some((zone) => zone.id === removedId));
-});
+      assert.ok(remainingId);
+      assert.ok(removedId);
+      assert.equal(mutated.definition.actions[0].targets[0].selector.zone, remainingId);
+      assert.equal(mutated.definition.actions[0].effects[0].toZone, remainingId);
+      assert.ok(!mutated.definition.state.zones.some((zone) => zone.id === removedId));
+    });
+  });
 
-test("terminationThresholdMutation tweaks threshold within int bounds", () => {
-  const beforeDefinition = cloneDefinition(genomeBasicDefinition);
-  const mutated = terminationThresholdMutation.mutate(
-    { definition: beforeDefinition },
-    createSeededRng(3)
-  );
+  describe("terminationThresholdMutation", () => {
+    it("tweaks threshold within int bounds", () => {
+      const beforeDefinition = cloneDefinition(genomeBasicDefinition);
+      const mutated = terminationThresholdMutation.mutate(
+        { definition: beforeDefinition },
+        createSeededRng(3)
+      );
 
-  const nextValue = mutated.definition.termination.conditions[0].condition.right.value;
-  assert.equal(nextValue, 9);
-  assert.ok(nextValue >= 0);
-  assert.ok(nextValue <= 10);
-});
+      const nextValue = mutated.definition.termination.conditions[0].condition.right.value;
+      assert.equal(nextValue, 9);
+      assert.ok(nextValue >= 0);
+      assert.ok(nextValue <= 10);
+    });
+  });
 
-test("terminationOutcomeMutation changes outcome type deterministically", () => {
-  const beforeDefinition = cloneDefinition(genomeBasicDefinition);
-  const first = terminationOutcomeMutation.mutate(
-    { definition: beforeDefinition },
-    createSeededRng(4)
-  );
-  const second = terminationOutcomeMutation.mutate(
-    { definition: cloneDefinition(genomeBasicDefinition) },
-    createSeededRng(4)
-  );
+  describe("terminationOutcomeMutation", () => {
+    it("changes outcome type deterministically", () => {
+      const beforeDefinition = cloneDefinition(genomeBasicDefinition);
+      const first = terminationOutcomeMutation.mutate(
+        { definition: beforeDefinition },
+        createSeededRng(4)
+      );
+      const second = terminationOutcomeMutation.mutate(
+        { definition: cloneDefinition(genomeBasicDefinition) },
+        createSeededRng(4)
+      );
 
-  const firstType = first.definition.termination.conditions[0].outcome.type;
-  const secondType = second.definition.termination.conditions[0].outcome.type;
+      const firstType = first.definition.termination.conditions[0].outcome.type;
+      const secondType = second.definition.termination.conditions[0].outcome.type;
 
-  assert.notEqual(firstType, "win");
-  assert.equal(firstType, secondType);
-  assert.ok(["win", "lose", "draw"].includes(firstType));
-});
+      assert.notEqual(firstType, "win");
+      assert.equal(firstType, secondType);
+      assert.ok(["win", "lose", "draw"].includes(firstType));
+    });
+  });
 
-test("phaseAddMutation adds a unique phase", () => {
-  const definition = cloneDefinition(genomePhasesDefinition);
-  const mutated = phaseAddMutation.mutate({ definition }, createSeededRng(5));
+  describe("phaseAddMutation", () => {
+    it("adds a unique phase", () => {
+      const definition = cloneDefinition(genomePhasesDefinition);
+      const mutated = phaseAddMutation.mutate({ definition }, createSeededRng(5));
 
-  const beforePhases = definition.turn.phases;
-  const afterPhases = mutated.definition.turn.phases;
-  assert.equal(afterPhases.length, beforePhases.length + 1);
-  assert.ok(afterPhases.every((phase) => typeof phase === "string"));
-  assert.ok(afterPhases.includes(beforePhases[0]));
-});
+      const beforePhases = definition.turn.phases;
+      const afterPhases = mutated.definition.turn.phases;
+      assert.equal(afterPhases.length, beforePhases.length + 1);
+      assert.ok(afterPhases.every((phase) => typeof phase === "string"));
+      assert.ok(afterPhases.includes(beforePhases[0]));
+    });
+  });
 
-test("phaseRemoveMutation removes a phase but keeps at least one", () => {
-  const definition = cloneDefinition(genomePhasesDefinition);
-  const mutated = phaseRemoveMutation.mutate({ definition }, createSeededRng(6));
+  describe("phaseRemoveMutation", () => {
+    it("removes a phase but keeps at least one", () => {
+      const definition = cloneDefinition(genomePhasesDefinition);
+      const mutated = phaseRemoveMutation.mutate({ definition }, createSeededRng(6));
 
-  const beforePhases = definition.turn.phases;
-  const afterPhases = mutated.definition.turn.phases;
-  assert.equal(afterPhases.length, beforePhases.length - 1);
-  assert.ok(afterPhases.length >= 1);
-  assert.ok(afterPhases.every((phase) => beforePhases.includes(phase)));
+      const beforePhases = definition.turn.phases;
+      const afterPhases = mutated.definition.turn.phases;
+      assert.equal(afterPhases.length, beforePhases.length - 1);
+      assert.ok(afterPhases.length >= 1);
+      assert.ok(afterPhases.every((phase) => beforePhases.includes(phase)));
+    });
+  });
 });

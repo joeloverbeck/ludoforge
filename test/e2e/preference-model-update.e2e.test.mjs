@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { runSimulation } from "../../src/simulation-engine/loop.js";
@@ -51,79 +51,81 @@ function buildFeatureVector(definition, results) {
   return assembleFeatureVector(metrics, degeneracy);
 }
 
-test("preference model updates from real feature vectors", async () => {
-  const choiceDefinition = await loadFixture("choice-game.json");
-  const minimalDefinition = await loadFixture("minimal-game.json");
+describe("preference-model-update", () => {
+  it("preference model updates from real feature vectors", async () => {
+    const choiceDefinition = await loadFixture("choice-game.json");
+    const minimalDefinition = await loadFixture("minimal-game.json");
 
-  const featureVectorA = buildFeatureVector(
-    choiceDefinition,
-    runSimulations(choiceDefinition, [3, 5, 7])
-  );
-  const featureVectorB = buildFeatureVector(
-    minimalDefinition,
-    runSimulations(minimalDefinition, [11, 13, 17])
-  );
-  const featureVectorARepeat = buildFeatureVector(
-    choiceDefinition,
-    runSimulations(choiceDefinition, [3, 5, 7])
-  );
-
-  const differingKeys = Object.keys(featureVectorA).filter(
-    (key) => featureVectorA[key] !== featureVectorB[key]
-  );
-  assert.ok(differingKeys.length > 0, "Expected distinct feature vectors");
-
-  for (const featureVector of [featureVectorA, featureVectorB]) {
-    assert.ok(
-      Object.hasOwn(featureVector, "turn_taking_rate"),
-      "Expected turn_taking_rate in feature vector"
+    const featureVectorA = buildFeatureVector(
+      choiceDefinition,
+      runSimulations(choiceDefinition, [3, 5, 7])
     );
-    assert.ok(
-      Object.hasOwn(featureVector, "interaction_rate"),
-      "Expected interaction_rate in feature vector"
+    const featureVectorB = buildFeatureVector(
+      minimalDefinition,
+      runSimulations(minimalDefinition, [11, 13, 17])
     );
-    assert.equal(
-      featureVector.turn_taking_rate,
-      1,
-      "Expected round-robin fixtures to alternate turns"
+    const featureVectorARepeat = buildFeatureVector(
+      choiceDefinition,
+      runSimulations(choiceDefinition, [3, 5, 7])
     );
-    assert.equal(
-      featureVector.interaction_rate,
-      0,
-      "Expected global-only effects to yield zero interaction"
-    );
-  }
 
-  assert.deepEqual(
-    featureVectorARepeat,
-    featureVectorA,
-    "Expected deterministic metrics for identical seeds"
-  );
+    const differingKeys = Object.keys(featureVectorA).filter(
+      (key) => featureVectorA[key] !== featureVectorB[key]
+    );
+    assert.ok(differingKeys.length > 0, "Expected distinct feature vectors");
 
-  const feedback = assemblePreferenceFeedbackComparison({
-    candidateA: { id: "candidate-a", featureVector: featureVectorA },
-    candidateB: { id: "candidate-b", featureVector: featureVectorB },
-    prompt: { preferred: "a" },
+    for (const featureVector of [featureVectorA, featureVectorB]) {
+      assert.ok(
+        Object.hasOwn(featureVector, "turn_taking_rate"),
+        "Expected turn_taking_rate in feature vector"
+      );
+      assert.ok(
+        Object.hasOwn(featureVector, "interaction_rate"),
+        "Expected interaction_rate in feature vector"
+      );
+      assert.equal(
+        featureVector.turn_taking_rate,
+        1,
+        "Expected round-robin fixtures to alternate turns"
+      );
+      assert.equal(
+        featureVector.interaction_rate,
+        0,
+        "Expected global-only effects to yield zero interaction"
+      );
+    }
+
+    assert.deepEqual(
+      featureVectorARepeat,
+      featureVectorA,
+      "Expected deterministic metrics for identical seeds"
+    );
+
+    const feedback = assemblePreferenceFeedbackComparison({
+      candidateA: { id: "candidate-a", featureVector: featureVectorA },
+      candidateB: { id: "candidate-b", featureVector: featureVectorB },
+      prompt: { preferred: "a" },
+    });
+
+    const initialState = createPreferenceModelState({
+      weights: {},
+      bias: 0,
+      sampleCount: 0,
+      history: [],
+      learningRate: 0.1,
+    });
+
+    const updated = updatePreferenceModelState(initialState, feedback);
+
+    assert.equal(updated.sampleCount, initialState.sampleCount + 1);
+    assert.equal(updated.version, initialState.version + 1);
+    assert.equal(updated.history.length, 1);
+    assert.equal(updated.history[0].type, "comparison");
+
+    const totalWeight = Object.values(updated.weights).reduce(
+      (total, value) => total + Math.abs(value),
+      0
+    );
+    assert.ok(totalWeight > 0, "Expected preference weights to update");
   });
-
-  const initialState = createPreferenceModelState({
-    weights: {},
-    bias: 0,
-    sampleCount: 0,
-    history: [],
-    learningRate: 0.1,
-  });
-
-  const updated = updatePreferenceModelState(initialState, feedback);
-
-  assert.equal(updated.sampleCount, initialState.sampleCount + 1);
-  assert.equal(updated.version, initialState.version + 1);
-  assert.equal(updated.history.length, 1);
-  assert.equal(updated.history[0].type, "comparison");
-
-  const totalWeight = Object.values(updated.weights).reduce(
-    (total, value) => total + Math.abs(value),
-    0
-  );
-  assert.ok(totalWeight > 0, "Expected preference weights to update");
 });

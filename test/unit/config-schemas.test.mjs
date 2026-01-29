@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import Ajv from "ajv/dist/2020.js";
@@ -69,22 +69,28 @@ async function readJson(relativePath) {
   return JSON.parse(raw);
 }
 
-for (const entry of entries) {
-  test(`config schema accepts ${entry.name}`, async () => {
-    const schemaJson = await readJson(`../../../schemas/config/${entry.schema}`);
-    const configJson = await readJson(`../../../configs/${entry.config}`);
-    const validate = ajv.compile(schemaJson);
-    const ok = validate(configJson);
-    assert.equal(ok, true, JSON.stringify(validate.errors, null, 2));
+describe("config-schemas", () => {
+  describe("schema acceptance", () => {
+    for (const entry of entries) {
+      it(`config schema accepts ${entry.name}`, async () => {
+        const schemaJson = await readJson(`../../../schemas/config/${entry.schema}`);
+        const configJson = await readJson(`../../../configs/${entry.config}`);
+        const validate = ajv.compile(schemaJson);
+        const ok = validate(configJson);
+        assert.equal(ok, true, JSON.stringify(validate.errors, null, 2));
+      });
+    }
   });
-}
 
-test("simulation schema rejects invalid maxTurns", async () => {
-  const schemaJson = await readJson("../../../schemas/config/simulation.schema.json");
-  const configJson = await readJson("../../../configs/simulation.json");
-  const candidate = structuredClone(configJson);
-  candidate.maxTurns = "nope";
-  const validate = ajv.compile(schemaJson);
-  const ok = validate(candidate);
-  assert.equal(ok, false, "Expected schema validation to fail");
+  describe("schema rejection", () => {
+    it("simulation schema rejects invalid maxTurns", async () => {
+      const schemaJson = await readJson("../../../schemas/config/simulation.schema.json");
+      const configJson = await readJson("../../../configs/simulation.json");
+      const candidate = structuredClone(configJson);
+      candidate.maxTurns = "nope";
+      const validate = ajv.compile(schemaJson);
+      const ok = validate(candidate);
+      assert.equal(ok, false, "Expected schema validation to fail");
+    });
+  });
 });

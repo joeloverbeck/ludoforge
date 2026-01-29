@@ -31,7 +31,27 @@
       "properties": {
         "simulation": { "type": "object", "additionalProperties": true },
         "metrics": { "type": "object", "additionalProperties": true },
-        "fitness": { "type": "object", "additionalProperties": true }
+        "fitness": { "type": "object", "additionalProperties": true },
+        "degeneracy": { "$ref": "#/$defs/DegeneracyBlock" }
+      }
+    },
+    "DegeneracyPolicy": {
+      "type": "string",
+      "enum": ["reject", "penalize", "ignore"]
+    },
+    "DegeneracyBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyByFlag", "penalties"],
+      "properties": {
+        "policyByFlag": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/DegeneracyPolicy" }
+        },
+        "penalties": {
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": true }
+        }
       }
     },
     "EvolutionConfig": {

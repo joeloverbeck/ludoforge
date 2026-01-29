@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import { adaptSimulationLog, LOG_ADAPTER_VERSION } from "../../src/evaluation-analytics/log-adapter.js";
 import { computeExtendedMetrics } from "../../src/evaluation-analytics/metrics/extended.js";
@@ -66,40 +66,42 @@ function getMetric(metrics, id) {
   return metric.value;
 }
 
-test("decision-quality metrics integrate via extended metrics", () => {
-  const definition = createMeaningfulChoiceDefinition();
-  const engine = createSimulationEngine({
-    definition,
-    agents: [createFirstActionAgent()],
-  });
-  const results = [engine.run()];
-
-  const logResult = adaptSimulationLog({
-    version: LOG_ADAPTER_VERSION,
-    log: {
+describe("decision-quality-metrics", () => {
+  it("integrates via extended metrics", () => {
+    const definition = createMeaningfulChoiceDefinition();
+    const engine = createSimulationEngine({
       definition,
-      results,
-    },
+      agents: [createFirstActionAgent()],
+    });
+    const results = [engine.run()];
+
+    const logResult = adaptSimulationLog({
+      version: LOG_ADAPTER_VERSION,
+      log: {
+        definition,
+        results,
+      },
+    });
+
+    assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
+    const summaries = logResult.value.trajectorySummaries;
+
+    const metrics = computeExtendedMetrics(definition, summaries, {
+      simulations: results,
+      meaningfulChoice: {
+        enabled: true,
+        decisionSamplesPerRun: 2,
+        rolloutsPerAction: 1,
+        rolloutMaxSteps: 4,
+        maxRolloutsPerRun: 4,
+        rolloutAgent: { kind: "random" },
+        seed: 42,
+      },
+      comebackPotential: { enabled: true, earlyStepPercent: 0.5 },
+    });
+
+    assert.ok(Math.abs(getMetric(metrics, "choice_value_spread") - 2) < 1e-9);
+    const comeback = getMetric(metrics, "comeback_potential");
+    assert.ok(comeback >= 0 && comeback <= 1);
   });
-
-  assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
-  const summaries = logResult.value.trajectorySummaries;
-
-  const metrics = computeExtendedMetrics(definition, summaries, {
-    simulations: results,
-    meaningfulChoice: {
-      enabled: true,
-      decisionSamplesPerRun: 2,
-      rolloutsPerAction: 1,
-      rolloutMaxSteps: 4,
-      maxRolloutsPerRun: 4,
-      rolloutAgent: { kind: "random" },
-      seed: 42,
-    },
-    comebackPotential: { enabled: true, earlyStepPercent: 0.5 },
-  });
-
-  assert.ok(Math.abs(getMetric(metrics, "choice_value_spread") - 2) < 1e-9);
-  const comeback = getMetric(metrics, "comeback_potential");
-  assert.ok(comeback >= 0 && comeback <= 1);
 });

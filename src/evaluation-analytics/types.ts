@@ -99,6 +99,7 @@ export type DegeneracyFlag =
 export interface DegeneracyReport {
   flags: ReadonlyArray<DegeneracyFlag>;
   details?: Partial<Record<DegeneracyFlag, string | number | boolean>>;
+  ratios?: Partial<Record<string, number>>;
 }
 
 export type FeatureVector = Record<string, number>;

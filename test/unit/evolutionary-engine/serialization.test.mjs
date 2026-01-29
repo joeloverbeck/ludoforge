@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   createGenomeId,
@@ -15,47 +15,55 @@ function cloneDefinition(definition) {
   return structuredClone(definition);
 }
 
-test("serializeGenome is deterministic for identical definitions", () => {
-  const definition = cloneDefinition(baseDefinition);
-  const first = serializeGenome(definition);
-  const second = serializeGenome(definition);
+describe("serialization", () => {
+  describe("serializeGenome", () => {
+    it("is deterministic for identical definitions", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const first = serializeGenome(definition);
+      const second = serializeGenome(definition);
 
-  assert.equal(first, second);
-});
+      assert.equal(first, second);
+    });
+  });
 
-test("createGenomeId is stable across equivalent definitions", () => {
-  const definition = cloneDefinition(baseDefinition);
-  const reordered = {
-    actions: definition.actions,
-    state: definition.state,
-    players: definition.players,
-    termination: definition.termination,
-    turn: definition.turn,
-    version: definition.version,
-  };
+  describe("createGenomeId", () => {
+    it("is stable across equivalent definitions", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const reordered = {
+        actions: definition.actions,
+        state: definition.state,
+        players: definition.players,
+        termination: definition.termination,
+        turn: definition.turn,
+        version: definition.version,
+      };
 
-  const idA = createGenomeId(definition);
-  const idB = createGenomeId(reordered);
+      const idA = createGenomeId(definition);
+      const idB = createGenomeId(reordered);
 
-  assert.equal(idA, idB);
-});
+      assert.equal(idA, idB);
+    });
 
-test("validateGenomeDefinition rejects schema-invalid definitions", () => {
-  const result = validateGenomeDefinition(cloneDefinition(missingMaxTurnsDefinition));
+    it("throws on invalid definitions", () => {
+      assert.throws(() => createGenomeId(cloneDefinition(missingMaxTurnsDefinition)));
+    });
+  });
 
-  assert.equal(result.valid, false);
-  assert.ok(result.errors.length > 0);
-  assert.deepEqual(result.issues, []);
-});
+  describe("validateGenomeDefinition", () => {
+    it("rejects schema-invalid definitions", () => {
+      const result = validateGenomeDefinition(cloneDefinition(missingMaxTurnsDefinition));
 
-test("validateGenomeDefinition rejects semantic-invalid definitions", () => {
-  const result = validateGenomeDefinition(cloneDefinition(dominantActionDefinition));
+      assert.equal(result.valid, false);
+      assert.ok(result.errors.length > 0);
+      assert.deepEqual(result.issues, []);
+    });
 
-  assert.equal(result.valid, false);
-  assert.deepEqual(result.errors, []);
-  assert.ok(result.issues.length > 0);
-});
+    it("rejects semantic-invalid definitions", () => {
+      const result = validateGenomeDefinition(cloneDefinition(dominantActionDefinition));
 
-test("createGenomeId throws on invalid definitions", () => {
-  assert.throws(() => createGenomeId(cloneDefinition(missingMaxTurnsDefinition)));
+      assert.equal(result.valid, false);
+      assert.deepEqual(result.errors, []);
+      assert.ok(result.issues.length > 0);
+    });
+  });
 });

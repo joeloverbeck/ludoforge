@@ -1,6 +1,6 @@
 # DEGFILISS-006: Update architecture docs to reflect new degeneracy model
 
-**Status:** Open
+**Status:** Done
 **Depends on:** DEGFILISS-005
 **Blocks:** None
 
@@ -37,4 +37,14 @@ Update architecture documentation to reflect the redesigned degeneracy handling:
 - [ ] Docs describe penalty term in fitness blend formula
 - [ ] Docs describe `minStepsForNoChoices` guard
 - [ ] Docs describe three policy semantics (reject, penalize, ignore)
-- [ ] `npm run test:unit` passes (docs tests if any)
+- [x] `npm run test:unit` passes (docs tests if any)
+
+## Outcome
+
+All seven acceptance criteria met. Updated three sections of `docs/architecture/metrics-and-fitness.md`:
+
+1. **Config Defaults** (line 18): description now references policy-per-flag, penalty weights, and minStepsForNoChoices guard.
+2. **Degeneracy Detection** (lines 91–122): forced-move/no-choices use full trajectory steps; added minStepsForNoChoices guard; added preference/policy knobs note; replaced `flags`/`rejectOn` with `enabledFlags`/`policyByFlag` (three semantics: reject, penalize, ignore); documented `penalties` config and default policies.
+3. **Fitness Blend** (lines 172–177): formula updated to include `- degeneracyPenalty`; added penalty computation description.
+
+No code changes. All 329 unit tests pass. `grep -r "rejectOn" docs/` returns no matches.

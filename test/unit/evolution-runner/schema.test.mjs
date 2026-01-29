@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import Ajv from "ajv/dist/2020.js";
@@ -34,12 +34,88 @@ function assertInvalid(config) {
   assert.equal(ok, false, "Expected schema validation to fail");
 }
 
-test("accepts a minimal runner config", () => {
-  assertValid(cloneConfig(baseConfig));
-});
+describe("schema", () => {
+  describe("runner-config schema validation", () => {
+    it("accepts a minimal runner config", () => {
+      assertValid(cloneConfig(baseConfig));
+    });
 
-test("rejects missing required sections", () => {
-  const candidate = cloneConfig(baseConfig);
-  delete candidate.mapElites;
-  assertInvalid(candidate);
+    it("rejects missing required sections", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.mapElites;
+      assertInvalid(candidate);
+    });
+  });
+
+  describe("evaluation.degeneracy", () => {
+    it("accepts valid policyByFlag and penalties", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        degeneracy: {
+          policyByFlag: {
+            loop: "reject",
+            "forced-move": "penalize",
+            stalemate: "ignore",
+          },
+          penalties: {
+            "forced-move": { weight: 0.3, freeRatio: 0.2 },
+          },
+        },
+      };
+      assertValid(candidate);
+    });
+
+    it("rejects missing policyByFlag", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        degeneracy: {
+          penalties: { "forced-move": { weight: 0.3 } },
+        },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects invalid policy value", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        degeneracy: {
+          policyByFlag: { loop: "foo" },
+          penalties: {},
+        },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects missing penalties", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        degeneracy: {
+          policyByFlag: { loop: "reject" },
+        },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects unknown properties", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        degeneracy: {
+          policyByFlag: { loop: "reject" },
+          penalties: {},
+          unknownKey: true,
+        },
+      };
+      assertInvalid(candidate);
+    });
+  });
+
+  describe("backward compatibility", () => {
+    it("accepts runner config without evaluation.degeneracy", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evaluation = {
+        simulation: { maxTurns: 100 },
+      };
+      assertValid(candidate);
+    });
+  });
 });
