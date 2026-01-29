@@ -68,3 +68,13 @@ Remove the `--evaluator` plugin mechanism from the CLI and replace it with the b
 
 - BUIINEVA-1 (factory implementation)
 - BUIINEVA-3 (barrel export)
+
+## Outcome
+
+Completed. All acceptance criteria met:
+
+- `node --test test/unit/cli/ludoforge-evolve.test.mjs` — 5/5 pass
+- `npm run test:unit` — 394/394 pass
+- `--evaluator` rejected as unknown flag (new test)
+- `--help` output no longer mentions `--evaluator` (new test)
+- `evaluation` shape `{ evaluator }` verified in both resume and new-run paths (new assertions)

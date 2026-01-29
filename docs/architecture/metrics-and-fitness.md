@@ -175,3 +175,67 @@ The degeneracy penalty is computed by summing per-flag penalties for all raised 
 whose policy is `"penalize"`. Each flag's penalty entry specifies a `weight` and an
 optional `freeRatio` (portion of the flag's severity that is forgiven). Flags with
 policy `"reject"` or `"ignore"` do not contribute to the penalty.
+
+## Built-in Evaluator
+
+Implemented in `src/evaluation-analytics/create-evaluator.js`.
+
+`createEvaluator(options?)` returns `{ evaluator }` where `evaluator` is a
+synchronous function `(genome) => EvaluationResult` that wires the complete
+evaluation pipeline. The CLI creates one instance before the evolution loop and
+passes it to the runner as `options.evaluation`.
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `simulationConfig` | `object` | `{}` | Overrides for simulation (maxTurns, maxSteps, seed, loopDetection). Merged with defaults via `resolveSimulationDefaults()` |
+| `simulationRuns` | `number` | `5` | Number of simulations per genome |
+| `agentFactory` | `(definition) => Agent[]` | creates N random agents from `definition.players.count` | Agent factory |
+| `fitnessOptions` | `object` | `{}` | Overrides for `computePreferenceAwareFitness` |
+| `degeneracyThresholds` | `object` | `{}` | Overrides for `detectDegeneracy` |
+| `preferenceModelState` | `object\|null` | `null` | Preference model state for fitness blending |
+| `descriptorKeys` | `string[]` | `["agency", "variety"]` | Feature vector keys to extract as MAP-Elites descriptors |
+| `includeExtendedMetrics` | `boolean` | `false` | Whether to compute extended metrics |
+| `extendedMetricsOptions` | `object` | `{}` | Options for `computeExtendedMetrics` |
+| `seed` | `number\|null` | `null` | Base RNG seed (each run offsets by index) |
+
+### Pipeline Steps
+
+1. **Create agents** — `agentFactory(definition)` or default random-policy agents.
+2. **Resolve simulation defaults** — `resolveSimulationDefaults()` merges config defaults.
+3. **Create simulation engine** — `createSimulationEngine(resolvedConfig)`.
+4. **Run N simulations** — `engine.runBatch(simulationRuns)`.
+5. **Adapt results** — `adaptSimulationLog()` with `LOG_ADAPTER_VERSION`. If `ok: false`, return early with `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
+6. **Compute core metrics** — `computeCoreMetrics(trajectorySummaries)`.
+7. **Optionally compute extended metrics** — if `includeExtendedMetrics`, call `computeExtendedMetrics(definition, trajectorySummaries, { ...extendedMetricsOptions, simulations: results })`.
+8. **Concatenate metrics** — `[...coreMetrics, ...extendedMetrics]`.
+9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
+10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)`.
+11. **Compute fitness** — `computePreferenceAwareFitness(featureVector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
+12. **Extract descriptors** — pick `descriptorKeys` from feature vector.
+13. **Return** — `{ fitness, descriptors, diagnostics }`.
+
+### Return Value
+
+```
+{
+  fitness: number,         // from computePreferenceAwareFitness().score
+  descriptors: object,     // subset of feature vector keyed by descriptorKeys
+  diagnostics: {
+    coreMetrics: MetricResult[],
+    extendedMetrics: MetricResult[] | null,
+    degeneracy: DegeneracyReport,
+    featureVector: FeatureVector,
+    fitnessResult: PreferenceFitnessResult,
+    simulationCount: number,
+    logAdapterOk: boolean,
+  }
+}
+```
+
+### Error Handling
+
+- If `adaptSimulationLog` fails (`ok: false`), return `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
+- If simulation throws, the error propagates (genome validation happens upstream in the evaluation adapter).
+- All metric/fitness functions handle edge cases (empty summaries, zero-step games) gracefully.

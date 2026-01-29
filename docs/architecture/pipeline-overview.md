@@ -23,12 +23,19 @@ then repeats.
    - `evaluateGenome` can optionally repair genomes before validation (defaults to no repair).
    - Validation runs on the repaired definition, and the repaired genome is the one evaluated.
    - If validation or gates fail, the genome is rejected before scoring.
-   - Relevant code: `src/evolutionary-engine/evaluation-adapter.js`.
+   - The evaluator function is produced by `createEvaluator()` from
+     `src/evaluation-analytics/create-evaluator.js`. It wires the full 13-step
+     evaluation pipeline (simulation → log adaptation → metrics → degeneracy →
+     feature vector → fitness → descriptors) as a single synchronous call.
+   - Relevant code: `src/evolutionary-engine/evaluation-adapter.js`,
+     `src/evaluation-analytics/create-evaluator.js`.
    - Config: `configs/evolution-operators.json` (repair operator toggles).
 
 3. Simulate and compute analytics
    - Simulation produces trajectories and termination outcomes.
    - Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
+   - All of these steps are encapsulated by `createEvaluator()`; see
+     `docs/architecture/metrics-and-fitness.md` for the full pipeline description.
    - Relevant code: `src/simulation-engine/loop.js`, `src/evaluation-analytics/*`.
    - Config: `configs/simulation.json` (cutoffs, loop detection, RNG seed),
      `configs/metrics-core.json` (enabled metrics, normalization, feature order),

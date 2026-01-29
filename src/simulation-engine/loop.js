@@ -222,11 +222,21 @@ function runSimulationLoop(config) {
 
     const impact = createStepImpact();
     const effectContext = { ...context, impact };
-    applyAction(definition, state, action, effectContext);
-    applyAfterActionTriggers(definition, state, effectContext);
+    const actionResult = applyAction(definition, state, action, effectContext);
+    const triggerResult = applyAfterActionTriggers(definition, state, effectContext);
     recordStateUpdate(events, state, { actionId: action.id, playerId: context.playerId });
 
-    const step = buildStep(state, action.id, legalActionCount, impact);
+    const stateHash = defaultStateHasher(state);
+    const appliedEffects = [
+      ...actionResult.appliedEffects,
+      ...triggerResult.appliedEffects,
+    ];
+
+    const step = buildStep(state, action.id, legalActionCount, impact, {
+      stateHash,
+      bindings: {},
+      appliedEffects,
+    });
     trajectory.steps.push(step);
     config.stepControl?.onStep?.(step);
     stepsTaken += 1;

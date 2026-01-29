@@ -13,10 +13,25 @@ export interface ApplyEffectOptions {
   boundsMode?: "reject" | "clamp";
 }
 
+export interface ResolvedRef {
+  kind: "var";
+  id: string;
+  scope: string;
+}
+
+export interface AppliedEffect {
+  kind: string;
+  target: ResolvedRef;
+  value?: unknown;
+  amount?: number;
+  source?: "cost" | "effect" | "trigger";
+}
+
 export interface EffectResult {
   ok: boolean;
   reason?: string;
   clamped?: boolean;
+  appliedEffect?: AppliedEffect;
 }
 
 export interface EffectImpact {

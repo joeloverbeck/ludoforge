@@ -2,9 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { runGenerationLoop } from "../../src/evolutionary-engine/engine.js";
-import { createMockHumanEval } from "./helpers/mock-human-eval.js";
-import { createMockSimulation } from "./helpers/mock-simulation.js";
-import { createMockFitness } from "./helpers/mock-fitness.js";
+import { createEvaluator } from "../../src/evaluation-analytics/create-evaluator.js";
 
 async function loadFixture(name) {
   const fileUrl = new URL(`./fixtures/${name}`, import.meta.url);
@@ -12,9 +10,16 @@ async function loadFixture(name) {
   return JSON.parse(raw);
 }
 
+const MAP_ELITES_CONFIG = {
+  descriptors: [
+    { id: "agency", min: 0, max: 1, bins: 2 },
+    { id: "variety", min: 0, max: 1, bins: 2 },
+  ],
+};
+
 describe("evolution-pipeline", () => {
   describe("happy path", () => {
-    it("evolution pipeline happy path runs seed -> simulate -> eval -> fitness -> evolve -> re-simulate", async () => {
+    it("evaluates all genomes and produces a next generation", async () => {
       const definitions = await Promise.all([
         loadFixture("evo-seed-1.json"),
         loadFixture("evo-seed-2.json"),
@@ -25,133 +30,31 @@ describe("evolution-pipeline", () => {
         definition,
       }));
 
-      const descriptorById = new Map([
-        ["seed-1", { length: 0, randomness: 0 }],
-        ["seed-2", { length: 2, randomness: 0 }],
-      ]);
-
-      const timeline = [];
-      const seenPhases = new Set();
-      const perCandidateSteps = new Map();
-      const evaluationArtifacts = new Map();
-
-      function recordPhase(phase) {
-        if (!seenPhases.has(phase)) {
-          timeline.push(phase);
-          seenPhases.add(phase);
-        }
-      }
-
-      function recordCandidateStep(id, step) {
-        if (!perCandidateSteps.has(id)) {
-          perCandidateSteps.set(id, []);
-        }
-        perCandidateSteps.get(id).push(step);
-      }
-
-      recordPhase("seed");
-
-      const simulation = createMockSimulation({ seed: 17, maxTurns: 4, terminalTurns: 2 });
-      const humanEval = createMockHumanEval({ seed: 23 });
-      const fitnessHelper = createMockFitness();
-
-      const evaluation = {
-        evaluator: (genome) => {
-          assert.ok(genome.id, "Expected genome to include a stable id.");
-          recordPhase("simulate");
-          recordCandidateStep(genome.id, "simulate");
-          const simulationResult = simulation.run({
-            definition: genome.definition,
-            mode: "terminal",
-          });
-
-          recordPhase("mock-eval");
-          recordCandidateStep(genome.id, "mock-eval");
-          const metrics = [
-            { id: "novelty", value: simulationResult.trajectory.steps.length },
-            { id: "variety", value: genome.id === "seed-1" ? 0.2 : 0.4 },
-          ];
-          const featureVector = fitnessHelper.buildFeatureVector({
-            metrics,
-            degeneracy: { flags: [] },
-          });
-          const evaluationResult = humanEval.rateCandidate({
-            id: genome.id,
-            featureVector,
-          });
-          assert.equal(evaluationResult.candidateId, genome.id);
-
-          recordPhase("fitness");
-          recordCandidateStep(genome.id, "fitness");
-          const descriptors = descriptorById.get(genome.id);
-          assert.ok(descriptors, `Missing descriptors for ${genome.id}`);
-          const fitness = fitnessHelper.evaluate({
-            metrics,
-            degeneracy: { flags: [] },
-            descriptors,
-          });
-
-          evaluationArtifacts.set(genome.id, {
-            simulationResult,
-            evaluationResult,
-            fitness,
-          });
-
-          return {
-            fitness: fitness.fitness,
-            descriptors: fitness.descriptors,
-            diagnostics: {
-              simulation: simulationResult,
-              evaluation: evaluationResult,
-            },
-          };
-        },
-      };
+      const evaluation = createEvaluator({ seed: 42, simulationRuns: 2 });
 
       const result = runGenerationLoop({
         population,
         evaluation,
-        mapElites: {
-          descriptors: [
-            { id: "length", min: 0, max: 2, bins: 2 },
-            { id: "randomness", min: 0, max: 1, bins: 1 },
-          ],
-        },
+        mapElites: MAP_ELITES_CONFIG,
         shortlistSize: 0,
       });
 
-      recordPhase("evolve");
+      assert.equal(result.evaluated.length, population.length);
+      assert.equal(result.rejected.length, 0);
 
-      const nextGeneration = result.nextGeneration;
-      const resimulated = nextGeneration.map((genome) =>
-        simulation.run({ definition: genome.definition, mode: "terminal" })
-      );
-      recordPhase("re-simulate");
-
-      assert.deepEqual(timeline, [
-        "seed",
-        "simulate",
-        "mock-eval",
-        "fitness",
-        "evolve",
-        "re-simulate",
-      ]);
-
-      for (const [id, steps] of perCandidateSteps.entries()) {
-        assert.deepEqual(steps, ["simulate", "mock-eval", "fitness"]);
-        assert.ok(evaluationArtifacts.has(id));
+      for (const entry of result.evaluated) {
+        assert.equal(typeof entry.fitness, "number");
+        assert.ok(Number.isFinite(entry.fitness), `fitness should be finite, got ${entry.fitness}`);
+        assert.equal(typeof entry.descriptors, "object");
+        assert.ok("agency" in entry.descriptors, "descriptors should include agency");
+        assert.ok("variety" in entry.descriptors, "descriptors should include variety");
+        assert.equal(typeof entry.diagnostics, "object");
       }
 
-      assert.equal(result.rejected.length, 0);
-      assert.equal(result.evaluated.length, population.length);
-      assert.equal(nextGeneration.length, population.length);
-      assert.equal(resimulated.length, nextGeneration.length);
+      assert.ok(result.nextGeneration.length >= 1, "MAP-Elites should produce at least one elite");
 
-      const originalIds = new Set(population.map((genome) => genome.id));
-      const evaluatedIds = result.evaluated.map((entry) => entry.genome.id);
-      const nextIds = nextGeneration.map((genome) => genome.id);
-
-      evaluatedIds.forEach((id) => assert.ok(originalIds.has(id)));
+      const originalIds = new Set(population.map((g) => g.id));
+      const nextIds = result.nextGeneration.map((g) => g.id);
       nextIds.forEach((id) => assert.ok(originalIds.has(id)));
     });
   });
@@ -176,7 +79,7 @@ describe("evolution-pipeline", () => {
           evaluatorCalls += 1;
           return {
             fitness: 1,
-            descriptors: { length: 0, randomness: 0 },
+            descriptors: { agency: 0, variety: 0 },
           };
         },
       };
@@ -184,12 +87,7 @@ describe("evolution-pipeline", () => {
       const result = runGenerationLoop({
         population,
         evaluation,
-        mapElites: {
-          descriptors: [
-            { id: "length", min: 0, max: 2, bins: 2 },
-            { id: "randomness", min: 0, max: 1, bins: 1 },
-          ],
-        },
+        mapElites: MAP_ELITES_CONFIG,
       });
 
       assert.equal(evaluatorCalls, 0);
@@ -201,65 +99,34 @@ describe("evolution-pipeline", () => {
   });
 
   describe("safety cutoffs", () => {
-    it("evolution pipeline records safety cutoffs for non-terminating fixtures", async () => {
+    it("evaluates non-terminating fixtures and includes degeneracy diagnostics", async () => {
       const definition = await loadFixture("evo-non-terminating.json");
       const population = [{ id: "seed-cutoff", definition }];
 
-      const simulation = createMockSimulation({ seed: 9, maxTurns: 3 });
-      const humanEval = createMockHumanEval({ seed: 11 });
-      const fitnessHelper = createMockFitness();
-
-      const evaluation = {
-        evaluator: (genome) => {
-          const simulationResult = simulation.run({ definition: genome.definition, mode: "cutoff" });
-          const featureVector = fitnessHelper.buildFeatureVector({
-            metrics: [{ id: "steps", value: simulationResult.trajectory.steps.length }],
-            degeneracy: { flags: [] },
-          });
-          const evaluationResult = humanEval.rateCandidate({
-            id: genome.id,
-            featureVector,
-          });
-
-          const fitness = fitnessHelper.evaluate({
-            metrics: [{ id: "steps", value: simulationResult.trajectory.steps.length }],
-            degeneracy: { flags: [] },
-            descriptors: { length: 1, randomness: 0 },
-          });
-
-          return {
-            fitness: fitness.fitness,
-            descriptors: fitness.descriptors,
-            diagnostics: {
-              simulation: simulationResult,
-              evaluation: evaluationResult,
-            },
-          };
-        },
-      };
+      const evaluation = createEvaluator({ seed: 9, simulationRuns: 2 });
 
       const result = runGenerationLoop({
         population,
         evaluation,
-        mapElites: {
-          descriptors: [
-            { id: "length", min: 0, max: 2, bins: 2 },
-            { id: "randomness", min: 0, max: 1, bins: 1 },
-          ],
-        },
+        mapElites: MAP_ELITES_CONFIG,
       });
 
       assert.equal(result.evaluated.length, 1);
-      const evaluationDiagnostics = result.evaluated[0].diagnostics.evaluation;
-      assert.equal(evaluationDiagnostics.simulation.terminationReason, "max-turns");
-      assert.equal(evaluationDiagnostics.simulation.terminated, false);
-      assert.ok(!("reason" in evaluationDiagnostics.simulation.outcome));
-      assert.equal(evaluationDiagnostics.evaluation.candidateId, "seed-cutoff");
+
+      const entry = result.evaluated[0];
+      assert.equal(typeof entry.fitness, "number");
+      assert.ok(Number.isFinite(entry.fitness));
+
+      const evalDiag = entry.diagnostics.evaluation;
+      assert.ok(evalDiag.degeneracy, "diagnostics should include degeneracy report");
+      assert.ok(Array.isArray(evalDiag.degeneracy.flags), "degeneracy should have flags array");
+      assert.ok(evalDiag.logAdapterOk === true, "log adapter should succeed");
+      assert.equal(typeof evalDiag.simulationCount, "number");
     });
   });
 
   describe("determinism", () => {
-    it("evolution pipeline outcomes are deterministic for identical seeds", async () => {
+    it("produces identical results for identical seeds", async () => {
       const definitions = await Promise.all([
         loadFixture("evo-seed-1.json"),
         loadFixture("evo-seed-2.json"),
@@ -271,54 +138,12 @@ describe("evolution-pipeline", () => {
       }));
 
       function runOnce() {
-        const simulation = createMockSimulation({ seed: 17, maxTurns: 4, terminalTurns: 2 });
-        const humanEval = createMockHumanEval({ seed: 23 });
-        const fitnessHelper = createMockFitness();
-
-        const evaluation = {
-          evaluator: (genome) => {
-            const simulationResult = simulation.run({
-              definition: genome.definition,
-              mode: "terminal",
-            });
-            const metrics = [
-              { id: "novelty", value: simulationResult.trajectory.steps.length },
-              { id: "variety", value: genome.id === "seed-1" ? 0.2 : 0.4 },
-            ];
-            const featureVector = fitnessHelper.buildFeatureVector({
-              metrics,
-              degeneracy: { flags: [] },
-            });
-            const evaluationResult = humanEval.rateCandidate({
-              id: genome.id,
-              featureVector,
-            });
-            const fitness = fitnessHelper.evaluate({
-              metrics,
-              degeneracy: { flags: [] },
-              descriptors: { length: genome.id === "seed-1" ? 0 : 2, randomness: 0 },
-            });
-
-            return {
-              fitness: fitness.fitness,
-              descriptors: fitness.descriptors,
-              diagnostics: {
-                simulation: simulationResult,
-                evaluation: evaluationResult,
-              },
-            };
-          },
-        };
+        const evaluation = createEvaluator({ seed: 17, simulationRuns: 2 });
 
         const result = runGenerationLoop({
           population,
           evaluation,
-          mapElites: {
-            descriptors: [
-              { id: "length", min: 0, max: 2, bins: 2 },
-              { id: "randomness", min: 0, max: 1, bins: 1 },
-            ],
-          },
+          mapElites: MAP_ELITES_CONFIG,
           shortlistSize: 0,
         });
 

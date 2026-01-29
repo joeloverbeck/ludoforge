@@ -53,7 +53,7 @@ Mutation and crossover operators are toggled via `configs/evolution-operators.js
 
 - **ESM only** — all files use ES module imports (`import`/`export`), `"type": "module"` in package.json.
 - **Node built-in test runner** — uses `node --test`, assertions via `node:assert/strict`. No Jest/Mocha/Vitest.
-- **No external test mocking** — custom mock objects (e.g., `createMockHumanIo()`) instead of jest.mock/sinon.
+- **Minimal test mocking** — prefer custom mock objects (e.g., `createMockHumanIo()`) over framework mocks. For unreachable error paths (e.g., internal module failures), use `node:test` `mock.module()` in a **separate test file** — `mock.module()` must be called before the module under test is imported, so it cannot share a file with tests that import the real module. The `test:unit` script includes `--experimental-test-module-mocks` to enable this. When running a single mock-dependent test file, pass the flag: `node --experimental-test-module-mocks --test path/to/file.test.mjs`.
 - **Immutability** — create new objects, never mutate. Use `structuredClone()` for deep copies.
 - **Composition over classes** — operators are plain functions, not class hierarchies.
 - **Deterministic RNG** — seeded RNG (`createSeededRng()`) for reproducible simulations and tests.
@@ -64,10 +64,10 @@ Mutation and crossover operators are toggled via `configs/evolution-operators.js
 ## CLI: ludoforge-evolve
 
 ```bash
-ludoforge-evolve --config <path> --seeds <path> [--evaluator <path>] [--run-id <id>] [--resume] [--out <dir>] [--dry-run]
+ludoforge-evolve --config <path> --seeds <path> [--run-id <id>] [--resume] [--out <dir>] [--dry-run]
 ```
 
-Evaluator modules must export one of: `createEvaluation()` returning `{ evaluator }`, an `evaluator` named export, a default export function, or an `evaluation` object with `{ evaluator }`.
+Evaluation is built-in via `createEvaluator()` from `src/evaluation-analytics/create-evaluator.js`. No external evaluator plugin is needed.
 
 ## Configuration
 

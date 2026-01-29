@@ -21,6 +21,7 @@ export interface TriggerResult {
   reason?: string;
   fired?: boolean;
   iterations?: number;
+  appliedEffects?: import("./effects.js").AppliedEffect[];
 }
 
 export function applyTriggers(

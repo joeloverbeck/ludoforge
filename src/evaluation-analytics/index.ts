@@ -88,3 +88,17 @@ export type {
 export { createPreferenceModelState, updatePreferenceModelState } from "./preference-model.js";
 
 export { selectActiveLearningPairs } from "./active-learning.js";
+
+export { createEvaluator } from "./create-evaluator.js";
+
+export type {
+  CreateEvaluatorOptions,
+  CreateEvaluatorResult,
+  EvaluationDiagnosticsFailure,
+  EvaluationDiagnosticsSuccess,
+  EvaluationResult,
+  EvaluationResultFailure,
+  EvaluationResultSuccess,
+  Evaluator,
+  EvaluatorGenome,
+} from "./create-evaluator.js";

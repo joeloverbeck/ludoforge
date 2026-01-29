@@ -19,8 +19,9 @@
 
 ## Testing Guidelines
 - Unit test files live under `test/unit/` and are picked up by `npm run test:unit`.
-- `npm run test:unit` runs `node --test test/unit/**/*.test.mjs` and `tsc -p tsconfig.json`.
+- `npm run test:unit` runs `node --experimental-test-module-mocks --test test/unit/**/*.test.mjs` and `tsc -p tsconfig.json`.
 - Run a single test file with `node --test path/to/test-file.test.mjs`.
+- For tests using `mock.module()`, run with `node --experimental-test-module-mocks --test path/to/file.test.mjs`. These tests must live in **separate files** from non-mocked tests because `mock.module()` must be called before the target module is first imported.
 
 ## Commit & Pull Request Guidelines
 - Commit messages in this repo use short, imperative sentences (e.g., “Revise README title and project description”). Follow that pattern.

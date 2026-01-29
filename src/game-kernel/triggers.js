@@ -52,12 +52,13 @@ function checkStepLimit(guardState) {
 export function applyTriggers(definition, state, event, context = {}) {
   const triggers = collectTriggers(definition).filter((trigger) => trigger.event === event);
   if (triggers.length === 0) {
-    return { ok: true, fired: false, iterations: 0 };
+    return { ok: true, fired: false, iterations: 0, appliedEffects: [] };
   }
 
   const variableIndex = buildVariableIndex(definition);
   const snapshot = snapshotState(state);
   let firedAny = false;
+  const appliedEffects = [];
   const guardState = enterTriggerGuard(context);
   if (guardState?.blocked) {
     return { ok: false, reason: "trigger-recursion" };
@@ -93,6 +94,9 @@ export function applyTriggers(definition, state, event, context = {}) {
         if (!result.ok) {
           return { ok: false, reason: result.reason };
         }
+        if (result.appliedEffect) {
+          appliedEffects.push({ ...result.appliedEffect, source: "trigger" });
+        }
         if (guardState?.guard) {
           guardState.guard.steps += 1;
         }
@@ -106,5 +110,5 @@ export function applyTriggers(definition, state, event, context = {}) {
     return { ok: false, reason: "trigger-loop" };
   }
 
-  return { ok: true, fired: firedAny, iterations: firedAny ? 1 : 0 };
+  return { ok: true, fired: firedAny, iterations: firedAny ? 1 : 0, appliedEffects };
 }

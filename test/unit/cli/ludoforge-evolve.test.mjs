@@ -20,12 +20,6 @@ async function writeConfigFile(baseDir) {
   return configPath;
 }
 
-function createEvaluationModule() {
-  return {
-    evaluator: () => ({ fitness: 1, descriptors: { axis: 0 } }),
-  };
-}
-
 describe("ludoforge-evolve", () => {
   describe("dry-run", () => {
     it("validates inputs without running the runner or writing metadata", async () => {
@@ -88,8 +82,6 @@ describe("ludoforge-evolve", () => {
           "--resume",
           "--run-id",
           runId,
-          "--evaluator",
-          "./evaluator.js",
         ],
         deps: {
           listRuns: async () => [runId],
@@ -97,7 +89,6 @@ describe("ludoforge-evolve", () => {
           loadSeedPopulation: async () => {
             throw new Error("loadSeedPopulation should not run during resume");
           },
-          loadEvaluatorModule: async () => createEvaluationModule(),
           runEvolutionRunner: async (options) => {
             capturedOptions = options;
             return { runId: options.runId };
@@ -110,6 +101,8 @@ describe("ludoforge-evolve", () => {
       assert.equal(capturedOptions.startGeneration, 3);
       assert.deepEqual(capturedOptions.population, resumeState.population);
       assert.deepEqual(capturedOptions.preferenceModelSnapshots, [resumeState.preferenceModel]);
+      assert.ok(capturedOptions.evaluation, "evaluation should be passed to runner");
+      assert.equal(typeof capturedOptions.evaluation.evaluator, "function");
     });
   });
 
@@ -137,13 +130,10 @@ describe("ludoforge-evolve", () => {
           "./seeds.json",
           "--run-id",
           runId,
-          "--evaluator",
-          "./evaluator.js",
         ],
         deps: {
           listRuns: async () => [],
           loadSeedPopulation: async () => population,
-          loadEvaluatorModule: async () => createEvaluationModule(),
           writeRunMetadata: async (dir, id, metadata) => {
             metadataPayload = { dir, id, metadata };
             return join(dir, "runs", id, "run.json");
@@ -162,6 +152,45 @@ describe("ludoforge-evolve", () => {
       assert.ok(capturedOptions);
       assert.equal(capturedOptions.runId, runId);
       assert.deepEqual(capturedOptions.population, population);
+      assert.ok(capturedOptions.evaluation, "evaluation should be passed to runner");
+      assert.equal(typeof capturedOptions.evaluation.evaluator, "function");
+    });
+  });
+
+  describe("--evaluator flag removed", () => {
+    it("rejects --evaluator as an unknown flag", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-eval-"));
+      const configPath = await writeConfigFile(baseDir);
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: [
+              "node",
+              "ludoforge-evolve",
+              "--config",
+              configPath,
+              "--seeds",
+              "./seeds.json",
+              "--evaluator",
+              "./evaluator.js",
+            ],
+            deps: {
+              listRuns: async () => [],
+              loadSeedPopulation: async () => [],
+            },
+          }),
+        { message: "Unknown flag: --evaluator" },
+      );
+    });
+
+    it("does not mention --evaluator in help output", async () => {
+      const result = await runLudoforgeEvolve({
+        argv: ["node", "ludoforge-evolve", "--help"],
+      });
+
+      assert.ok(result.help);
+      assert.ok(!result.message.includes("--evaluator"), "help should not mention --evaluator");
     });
   });
 });

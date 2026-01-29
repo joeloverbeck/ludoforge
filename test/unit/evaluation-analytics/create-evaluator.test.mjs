@@ -142,4 +142,5 @@ describe("createEvaluator", () => {
     const result = evaluator(makeGenome());
     assert.equal(result.descriptors.nonexistent_key_xyz, 0);
   });
+
 });

@@ -195,5 +195,16 @@ export function applyEffect(state, effect, context, options) {
   if (!variable) {
     return { ok: false, reason: "unknown-variable" };
   }
-  return applyVariableEffect(state, variable, effect, context, options);
+  const result = applyVariableEffect(state, variable, effect, context, options);
+  if (!result.ok) {
+    return result;
+  }
+  const resolvedTarget = { kind: "var", id: variable.id, scope: variable.scope };
+  const appliedEffect = { kind: effect.kind, target: resolvedTarget };
+  if (effect.kind === "set") {
+    appliedEffect.value = effect.value;
+  } else if (effect.kind === "inc" || effect.kind === "dec") {
+    appliedEffect.amount = effect.amount ?? 0;
+  }
+  return { ...result, appliedEffect };
 }

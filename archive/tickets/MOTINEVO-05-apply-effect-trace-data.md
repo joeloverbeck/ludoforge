@@ -1,5 +1,7 @@
 # MOTINEVO-05: applyEffect returns structured trace data
 
+**Status: COMPLETED**
+
 ## Description
 Modify `applyEffect()` in `src/game-kernel/effects.js` to return `{ ok, appliedEffect }` where `appliedEffect` is a structured record containing the resolved target reference, effect kind, and applied values. Modify `applyTriggers()` in `src/game-kernel/triggers.js` to collect and return an `appliedEffects` array with `source: "trigger"` for each triggered effect. These changes provide the raw trace data needed by the simulation engine to build trajectory steps with full effect provenance.
 
@@ -29,3 +31,15 @@ Modify `applyEffect()` in `src/game-kernel/effects.js` to return `{ ok, appliedE
 ## Dependencies
 - Depends on: MOTINEVO-04
 - Blocks: MOTINEVO-06
+
+## Outcome
+
+### What was changed
+- **`src/game-kernel/effects.js`**: `applyEffect()` now returns `appliedEffect` on success — a record with `kind`, `target` (ResolvedRef with `kind`, `id`, `scope`), and `value` (for set) or `amount` (for inc/dec). On failure or non-variable targets, `appliedEffect` is absent, preserving backward compatibility.
+- **`src/game-kernel/triggers.js`**: `applyTriggers()` now collects an `appliedEffects` array from all fired trigger effects, each decorated with `source: "trigger"`. Returned in all success paths (empty array when no triggers match).
+- **`src/game-kernel/effects.d.ts`**: Added `ResolvedRef`, `AppliedEffect` interfaces; extended `EffectResult` with optional `appliedEffect`.
+- **`src/game-kernel/triggers.d.ts`**: Extended `TriggerResult` with optional `appliedEffects` array.
+- **`test/unit/game-kernel/effect-trace.test.mjs`**: 10 new tests covering trace data emission for both functions.
+
+### Versus originally planned
+Implementation matched the ticket exactly. No assumptions needed correction — the ticket accurately described the current code structure and caller patterns. No breaking changes to public APIs; the return shape extensions are purely additive.

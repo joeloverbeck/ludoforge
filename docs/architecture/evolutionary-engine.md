@@ -10,6 +10,9 @@ Steps per genome:
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
 3. Run safety gates if provided.
 4. Invoke `options.evaluator(genome)` with the repaired genome if repair ran.
+   The default evaluator is produced by `createEvaluator()` from
+   `src/evaluation-analytics/create-evaluator.js`, which runs the full 13-step
+   built-in evaluation pipeline (see `docs/architecture/metrics-and-fitness.md`).
 5. Reject if evaluator output is missing `fitness` or `descriptors`.
 
 Diagnostics include validation results, safety failures, and evaluator-specific payloads.

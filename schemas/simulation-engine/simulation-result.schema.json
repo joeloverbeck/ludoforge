@@ -87,7 +87,16 @@
           "items": { "type": "integer" }
         },
         "affectedGlobal": { "type": "boolean" },
-        "state": { "type": "object" }
+        "state": { "type": "object" },
+        "stateHash": { "type": "string" },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/BindingValue" }
+        },
+        "appliedEffects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AppliedEffect" }
+        }
       }
     },
     "GameEvent": {
@@ -131,6 +140,38 @@
         "max-steps",
         "loop-detected"
       ]
+    },
+    "ResolvedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["var", "token", "zone", "player"] },
+        "id": { "type": "string" },
+        "scope": { "type": "string" }
+      }
+    },
+    "BindingValue": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        {
+          "type": "array",
+          "items": { "type": ["string", "number"] }
+        }
+      ]
+    },
+    "AppliedEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "target", "source"],
+      "properties": {
+        "kind": { "type": "string" },
+        "target": { "$ref": "#/$defs/ResolvedRef" },
+        "source": { "enum": ["cost", "effect", "trigger"] },
+        "amount": { "type": "number" },
+        "value": {}
+      }
     }
   }
 }

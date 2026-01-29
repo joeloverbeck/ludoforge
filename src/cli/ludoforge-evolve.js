@@ -12,8 +12,9 @@ import { loadSeedPopulation } from "../evolution-runner/seed-loader.js";
 import { loadResumeState } from "../evolution-runner/resume-loader.js";
 import { runEvolutionRunner } from "../evolution-runner/runner.js";
 import { validateRunnerConfig } from "../evolution-runner/config.js";
+import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
 
-const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out", "--evaluator"]);
+const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
 
 function parseArgs(argv) {
   const args = Array.isArray(argv) ? argv.slice(2) : [];
@@ -56,8 +57,6 @@ function parseArgs(argv) {
         parsed.runId = value;
       } else if (flag === "--out") {
         parsed.out = value;
-      } else if (flag === "--evaluator") {
-        parsed.evaluator = value;
       }
       continue;
     }
@@ -107,43 +106,6 @@ async function loadConfig(configPath, deps) {
   return parsed;
 }
 
-async function loadEvaluator(modulePath, deps) {
-  if (!modulePath) {
-    throw new Error("Missing required --evaluator <path> for non-dry-run execution");
-  }
-
-  const resolved = resolve(modulePath);
-  const moduleUrl = pathToFileURL(resolved).href;
-  const moduleExports = await deps.loadEvaluatorModule(moduleUrl);
-  if (!moduleExports || typeof moduleExports !== "object") {
-    throw new Error("Evaluator module did not export an object");
-  }
-
-  if (typeof moduleExports.createEvaluation === "function") {
-    const evaluation = moduleExports.createEvaluation();
-    if (!evaluation || typeof evaluation.evaluator !== "function") {
-      throw new Error("createEvaluation must return an evaluation object with an evaluator function");
-    }
-    return evaluation;
-  }
-
-  if (typeof moduleExports.evaluator === "function") {
-    return { evaluator: moduleExports.evaluator };
-  }
-
-  if (typeof moduleExports.default === "function") {
-    return { evaluator: moduleExports.default };
-  }
-
-  if (moduleExports.evaluation && typeof moduleExports.evaluation.evaluator === "function") {
-    return moduleExports.evaluation;
-  }
-
-  throw new Error(
-    "Evaluator module must export an evaluator function or createEvaluation() factory",
-  );
-}
-
 function createUsage() {
   return [
     "Usage: ludoforge-evolve --config <path> --seeds <path> [options]",
@@ -156,7 +118,6 @@ function createUsage() {
     "  --run-id <id>      Explicit run ID (UUID)",
     "  --resume           Resume an existing run (requires --run-id)",
     "  --out <dir>        Base output directory (default: cwd)",
-    "  --evaluator <path> Path to evaluator module (required unless --dry-run)",
     "  --dry-run          Validate inputs without executing the runner",
     "  --help             Show this help",
   ].join("\n");
@@ -172,7 +133,6 @@ function resolveDeps(overrides = {}) {
     loadSeedPopulation,
     loadResumeState,
     runEvolutionRunner,
-    loadEvaluatorModule: (moduleUrl) => import(moduleUrl),
     ...overrides,
   };
 }
@@ -210,7 +170,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       };
     }
 
-    const evaluation = await loadEvaluator(parsed.evaluator, deps);
+    const evaluation = createEvaluator();
 
     const result = await deps.runEvolutionRunner({
       baseDir,
@@ -255,7 +215,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     };
   }
 
-  const evaluation = await loadEvaluator(parsed.evaluator, deps);
+  const evaluation = createEvaluator();
   await deps.writeRunMetadata(baseDir, runId, { config });
 
   const result = await deps.runEvolutionRunner({
