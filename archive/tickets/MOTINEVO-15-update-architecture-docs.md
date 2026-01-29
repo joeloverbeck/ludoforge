@@ -1,5 +1,7 @@
 # MOTINEVO-15: Update architecture docs
 
+## Status: COMPLETED
+
 ## Description
 Review and update all architecture documentation to reflect the changes from MOTINEVO-01 through MOTINEVO-14. Ensure docs accurately describe the current system state: trace fields, new operators, motif mining pipeline, and removal of deprecated effect kinds.
 
@@ -32,3 +34,13 @@ Review and update all architecture documentation to reflect the changes from MOT
 ## Dependencies
 - Depends on: MOTINEVO-01 through MOTINEVO-14
 - Blocks: none
+
+## Outcome
+
+All 6 architecture docs updated:
+1. **simulation-engine.md**: Added "Trace Fields" section documenting stateHash, bindings, appliedEffects; AppliedEffect type definition; pass-step rules; replay invariant (verifyTraceConsistency, replayEffectsOnState). Updated Canonical SimulationResult optional fields.
+2. **evolutionary-engine.md**: Fixed stale `random`/`foreach` reference in action-effect-magnitude. Added 7 new operators (effect-insert, effect-delete, effect-param-tweak, effect-kind-swap, effect-reorder, action-add-small, motif-inject). Added "Effect Helpers" subsection.
+3. **evolution-runner.md**: Added "Motif Mining" section with config table, pipeline flow, and artifact description. Added motifs.jsonl to directory layout.
+4. **metrics-and-fitness.md**: Added "LTS Builder and Motif Mining" section covering buildLts, canonicalLabel, mineMotifs, and motif-store persistence.
+5. **pipeline-overview.md**: Added trace emission note to stage 3. Inserted new stage 9 (motif mining). Renumbered old stage 9 to 10. Updated stage 8 operator count to 21.
+6. **README.md**: Updated simulation-engine doc description to mention trace field emission.

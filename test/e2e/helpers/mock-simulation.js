@@ -1,5 +1,6 @@
 import { createInitialState } from "../../../src/game-kernel/index.js";
 import { createSeededRng } from "../../../src/simulation-engine/rng.js";
+import { defaultStateHasher } from "../../../src/simulation-engine/loop-detection.js";
 
 const DEFAULT_MAX_TURNS = 5;
 const DEFAULT_TERMINAL_TURNS = 2;
@@ -58,6 +59,9 @@ function buildSteps(definition, stepCount, rng) {
       affectedPlayerIds: [],
       affectedGlobal: false,
       state: stepState,
+      stateHash: defaultStateHasher(stepState),
+      bindings: {},
+      appliedEffects: [],
     });
   }
 

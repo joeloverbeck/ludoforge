@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-28T00:00:00Z",
+  "updatedAt": "2026-01-29T00:00:00Z",
   "mutation": {
     "enabled": [
       "numeric-tweak",
@@ -16,7 +16,14 @@
       "phase-remove",
       "token-zone-target-add",
       "token-type-remove",
-      "zone-remove"
+      "zone-remove",
+      "effect-insert",
+      "effect-delete",
+      "effect-param-tweak",
+      "effect-kind-swap",
+      "effect-reorder",
+      "action-add-small",
+      "motif-inject"
     ],
     "weights": {
       "numeric-tweak": 1,
@@ -32,7 +39,14 @@
       "phase-remove": 1,
       "token-zone-target-add": 1,
       "token-type-remove": 1,
-      "zone-remove": 1
+      "zone-remove": 1,
+      "effect-insert": 1,
+      "effect-delete": 1,
+      "effect-param-tweak": 1,
+      "effect-kind-swap": 1,
+      "effect-reorder": 1,
+      "action-add-small": 1,
+      "motif-inject": 1
     }
   },
   "crossover": {

@@ -12,6 +12,13 @@ import { phaseRemoveMutation } from "./mutation/operators/phase-remove.js";
 import { tokenTypeZoneTargetAddMutation } from "./mutation/operators/token-zone-target-add.js";
 import { tokenTypeRemoveMutation } from "./mutation/operators/token-type-remove.js";
 import { zoneRemoveMutation } from "./mutation/operators/zone-remove.js";
+import { effectInsertMutation } from "./mutation/operators/effect-insert.js";
+import { effectDeleteMutation } from "./mutation/operators/effect-delete.js";
+import { effectParamTweakMutation } from "./mutation/operators/effect-param-tweak.js";
+import { effectKindSwapMutation } from "./mutation/operators/effect-kind-swap.js";
+import { effectReorderMutation } from "./mutation/operators/effect-reorder.js";
+import { actionAddSmallMutation } from "./mutation/operators/action-add-small.js";
+import { motifInjectMutation, createMotifInjectMutation } from "./mutation/operators/motif-inject.js";
 
 export {
   defaultMutationOperators,
@@ -34,4 +41,12 @@ export {
   tokenTypeZoneTargetAddMutation,
   tokenTypeRemoveMutation,
   zoneRemoveMutation,
+  effectInsertMutation,
+  effectDeleteMutation,
+  effectParamTweakMutation,
+  effectKindSwapMutation,
+  effectReorderMutation,
+  actionAddSmallMutation,
+  motifInjectMutation,
+  createMotifInjectMutation,
 };

@@ -66,7 +66,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `enum-cycle`: changes enum initial values to a different allowed value.
 - `action-duplicate`: duplicates a random action and assigns a unique id.
 - `action-remove`: removes a random action when more than one exists.
-- `action-effect-magnitude`: nudges `inc`/`dec`/`random`/`foreach` effect amounts by +/-1.
+- `action-effect-magnitude`: nudges `inc`/`dec` effect amounts by +/-1.
 - `precondition-negation`: wraps an action precondition with `not`.
 - `termination-threshold`: nudges numeric termination thresholds within variable bounds.
 - `termination-outcome`: swaps termination outcome types (`win`/`lose`/`draw`).
@@ -75,7 +75,28 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `token-zone-target-add`: clones a token type + zone and adds a matching action target.
 - `token-type-remove`: removes a token type and rewrites references to a remaining token type.
 - `zone-remove`: removes a zone and rewrites references to a remaining zone.
+- `effect-insert`: appends a random atomic effect to a random action's effects list.
+- `effect-delete`: removes one effect from a random action with >=2 effects.
+- `effect-param-tweak`: nudges a numeric effect parameter (`amount` or `value`) by +/-1.
+- `effect-kind-swap`: replaces an effect's kind with a different valid kind and rebuilds its properties.
+- `effect-reorder`: swaps two effects within a random action's effects list.
+- `action-add-small`: creates a new action with 1-2 random effects and a unique id.
+- `motif-inject`: inserts a mined motif effect sequence into a random action (requires motif mining enabled).
 - Operator chosen uniformly at random (seedable RNG).
+
+### Effect Helpers
+
+Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
+
+- `EFFECT_KINDS`: canonical list of atomic effect kinds (`set`, `inc`, `dec`, `move`,
+  `spawn`, `destroy`, `reveal`, `hide`).
+- `buildRandomEffect(definition, rng)`: generates a random atomic effect with a valid
+  target and properties drawn from the game definition.
+- `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
+  the given effect kind (variable for set/inc/dec, token for move/spawn/destroy, zone
+  for reveal/hide).
+- `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
+  `{ amount: 1 }` for inc/dec, `{ toZone }` for move/spawn).
 
 ## Crossover Operators
 

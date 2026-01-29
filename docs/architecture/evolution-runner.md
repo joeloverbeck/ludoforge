@@ -33,6 +33,7 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `map-elites.json`, `shortlist.json`
   - `feedback.jsonl`, `preference-model.jsonl`
   - `determinism.json` (when seeds/RNG metadata are available)
+  - `motifs.jsonl` (when motif mining is enabled)
 
 ## Run Isolation Rules
 
@@ -50,6 +51,47 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
 
 - A single seed should reproduce deterministic paths across runs when inputs are identical.
 - The runner uses seeded RNG helpers (no `Math.random`) and persists seeds in artifacts for audit.
+
+## Motif Mining
+
+The runner supports optional motif mining between generations. When enabled,
+elite trajectories are analyzed to discover recurring effect-sequence patterns
+(motifs) that can be injected back into the population by the `motif-inject`
+mutation operator.
+
+### Configuration
+
+Motif mining is configured via `evolution.motifMining` in the runner config
+(`schemas/evolution-runner/runner-config.v1.json`):
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `enabled` | boolean | Whether to run motif mining |
+| `eliteSelection.perNicheTopK` | integer | Top K elites per niche to mine |
+| `eliteSelection.globalTopK` | integer | Global top K elites to mine |
+| `minSupport` | integer | Minimum occurrence count for a pattern to qualify as a motif |
+| `maxMotifLength` | integer | Maximum n-gram length to mine |
+| `ngramSizes` | integer[] | Which n-gram sizes to enumerate |
+| `seed` | integer | RNG seed for deterministic mining |
+
+### Pipeline Flow
+
+1. Select elite genomes from the MAP-Elites grid using `eliteSelection` criteria.
+2. Extract trajectory steps from elite simulations.
+3. Build a Labelled Transition System via `buildLts(trajectories)` from
+   `src/evaluation-analytics/lts-builder.js`.
+4. Mine recurring n-gram motifs via `mineMotifs(lts, config)` from
+   `src/evaluation-analytics/motif-miner.js`.
+5. Persist results to `motifs.jsonl` via `writeMotifJsonl()` from
+   `src/data-persistence/motif-store.js`.
+6. Optionally feed mined motif sequences to the `motif-inject` mutation operator.
+
+### Artifacts
+
+Per-generation directory includes `motifs.jsonl` when motif mining is enabled.
+Each record uses the JSONL envelope pattern (`{ type: "motif", payload }`) with
+required metadata fields (`id`, `version`, `createdAt`) and domain fields
+(`signature`, `support`).
 
 ## Current Implementation Status
 

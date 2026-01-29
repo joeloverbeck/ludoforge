@@ -7,7 +7,7 @@ and edge cases.
 ## Documents
 
 - `pipeline-overview.md`: End-to-end loop stages and data artifacts.
-- `simulation-engine.md`: Simulation loop mechanics and termination logic.
+- `simulation-engine.md`: Simulation loop mechanics, termination logic, and trace field emission.
 - `metrics-and-fitness.md`: Metric calculations, feature vector assembly, and fitness blending.
 - `human-feedback.md`: Human scoring capture and preference model updates.
 - `evolutionary-engine.md`: Evaluation adapter, MAP-Elites placement, and genetic operators.

@@ -60,7 +60,34 @@
       "properties": {
         "mutation": { "type": "object", "additionalProperties": true },
         "crossover": { "type": "object", "additionalProperties": true },
-        "repair": { "type": "object", "additionalProperties": true }
+        "repair": { "type": "object", "additionalProperties": true },
+        "motifMining": { "$ref": "#/$defs/MotifMiningConfig" }
+      }
+    },
+    "EliteSelectionConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["perNicheTopK", "globalTopK"],
+      "properties": {
+        "perNicheTopK": { "type": "integer", "minimum": 1 },
+        "globalTopK": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "MotifMiningConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "eliteSelection", "minSupport", "maxMotifLength", "ngramSizes"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "eliteSelection": { "$ref": "#/$defs/EliteSelectionConfig" },
+        "minSupport": { "type": "integer", "minimum": 1 },
+        "maxMotifLength": { "type": "integer", "minimum": 2 },
+        "ngramSizes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "seed": { "type": "integer" }
       }
     },
     "MapElitesDescriptorConfig": {

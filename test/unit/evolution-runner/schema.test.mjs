@@ -118,4 +118,108 @@ describe("schema", () => {
       assertValid(candidate);
     });
   });
+
+  describe("evolution.motifMining", () => {
+    const validMotifMining = {
+      enabled: true,
+      eliteSelection: { perNicheTopK: 3, globalTopK: 10 },
+      minSupport: 2,
+      maxMotifLength: 5,
+      ngramSizes: [2, 3],
+    };
+
+    it("accepts valid motifMining config under evolution", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = { motifMining: structuredClone(validMotifMining) };
+      assertValid(candidate);
+    });
+
+    it("accepts motifMining with optional seed", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), seed: 42 },
+      };
+      assertValid(candidate);
+    });
+
+    it("accepts evolution without motifMining", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = { mutation: {} };
+      assertValid(candidate);
+    });
+
+    it("accepts config without evolution block entirely", () => {
+      assertValid(cloneConfig(baseConfig));
+    });
+
+    it("rejects unknown properties inside motifMining", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), extraField: true },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects unknown properties inside eliteSelection", () => {
+      const candidate = cloneConfig(baseConfig);
+      const mm = structuredClone(validMotifMining);
+      mm.eliteSelection.unknownKey = 5;
+      candidate.evolution = { motifMining: mm };
+      assertInvalid(candidate);
+    });
+
+    it("rejects motifMining missing required fields", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = { motifMining: { enabled: true } };
+      assertInvalid(candidate);
+    });
+
+    it("rejects minSupport less than 1", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), minSupport: 0 },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects maxMotifLength less than 2", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), maxMotifLength: 1 },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects empty ngramSizes array", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), ngramSizes: [] },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects non-integer ngramSizes values", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.evolution = {
+        motifMining: { ...structuredClone(validMotifMining), ngramSizes: [1.5] },
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects perNicheTopK less than 1", () => {
+      const candidate = cloneConfig(baseConfig);
+      const mm = structuredClone(validMotifMining);
+      mm.eliteSelection.perNicheTopK = 0;
+      candidate.evolution = { motifMining: mm };
+      assertInvalid(candidate);
+    });
+
+    it("rejects globalTopK less than 1", () => {
+      const candidate = cloneConfig(baseConfig);
+      const mm = structuredClone(validMotifMining);
+      mm.eliteSelection.globalTopK = 0;
+      candidate.evolution = { motifMining: mm };
+      assertInvalid(candidate);
+    });
+  });
 });

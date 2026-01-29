@@ -51,4 +51,51 @@ describe("mock-simulation", () => {
       assert.deepEqual(first, second);
     });
   });
+
+  describe("trace fields", () => {
+    it("every step includes stateHash, bindings, and appliedEffects", async () => {
+      const definition = await loadFixture("choice-game.json");
+      const helper = createMockSimulation({ seed: 1, maxTurns: 4, terminalTurns: 3 });
+
+      const result = helper.run({ definition, mode: "terminal" });
+
+      assert.ok(result.trajectory.steps.length > 0, "expected at least one step");
+      for (const step of result.trajectory.steps) {
+        assert.equal(typeof step.stateHash, "string", "stateHash must be a string");
+        assert.ok(step.stateHash.length > 0, "stateHash must be non-empty");
+        assert.equal(typeof step.bindings, "object", "bindings must be an object");
+        assert.ok(!Array.isArray(step.bindings), "bindings must not be an array");
+        assert.ok(Array.isArray(step.appliedEffects), "appliedEffects must be an array");
+      }
+    });
+
+    it("stateHash is deterministic for the same step state", async () => {
+      const definition = await loadFixture("evo-terminates.json");
+      const a = createMockSimulation({ seed: 5, maxTurns: 3, terminalTurns: 2 });
+      const b = createMockSimulation({ seed: 5, maxTurns: 3, terminalTurns: 2 });
+
+      const resultA = a.run({ definition, mode: "terminal" });
+      const resultB = b.run({ definition, mode: "terminal" });
+
+      for (let i = 0; i < resultA.trajectory.steps.length; i += 1) {
+        assert.equal(
+          resultA.trajectory.steps[i].stateHash,
+          resultB.trajectory.steps[i].stateHash,
+          `stateHash mismatch at step ${i}`
+        );
+      }
+    });
+
+    it("bindings is empty and appliedEffects is empty for mock steps", async () => {
+      const definition = await loadFixture("evo-non-terminating.json");
+      const helper = createMockSimulation({ seed: 2, maxTurns: 3 });
+
+      const result = helper.run({ definition, mode: "cutoff" });
+
+      for (const step of result.trajectory.steps) {
+        assert.deepEqual(step.bindings, {});
+        assert.deepEqual(step.appliedEffects, []);
+      }
+    });
+  });
 });

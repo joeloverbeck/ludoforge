@@ -32,7 +32,9 @@ then repeats.
    - Config: `configs/evolution-operators.json` (repair operator toggles).
 
 3. Simulate and compute analytics
-   - Simulation produces trajectories and termination outcomes.
+   - Simulation produces trajectories and termination outcomes, including optional
+     trace fields (`stateHash`, `bindings`, `appliedEffects`) for motif mining and
+     replay verification.
    - Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
    - All of these steps are encapsulated by `createEvaluator()`; see
      `docs/architecture/metrics-and-fitness.md` for the full pipeline description.
@@ -73,13 +75,27 @@ then repeats.
 8. Evolution operators (optional between generations)
    - Mutation, crossover, and repair can generate new genomes from elites.
    - Removal mutations rewrite references (token types/zones) to keep DSL validity rather than leaving dangling ids.
+   - Includes 21 mutation operators: 14 original operators plus 7 effect-level and
+     motif-aware operators (effect-insert, effect-delete, effect-param-tweak,
+     effect-kind-swap, effect-reorder, action-add-small, motif-inject).
    - Relevant code: `src/evolutionary-engine/mutation.js`, `src/evolutionary-engine/crossover.js`,
-     `src/evolutionary-engine/repair.js`.
+     `src/evolutionary-engine/repair.js`, `src/evolutionary-engine/mutation/operators/`,
+     `src/evolutionary-engine/mutation/effect-helpers.js`.
    - Config: `configs/evolution-operators.json` (enabled operators and weights).
 
-9. Run orchestration
-   - The runner manages run directories, artifact persistence, and resume compatibility.
-   - Config: `configs/evolution-runner.json` (runs root, artifact layout, resume rules).
+9. Motif mining (optional between generations)
+   - When enabled, elite trajectories are converted into a Labelled Transition System
+     (LTS) and mined for recurring effect-sequence n-gram patterns (motifs).
+   - Mined motifs are persisted as `motifs.jsonl` and can be fed to the `motif-inject`
+     mutation operator.
+   - Relevant code: `src/evaluation-analytics/lts-builder.js`,
+     `src/evaluation-analytics/motif-miner.js`, `src/data-persistence/motif-store.js`.
+   - Config: `evolution.motifMining` in `configs/evolution-runner.json`
+     (see `docs/architecture/evolution-runner.md`).
+
+10. Run orchestration
+    - The runner manages run directories, artifact persistence, and resume compatibility.
+    - Config: `configs/evolution-runner.json` (runs root, artifact layout, resume rules).
 
 ## Determinism Controls
 

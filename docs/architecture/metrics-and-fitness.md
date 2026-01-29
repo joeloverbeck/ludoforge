@@ -239,3 +239,47 @@ passes it to the runner as `options.evaluation`.
 - If `adaptSimulationLog` fails (`ok: false`), return `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
 - If simulation throws, the error propagates (genome validation happens upstream in the evaluation adapter).
 - All metric/fitness functions handle edge cases (empty summaries, zero-step games) gracefully.
+
+## LTS Builder and Motif Mining
+
+### Labelled Transition System
+
+Implemented in `src/evaluation-analytics/lts-builder.js`.
+
+`buildLts(trajectories)` constructs a Labelled Transition System from arrays of
+trajectory steps (each element is a `TrajectoryStep[]` from a simulation result):
+
+- **Nodes**: unique `stateHash` values, sorted lexicographically.
+- **Edges**: `{ from, to, label }` where `label` is a canonical string derived from
+  `appliedEffects` via `canonicalLabel()`. Pass steps (empty effects) produce self-loop
+  edges labelled `"pass"`. Edges are deduplicated and sorted.
+- `canonicalLabel(appliedEffects)` normalizes each effect into
+  `kind:scope:id:source[:amt=N][:val=V]`, sorts the fragments, and joins with `;`.
+  Empty effects yield `"pass"`.
+
+### Motif Miner
+
+Implemented in `src/evaluation-analytics/motif-miner.js`.
+
+`mineMotifs(lts, config)` discovers recurring edge-label n-gram patterns from an LTS:
+
+- **Input**: `{ nodes, edges }` from `buildLts`, plus config
+  `{ ngramSizes, minSupport, maxMotifLength }`.
+- **Process**: for each n-gram size, enumerates all contiguous paths of that length
+  in the LTS graph. Patterns with fewer than `minSupport` occurrences are discarded.
+- **Output**: array of `{ signature, ngramSize, support, exampleOccurrences }` sorted
+  by descending support then lexicographic signature. Each `exampleOccurrence` contains
+  `{ fromNode, path }`.
+
+### Motif Persistence
+
+Implemented in `src/data-persistence/motif-store.js`.
+
+Motif records are persisted as JSONL using the envelope pattern:
+
+- `writeMotifJsonl(filePath, records)`: wraps each record in
+  `{ type: "motif", payload }` and writes JSONL.
+- `readMotifJsonl(filePath)`: parses JSONL, validates envelopes, and returns payload
+  arrays.
+- Each record requires metadata (`id`, `version`, `createdAt`) and domain fields
+  (`signature`, `support`).

@@ -18,6 +18,13 @@ import { phaseRemoveMutation } from "./operators/phase-remove.js";
 import { tokenTypeZoneTargetAddMutation } from "./operators/token-zone-target-add.js";
 import { tokenTypeRemoveMutation } from "./operators/token-type-remove.js";
 import { zoneRemoveMutation } from "./operators/zone-remove.js";
+import { effectInsertMutation } from "./operators/effect-insert.js";
+import { effectDeleteMutation } from "./operators/effect-delete.js";
+import { effectParamTweakMutation } from "./operators/effect-param-tweak.js";
+import { effectKindSwapMutation } from "./operators/effect-kind-swap.js";
+import { effectReorderMutation } from "./operators/effect-reorder.js";
+import { actionAddSmallMutation } from "./operators/action-add-small.js";
+import { motifInjectMutation } from "./operators/motif-inject.js";
 
 const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
@@ -34,6 +41,13 @@ const ALL_MUTATION_OPERATORS = [
   tokenTypeZoneTargetAddMutation,
   tokenTypeRemoveMutation,
   zoneRemoveMutation,
+  effectInsertMutation,
+  effectDeleteMutation,
+  effectParamTweakMutation,
+  effectKindSwapMutation,
+  effectReorderMutation,
+  actionAddSmallMutation,
+  motifInjectMutation,
 ];
 
 export const defaultMutationOperators = filterOperatorsByEnabled(

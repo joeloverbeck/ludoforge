@@ -30,3 +30,14 @@ Create a new module `src/evaluation-analytics/lts-builder.js` that constructs a 
 ## Dependencies
 - Depends on: MOTINEVO-06
 - Blocks: MOTINEVO-12
+
+## Outcome
+**Status**: Completed
+
+**Files created**:
+- `src/evaluation-analytics/lts-builder.js` — exports `canonicalLabel(appliedEffects)` and `buildLts(trajectories)`
+- `test/unit/evaluation-analytics/lts-builder.test.mjs` — 15 tests covering all acceptance criteria
+
+**Verification**:
+- `node --test test/unit/evaluation-analytics/lts-builder.test.mjs` — 15/15 pass
+- `npm run test:unit` — 452/452 pass, 0 regressions

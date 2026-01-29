@@ -8,8 +8,8 @@ import {
 import {
   actionDuplicateMutation,
   booleanToggleMutation,
+  motifInjectMutation,
   numericTweakMutation,
-  zoneRemoveMutation,
 } from "../../src/evolutionary-engine/mutation.js";
 
 describe("mutation-orchestrator", () => {
@@ -18,7 +18,7 @@ describe("mutation-orchestrator", () => {
       assert.equal(defaultMutationOperators[0], numericTweakMutation);
       assert.equal(defaultMutationOperators[1], booleanToggleMutation);
       assert.equal(defaultMutationOperators[3], actionDuplicateMutation);
-      assert.equal(defaultMutationOperators.at(-1), zoneRemoveMutation);
+      assert.equal(defaultMutationOperators.at(-1), motifInjectMutation);
     });
   });
 

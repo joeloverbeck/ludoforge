@@ -327,3 +327,13 @@ With action-chunk operators disabled (or near-zero weight):
 evolution still generates valid children at scale
 
 validity failures occur pre-evaluator, as before
+
+## Outcome
+
+All spec items implemented across MOTINEVO-01 through MOTINEVO-15:
+- DSL schema: removed `random`/`foreach` effect kinds (Change A1).
+- Simulation result: trace fields (`stateHash`, `bindings`, `appliedEffects`) emitted per step (Change B1-B3).
+- LTS builder and motif miner implemented (Change C1-C2).
+- Motif-inject operator and effect-level mutation operators implemented (Change C3, D1).
+- Runner config schema includes typed `motifMining` config (Change D2).
+- Architecture docs updated to reflect all changes (MOTINEVO-15).

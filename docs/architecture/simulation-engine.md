@@ -94,6 +94,50 @@ Simulation returns:
 - `terminated`: boolean (true for game-terminal ends; false for safety cutoffs).
 - `terminationDetail?`: optional string for human-readable/configured detail.
 
+## Trace Fields
+
+Each `TrajectoryStep` includes optional trace fields for motif mining and replay:
+
+- `stateHash` (string, optional): deterministic hash of the step's state via
+  `defaultStateHasher(state)` from `src/simulation-engine/loop-detection.js`.
+- `bindings` (object, optional): reserved for resolved target bindings. Currently
+  always `{}`.
+- `appliedEffects` (AppliedEffect[], optional): ordered list of atomic effects
+  actually executed in this step, including trigger-origin effects.
+
+### AppliedEffect Type
+
+```
+{
+  kind: string,           // effect kind (set, inc, dec, move, spawn, destroy, reveal, hide)
+  target: {
+    scope: string,        // "global" | "perPlayer"
+    id: string,           // variable, token type, or zone id
+    kind?: string         // "var" | "token" | "zone"
+  },
+  source: string,         // "cost" | "effect" | "trigger"
+  amount?: number,        // for inc/dec
+  value?: any,            // for set
+  toZone?: string         // for move/spawn
+}
+```
+
+### Pass-Step Rules
+
+When `actionId === null` (pass step):
+- `bindings` must be `{}`
+- `appliedEffects` must be `[]`
+
+### Replay Invariant
+
+`src/simulation-engine/replay.js` provides two verification functions:
+
+- `verifyTraceConsistency(steps)`: checks that every step's recorded `stateHash`
+  matches `defaultStateHasher(step.state)`. Returns `{ ok, failures }`.
+- `replayEffectsOnState(state, appliedEffects, context?)`: applies `appliedEffects`
+  to a cloned state's variables (supports `inc`, `dec`, `set` on global and perPlayer
+  targets). Returns the new state without mutating the input.
+
 ## Canonical SimulationResult (Normative)
 
 This section is the single source of truth for SimulationResult.
@@ -114,6 +158,9 @@ Optional fields:
 
 - `terminationDetail?`: optional string for configured/human-readable detail
   (e.g., `turn.noLegalActions.reason`).
+- `stateHash?`: per-step deterministic state hash (see Trace Fields above).
+- `bindings?`: per-step resolved target bindings (see Trace Fields above).
+- `appliedEffects?`: per-step ordered applied effects (see Trace Fields above).
 
 Hard rules:
 
