@@ -8,7 +8,7 @@ export const actionEffectMagnitudeMutation = {
     const definition = structuredClone(genome.definition);
     const targets = collectActionEffectTargets(definition).filter((target) => {
       const kind = target.effect?.kind;
-      return kind === "inc" || kind === "dec" || kind === "random" || kind === "foreach";
+      return kind === "inc" || kind === "dec";
     });
 
     if (targets.length === 0) {

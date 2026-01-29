@@ -89,8 +89,7 @@ export type Effect =
   | { kind: "destroy"; target: Ref }
   | { kind: "reveal"; target: Ref }
   | { kind: "hide"; target: Ref }
-  | { kind: "random"; target: Ref; value?: ScalarValue; amount?: number; toZone?: string }
-  | { kind: "foreach"; target: Ref; value?: ScalarValue; amount?: number; toZone?: string };
+;
 
 export interface TriggerDef {
   event:

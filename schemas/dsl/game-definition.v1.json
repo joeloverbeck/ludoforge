@@ -282,30 +282,6 @@
             "kind": { "const": "hide" },
             "target": { "$ref": "#/$defs/Ref" }
           }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "target"],
-          "properties": {
-            "kind": { "const": "random" },
-            "target": { "$ref": "#/$defs/Ref" },
-            "value": { "$ref": "#/$defs/ScalarValue" },
-            "amount": { "type": "number" },
-            "toZone": { "type": "string" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "target"],
-          "properties": {
-            "kind": { "const": "foreach" },
-            "target": { "$ref": "#/$defs/Ref" },
-            "value": { "$ref": "#/$defs/ScalarValue" },
-            "amount": { "type": "number" },
-            "toZone": { "type": "string" }
-          }
         }
       ]
     },

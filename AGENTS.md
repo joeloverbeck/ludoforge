@@ -37,13 +37,11 @@ If you use AI agents, ensure outputs are reflected in `specs/` or `tickets/` and
 
 # Stack and Constraints
 
-## Baseline Language Choice
-- Preferred: TypeScript for core systems.
-- Rationale:
-  - Strong typing across DSL AST, state, and actions reduces runtime errors.
-  - Easier refactors as the DSL and kernel evolve.
-  - Better editor tooling for a codebase with many cross-cutting types.
-- Fallback: Plain JavaScript only if TS friction outweighs benefits.
+## Language and Type Checking
+- Source code: Plain JavaScript (ESM) with `.d.ts` type declaration files.
+- Type checking: `tsc -p tsconfig.json` (`noEmit: true`) validates `.ts` declarations only.
+- The `typescript` package is **not** in `devDependencies` — `tsc` must be installed globally. Do not use `npx tsc` as it will fail.
+- JSDoc annotations in `.js` files are checked against the `.d.ts` declarations by `tsc`.
 
 ## Runtime and Tooling
 - Runtime: Node.js LTS (ESM).

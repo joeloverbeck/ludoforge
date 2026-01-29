@@ -198,6 +198,51 @@ describe("mutation", () => {
       assert.equal(definition.actions[0].effects[0].amount, 1);
       assert.equal(mutated.definition.actions[0].effects[0].amount, 0);
     });
+
+    it("ignores effects whose kind is not inc or dec", () => {
+      const definition = cloneDefinition(baseDefinition);
+      // Replace all effects with non-numeric kinds so no targets match
+      definition.actions[0].effects = [
+        { kind: "set", target: { kind: "var", id: "score" }, value: 5 },
+        { kind: "move", target: { kind: "token", id: "pawn" }, zone: "z1" },
+      ];
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = actionEffectMagnitudeMutation.mutate(genome, rng);
+
+      // No targets matched, so definition should be unchanged (deep-equal clone)
+      assert.deepStrictEqual(mutated.definition.actions[0].effects, [
+        { kind: "set", target: { kind: "var", id: "score" }, value: 5 },
+        { kind: "move", target: { kind: "token", id: "pawn" }, zone: "z1" },
+      ]);
+    });
+
+    it("only targets inc and dec effects in a mixed-kind action", () => {
+      const definition = cloneDefinition(baseDefinition);
+      // First action has an inc effect (from fixture) — that should be targeted
+      // Add a set effect that should be ignored
+      definition.actions[0].effects.push(
+        { kind: "set", target: { kind: "var", id: "score" }, value: 99 }
+      );
+      const genome = { definition };
+      // rng returns 0 → picks first matching target (the inc effect)
+      const rng = { nextInt: () => 0 };
+
+      const mutated = actionEffectMagnitudeMutation.mutate(genome, rng);
+
+      // The inc effect amount should be tweaked
+      assert.notEqual(
+        mutated.definition.actions[0].effects[0].amount,
+        definition.actions[0].effects[0].amount
+      );
+      // The set effect should remain untouched
+      assert.deepStrictEqual(mutated.definition.actions[0].effects[1], {
+        kind: "set",
+        target: { kind: "var", id: "score" },
+        value: 99,
+      });
+    });
   });
 
   describe("preconditionNegationMutation", () => {

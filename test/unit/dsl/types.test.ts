@@ -152,16 +152,23 @@ const metaExpr: Expr = {
 const ref: Ref = { kind: "player", id: "p1" };
 
 const effect: Effect = {
-  kind: "foreach",
+  kind: "hide",
   target: { kind: "zone", id: "board" },
-  amount: 1,
 };
+
+// @ts-expect-error - random effect kind was removed
+const randomEffect: Effect = { kind: "random", target: { kind: "zone", id: "board" } };
+
+// @ts-expect-error - foreach effect kind was removed
+const foreachEffect: Effect = { kind: "foreach", target: { kind: "zone", id: "board" } };
 
 void definition;
 void expr;
 void metaExpr;
 void ref;
 void effect;
+void randomEffect;
+void foreachEffect;
 
 // @ts-expect-error - version is required
 const missingVersion: GameDefinition = {

@@ -121,5 +121,47 @@ describe("schema", () => {
       candidate.players.count = 0;
       assertInvalid(candidate);
     });
+
+    it("rejects effect with kind 'random'", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "random",
+          target: { kind: "var", id: "score" },
+          amount: 1,
+        },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects effect with kind 'foreach'", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "foreach",
+          target: { kind: "var", id: "score" },
+          amount: 1,
+        },
+      ];
+      assertInvalid(candidate);
+    });
+  });
+
+  describe("remaining valid effect kinds", () => {
+    for (const kind of ["set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide"]) {
+      it(`accepts effect with kind '${kind}'`, () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind,
+            target: { kind: "var", id: "score" },
+            ...(kind === "inc" || kind === "dec" ? { amount: 1 } : {}),
+            ...(kind === "set" ? { value: 5 } : {}),
+            ...(kind === "move" || kind === "spawn" ? { toZone: "board" } : {}),
+          },
+        ];
+        assertValid(candidate);
+      });
+    }
   });
 });

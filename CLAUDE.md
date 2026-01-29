@@ -5,13 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
-npm run test:unit          # Unit tests + TypeScript type check (tsc --noEmit)
+npm run test:unit          # Unit tests + TypeScript type check (tsc -p tsconfig.json)
 npm run test:integration   # Integration tests
 npm run test:e2e           # End-to-end tests
 node --test path/to/file.test.mjs  # Run a single test file
+tsc -p tsconfig.json       # Type check only (standalone)
 ```
 
-There is no build step. TypeScript is used for type checking only (`noEmit: true`). All source is plain JavaScript with JSDoc types checked by `tsc`.
+There is no build step. TypeScript is used for type checking only (`noEmit: true`). All source is plain JavaScript with JSDoc types checked by `tsc`. The `typescript` package is **not** a project dependency — `tsc` must be installed globally (e.g., `npm install -g typescript`). Do not use `npx tsc` as it will fail.
 
 No linter or formatter is configured.
 
