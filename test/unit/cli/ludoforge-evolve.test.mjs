@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runLudoforgeEvolve } from "../../../src/cli/ludoforge-evolve.js";
+import { CLIError } from "../../../src/cli/cli-error.js";
 
 function createRunnerConfig() {
   return {
@@ -330,7 +331,10 @@ describe("ludoforge-evolve", () => {
               loadSeedPopulation: async () => [],
             },
           }),
-        { message: "Unknown flag: --evaluator" },
+        (error) => {
+          assert.ok(error.message.includes("Unknown flag: --evaluator"));
+          return true;
+        },
       );
     });
 
@@ -341,6 +345,239 @@ describe("ludoforge-evolve", () => {
 
       assert.ok(result.help);
       assert.ok(!result.message.includes("--evaluator"), "help should not mention --evaluator");
+    });
+  });
+
+  describe("error messages", () => {
+    it("throws CLIError with showUsage when no arguments provided", async () => {
+      await assert.rejects(
+        () => runLudoforgeEvolve({ argv: ["node", "ludoforge-evolve"] }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("No arguments provided"));
+          assert.equal(error.showUsage, true);
+          assert.ok(error.hint.includes("--config"));
+          return true;
+        },
+      );
+    });
+
+    it("throws CLIError explaining what config is when --config missing with other flags", async () => {
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--dry-run"],
+            deps: { validateRunnerConfig: () => ({ valid: true, errors: [] }) },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Missing required --config"));
+          assert.ok(error.message.includes("evolution parameters"));
+          assert.equal(error.showUsage, true);
+          assert.ok(error.hint.includes("configs/"));
+          return true;
+        },
+      );
+    });
+
+    it("throws CLIError with hint when config file not found", async () => {
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--config", "/nonexistent/path.json"],
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Failed to read config"));
+          assert.ok(error.hint.includes("exists"));
+          return true;
+        },
+      );
+    });
+
+    it("throws CLIError with linter hint for invalid JSON", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-badjson-"));
+      const configPath = join(baseDir, "bad.json");
+      await writeFile(configPath, "{ not valid json }", "utf8");
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--config", configPath],
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Invalid JSON"));
+          assert.ok(error.hint.includes("linter"));
+          return true;
+        },
+      );
+    });
+
+    it("throws CLIError with schema hint for validation failure", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-badschema-"));
+      const configPath = join(baseDir, "invalid.json");
+      await writeFile(configPath, JSON.stringify({ bad: "config" }), "utf8");
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--config", configPath],
+            deps: {
+              validateRunnerConfig: () => ({
+                valid: false,
+                errors: [{ path: "/runner", message: "missing required property" }],
+              }),
+            },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("validation failed"));
+          assert.ok(error.hint.includes("schema"));
+          return true;
+        },
+      );
+    });
+
+    it("throws CLIError with showUsage when --resume without --run-id", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-resume-noid-"));
+      const configPath = await writeConfigFile(baseDir);
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--config", configPath, "--resume"],
+            deps: { listRuns: async () => [] },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("--resume requires --run-id"));
+          assert.equal(error.showUsage, true);
+          return true;
+        },
+      );
+    });
+
+    it("lists available runs when run ID not found and runs exist", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-notfound-"));
+      const configPath = await writeConfigFile(baseDir);
+      const existingId = "123e4567-e89b-42d3-a456-426614174aaa";
+      const missingId = "123e4567-e89b-42d3-a456-426614174bbb";
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: [
+              "node", "ludoforge-evolve",
+              "--config", configPath,
+              "--resume",
+              "--run-id", missingId,
+            ],
+            deps: { listRuns: async () => [existingId] },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("does not exist"));
+          assert.ok(error.hint.includes(existingId));
+          return true;
+        },
+      );
+    });
+
+    it("says 'No runs found' when run ID not found and no runs exist", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-noruns-"));
+      const configPath = await writeConfigFile(baseDir);
+      const missingId = "123e4567-e89b-42d3-a456-426614174ccc";
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: [
+              "node", "ludoforge-evolve",
+              "--config", configPath,
+              "--resume",
+              "--run-id", missingId,
+            ],
+            deps: { listRuns: async () => [] },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.hint.includes("No runs found"));
+          return true;
+        },
+      );
+    });
+
+    it("lists valid flags when unknown flag provided", async () => {
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--bogus"],
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Unknown flag: --bogus"));
+          assert.ok(error.message.includes("--config"));
+          assert.ok(error.message.includes("--seeds"));
+          assert.equal(error.showUsage, true);
+          return true;
+        },
+      );
+    });
+
+    it("explains value required when flag value missing", async () => {
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "--config"],
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("--config"));
+          assert.ok(error.message.includes("requires a value"));
+          assert.equal(error.showUsage, true);
+          return true;
+        },
+      );
+    });
+
+    it("explains positional arguments not accepted", async () => {
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: ["node", "ludoforge-evolve", "somefile.json"],
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Unexpected argument: somefile.json"));
+          assert.ok(error.message.includes("positional"));
+          assert.equal(error.showUsage, true);
+          return true;
+        },
+      );
+    });
+
+    it("shows UUID hint for invalid run ID format", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-badid-"));
+      const configPath = await writeConfigFile(baseDir);
+
+      await assert.rejects(
+        () =>
+          runLudoforgeEvolve({
+            argv: [
+              "node", "ludoforge-evolve",
+              "--config", configPath,
+              "--run-id", "not-a-uuid",
+            ],
+            deps: { listRuns: async () => [] },
+          }),
+        (error) => {
+          assert.ok(error instanceof CLIError);
+          assert.ok(error.message.includes("Invalid run ID format"));
+          assert.ok(error.hint.includes("UUID"));
+          return true;
+        },
+      );
     });
   });
 });

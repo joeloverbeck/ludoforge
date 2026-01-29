@@ -13,8 +13,15 @@ import { loadResumeState } from "../evolution-runner/resume-loader.js";
 import { runEvolutionRunner } from "../evolution-runner/runner.js";
 import { validateRunnerConfig } from "../evolution-runner/config.js";
 import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
+import { CLIError } from "./cli-error.js";
 
 const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
+const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h"]);
+const ALL_FLAGS = new Set([...VALUE_FLAGS, ...BOOLEAN_FLAGS]);
+
+function validFlagList() {
+  return [...ALL_FLAGS].sort().join(", ");
+}
 
 function parseArgs(argv) {
   const args = Array.isArray(argv) ? argv.slice(2) : [];
@@ -22,6 +29,7 @@ function parseArgs(argv) {
     dryRun: false,
     resume: false,
     help: false,
+    _hasArgs: args.length > 0,
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -42,11 +50,17 @@ function parseArgs(argv) {
     if (arg.startsWith("--")) {
       const [flag, inlineValue] = arg.split("=", 2);
       if (!VALUE_FLAGS.has(flag)) {
-        throw new Error(`Unknown flag: ${flag}`);
+        throw new CLIError(
+          `Unknown flag: ${flag}. Valid flags are: ${validFlagList()}`,
+          { showUsage: true },
+        );
       }
       const value = inlineValue ?? args[i + 1];
       if (!value || value.startsWith("--")) {
-        throw new Error(`Missing value for ${flag}`);
+        throw new CLIError(
+          `${flag} requires a value. Example: ${flag} <value>`,
+          { showUsage: true },
+        );
       }
       i += inlineValue ? 0 : 1;
       if (flag === "--seeds") {
@@ -61,7 +75,10 @@ function parseArgs(argv) {
       continue;
     }
 
-    throw new Error(`Unexpected argument: ${arg}`);
+    throw new CLIError(
+      `Unexpected argument: ${arg}. Only flags (--flag) are accepted, not positional arguments.`,
+      { showUsage: true },
+    );
   }
 
   return parsed;
@@ -81,26 +98,39 @@ function formatValidationErrors(errors) {
 
 async function loadConfig(configPath, deps) {
   if (!configPath) {
-    throw new Error("Missing required --config <path>");
+    throw new CLIError(
+      "Missing required --config <path>. The config file specifies evolution parameters (generations, MAP-Elites settings, etc.).",
+      {
+        showUsage: true,
+        hint: "See configs/ for example config files.",
+      },
+    );
   }
   let raw;
   try {
     raw = await deps.readFile(configPath, "utf8");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`Failed to read config at ${configPath}: ${message}`);
+  } catch {
+    throw new CLIError(
+      `Failed to read config at ${configPath}`,
+      { hint: "Check that the file exists and the path is correct." },
+    );
   }
   let parsed;
   try {
     parsed = JSON.parse(raw);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid JSON";
-    throw new Error(`Invalid JSON in config at ${configPath}: ${message}`);
+  } catch {
+    throw new CLIError(
+      `Invalid JSON in config at ${configPath}`,
+      { hint: "Validate your JSON with a linter or jsonlint." },
+    );
   }
 
   const validation = deps.validateRunnerConfig(parsed);
   if (!validation.valid) {
-    throw new Error(`Runner config validation failed:\n${formatValidationErrors(validation.errors)}`);
+    throw new CLIError(
+      `Runner config validation failed:\n${formatValidationErrors(validation.errors)}`,
+      { hint: "See schemas/config/ for the expected structure." },
+    );
   }
 
   return parsed;
@@ -137,12 +167,26 @@ function resolveDeps(overrides = {}) {
   };
 }
 
+function formatRunList(runs) {
+  if (runs.length === 0) {
+    return "No runs found in this directory.";
+  }
+  return `Available runs: ${runs.join(", ")}`;
+}
+
 export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides } = {}) {
   const deps = resolveDeps(overrides);
   const parsed = parseArgs(argv);
 
   if (parsed.help) {
     return { help: true, message: createUsage() };
+  }
+
+  if (!parsed._hasArgs) {
+    throw new CLIError("No arguments provided.", {
+      showUsage: true,
+      hint: "At minimum, pass --config <path> to specify the runner config file.",
+    });
   }
 
   const config = await loadConfig(parsed.config, deps);
@@ -153,11 +197,24 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
 
   if (parsed.resume) {
     if (!runId) {
-      throw new Error("--resume requires --run-id <id>");
+      throw new CLIError(
+        "--resume requires --run-id <id> to identify which run to continue.",
+        { showUsage: true },
+      );
     }
-    assertValidRunId(runId);
+    try {
+      assertValidRunId(runId);
+    } catch {
+      throw new CLIError(
+        `Invalid run ID format: '${runId}'.`,
+        { hint: "Run IDs must be UUIDs, e.g. 123e4567-e89b-42d3-a456-426614174000" },
+      );
+    }
     if (!existingRuns.includes(runId)) {
-      throw new Error(`Run ID '${runId}' does not exist in ${baseDir}`);
+      throw new CLIError(
+        `Run ID '${runId}' does not exist in ${baseDir}.`,
+        { hint: formatRunList(existingRuns) },
+      );
     }
 
     const resumeState = await deps.loadResumeState({ baseDir, runId, config });
@@ -192,9 +249,19 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
   }
 
   if (runId) {
-    assertValidRunId(runId);
+    try {
+      assertValidRunId(runId);
+    } catch {
+      throw new CLIError(
+        `Invalid run ID format: '${runId}'.`,
+        { hint: "Run IDs must be UUIDs, e.g. 123e4567-e89b-42d3-a456-426614174000" },
+      );
+    }
     if (existingRuns.includes(runId)) {
-      throw new Error(`Run ID '${runId}' already exists in ${baseDir}`);
+      throw new CLIError(
+        `Run ID '${runId}' already exists in ${baseDir}.`,
+        { hint: "Use --resume --run-id <id> to continue an existing run, or omit --run-id to auto-generate a new one." },
+      );
     }
   } else {
     runId = deps.createRunId();
@@ -233,9 +300,13 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
   }
 
   if (!config.seeding) {
-    throw new Error(
+    throw new CLIError(
       "Missing --seeds <path> and no seeding block in config. " +
       "Provide --seeds or add a seeding block to your runner config.",
+      {
+        showUsage: true,
+        hint: "Seeds define the initial population of game definitions to evolve.",
+      },
     );
   }
 
@@ -277,7 +348,16 @@ async function main() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+    const parts = [message];
+    if (error instanceof CLIError) {
+      if (error.hint) {
+        parts.push("", `Hint: ${error.hint}`);
+      }
+      if (error.showUsage) {
+        parts.push("", createUsage());
+      }
+    }
+    process.stderr.write(`${parts.join("\n")}\n`);
     process.exitCode = 1;
   }
 }
