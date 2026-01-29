@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import Ajv from "ajv/dist/2020.js";
 
 const schemaPath = new URL(
-  "../../schemas/evolution-runner/runner-config.v1.json",
+  "../../schemas/evolution-runner/runner-config.schema.json",
   import.meta.url,
 ).pathname;
 const schemaJson = JSON.parse(readFileSync(schemaPath, "utf8"));

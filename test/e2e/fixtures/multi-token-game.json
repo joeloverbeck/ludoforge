@@ -1,0 +1,132 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "turnCount",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 5 },
+        "initial": 0
+      }
+    ],
+    "tokenTypes": [
+      {
+        "id": "warrior",
+        "attributes": []
+      },
+      {
+        "id": "archer",
+        "attributes": []
+      }
+    ],
+    "zones": [
+      {
+        "id": "barracks",
+        "tokenType": "warrior",
+        "scope": "global",
+        "order": "unordered",
+        "visibility": "public"
+      },
+      {
+        "id": "field",
+        "tokenType": "warrior",
+        "scope": "global",
+        "order": "unordered",
+        "visibility": "public"
+      },
+      {
+        "id": "tower",
+        "tokenType": "archer",
+        "scope": "global",
+        "order": "unordered",
+        "visibility": "public"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "deployWarrior",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "turnCount" } },
+        "right": { "kind": "value", "value": 3 }
+      },
+      "effects": [
+        {
+          "kind": "spawn",
+          "target": { "kind": "token", "id": "warrior" },
+          "toZone": "barracks"
+        },
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "turnCount" },
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "marchWarrior",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "turnCount" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "move",
+          "target": { "kind": "token", "id": "warrior" },
+          "toZone": "field"
+        }
+      ]
+    },
+    {
+      "id": "deployArcher",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "turnCount" } },
+        "right": { "kind": "value", "value": 3 }
+      },
+      "effects": [
+        {
+          "kind": "spawn",
+          "target": { "kind": "token", "id": "archer" },
+          "toZone": "tower"
+        },
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "turnCount" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "turnCount" } },
+          "right": { "kind": "value", "value": 4 }
+        },
+        "outcome": {
+          "type": "draw",
+          "players": "all"
+        }
+      }
+    ],
+    "maxTurns": 8
+  }
+}

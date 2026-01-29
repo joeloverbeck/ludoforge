@@ -19,6 +19,9 @@ const fixtureNames = [
   "evo-seed-2.json",
   "evo-terminates.json",
   "evo-non-terminating.json",
+  "boolean-vars-game.json",
+  "enum-vars-game.json",
+  "multi-token-game.json",
 ];
 
 async function loadFixture(name) {
@@ -87,6 +90,17 @@ describe("fixtures", () => {
 
       const noLegalActionsError = await loadFixture("no-legal-actions-error.json");
       assert.equal(noLegalActionsError.turn.noLegalActions?.policy, "error");
+
+      const booleanVars = await loadFixture("boolean-vars-game.json");
+      const boolVarTypes = booleanVars.state.variables.map((v) => v.type.kind);
+      assert.ok(boolVarTypes.includes("bool"));
+
+      const enumVars = await loadFixture("enum-vars-game.json");
+      const enumVarTypes = enumVars.state.variables.map((v) => v.type.kind);
+      assert.ok(enumVarTypes.includes("enum"));
+
+      const multiToken = await loadFixture("multi-token-game.json");
+      assert.ok(multiToken.state.tokenTypes.length >= 2);
     });
   });
 });

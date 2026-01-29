@@ -146,3 +146,18 @@ export async function writeGenerationArtifacts({
 
   return paths;
 }
+
+export async function writeSeedReport({ baseDir = process.cwd(), runId, report }) {
+  assertValidRunId(runId);
+  if (!report || typeof report !== "object" || Array.isArray(report)) {
+    throw new Error("Seed report must be a plain object");
+  }
+
+  const runDir = resolveRunDir(baseDir, runId);
+  await mkdir(runDir, { recursive: true });
+
+  const seedReportPath = resolveRunPath(runDir, "seed-report.json");
+  await writeJson(seedReportPath, report);
+
+  return { seedReportPath };
+}

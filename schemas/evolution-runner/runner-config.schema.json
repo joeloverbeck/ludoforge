@@ -1,18 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ludoforge.dev/schemas/evolution-runner/runner-config.v1.json",
+  "$id": "https://ludoforge.dev/schemas/evolution-runner/runner-config.schema.json",
   "title": "EvolutionRunnerConfig",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "runner", "mapElites"],
+  "required": ["runner", "mapElites", "seeding"],
   "properties": {
-    "version": { "type": "string" },
     "seed": { "type": "integer" },
     "runner": { "$ref": "#/$defs/RunnerLoopConfig" },
     "evaluation": { "$ref": "#/$defs/EvaluationConfig" },
     "evolution": { "$ref": "#/$defs/EvolutionConfig" },
     "mapElites": { "$ref": "#/$defs/MapElitesConfig" },
-    "humanFeedback": { "$ref": "#/$defs/HumanFeedbackConfig" }
+    "humanFeedback": { "$ref": "#/$defs/HumanFeedbackConfig" },
+    "seeding": { "$ref": "#/$defs/SeedingConfig" }
   },
   "$defs": {
     "RunnerLoopConfig": {
@@ -129,6 +129,151 @@
             "uncertaintyThreshold": { "type": "number", "minimum": 0 },
             "diversityQuota": { "type": "number", "minimum": 0 }
           }
+        }
+      }
+    },
+    "SeedingConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "populationSize"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["generate", "folder", "mixed"]
+        },
+        "populationSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "folder": { "$ref": "#/$defs/SeedingFolderConfig" },
+        "generate": { "$ref": "#/$defs/SeedingGenerateConfig" },
+        "mix": { "$ref": "#/$defs/SeedingMixConfig" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": { "mode": { "const": "folder" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "folder": { "$ref": "#/$defs/SeedingFolderConfig" }
+            },
+            "required": ["folder"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "mode": { "const": "generate" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "generate": { "$ref": "#/$defs/SeedingGenerateConfig" }
+            },
+            "required": ["generate"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "mode": { "const": "mixed" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "folder": { "$ref": "#/$defs/SeedingFolderConfig" },
+              "generate": { "$ref": "#/$defs/SeedingGenerateConfig" },
+              "mix": { "$ref": "#/$defs/SeedingMixConfig" }
+            },
+            "required": ["folder", "generate", "mix"]
+          }
+        }
+      ]
+    },
+    "SeedingFolderConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "onInvalid": {
+          "type": "string",
+          "enum": ["error", "skip"]
+        }
+      }
+    },
+    "SeedingGenerateConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage", "grammar"],
+      "properties": {
+        "coverage": { "$ref": "#/$defs/SeedingCoverageConfig" },
+        "grammar": { "$ref": "#/$defs/SeedingGrammarConfig" }
+      }
+    },
+    "SeedingCoverageConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "maxAttempts"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["uniform-bins", "underfilled-first", "random"]
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fallback": { "$ref": "#/$defs/SeedingCoverageFallbackConfig" }
+      }
+    },
+    "SeedingCoverageFallbackConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["accept-any-valid"]
+        }
+      }
+    },
+    "SeedingGrammarConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limits": { "$ref": "#/$defs/SeedingGrammarLimitsConfig" },
+        "weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "SeedingGrammarLimitsConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minVariables": { "type": "integer", "minimum": 1 },
+        "maxVariables": { "type": "integer", "minimum": 1 },
+        "minActions": { "type": "integer", "minimum": 1 },
+        "maxActions": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "SeedingMixConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["folderFraction"],
+      "properties": {
+        "folderFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       }
     }

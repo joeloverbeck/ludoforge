@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "weather",
+        "scope": "global",
+        "type": { "kind": "enum", "values": ["sunny", "rainy", "stormy"] },
+        "initial": "sunny"
+      },
+      {
+        "id": "morale",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 3 },
+        "initial": 1
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "rally",
+      "actor": "player",
+      "preconditions": {
+        "kind": "and",
+        "left": {
+          "kind": "cmp",
+          "op": "<",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "morale" } },
+          "right": { "kind": "value", "value": 3 }
+        },
+        "right": {
+          "kind": "cmp",
+          "op": "==",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "weather" } },
+          "right": { "kind": "value", "value": "sunny" }
+        }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "morale" },
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "retreat",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "morale" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "dec",
+          "target": { "kind": "var", "id": "morale" },
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "morale" } },
+          "right": { "kind": "value", "value": 3 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 10
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 3
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "health",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 20 },
+        "initial": 20
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "attack",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": ">",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "health" } },
+        "right": { "kind": "value", "value": 0 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "health" },
+          "amount": -3
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": "<=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "health" } },
+          "right": { "kind": "value", "value": 0 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 15
+  }
+}

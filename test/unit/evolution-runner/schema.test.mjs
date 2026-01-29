@@ -5,7 +5,7 @@ import Ajv from "ajv/dist/2020.js";
 
 const schemaJson = JSON.parse(
   await readFile(
-    new URL("../../../schemas/evolution-runner/runner-config.v1.json", import.meta.url),
+    new URL("../../../schemas/evolution-runner/runner-config.schema.json", import.meta.url),
   ),
 );
 
@@ -13,10 +13,20 @@ const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
 const validate = ajv.compile(schemaJson);
 
 const baseConfig = {
-  version: "v1",
   runner: { generations: 2 },
   mapElites: {
     descriptors: [{ id: "balance", min: 0, max: 1, bins: 4 }],
+  },
+  seeding: {
+    mode: "generate",
+    populationSize: 10,
+    generate: {
+      coverage: {
+        strategy: "uniform-bins",
+        maxAttempts: 100,
+      },
+      grammar: {},
+    },
   },
 };
 

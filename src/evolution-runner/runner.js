@@ -2,8 +2,9 @@ import { runGenerationLoop } from "../evolutionary-engine/engine.js";
 import { crossoverGenome } from "../evolutionary-engine/crossover.js";
 import { mutateAndRepairGenome } from "../evolutionary-engine/mutation.js";
 import { createSeededRng } from "../simulation-engine/rng.js";
-import { writeGenerationArtifacts } from "./artifact-writer.js";
+import { writeGenerationArtifacts, writeSeedReport } from "./artifact-writer.js";
 import { createRunId } from "./run-layout.js";
+import { resolveSeedPopulation } from "./seed-resolver.js";
 
 function assertNonEmptyArray(value, label) {
   if (!Array.isArray(value) || value.length === 0) {
@@ -198,10 +199,26 @@ export async function runEvolutionRunner(options) {
     ? options.startGeneration
     : 0;
 
-  let currentPopulation = clonePopulation(options.population ?? []);
-  assertPopulation(currentPopulation);
-
   const seed = Number.isFinite(options.seed) ? options.seed : config.seed;
+
+  let currentPopulation;
+  if (Array.isArray(options.population) && options.population.length > 0) {
+    currentPopulation = clonePopulation(options.population);
+  } else if (config.seeding) {
+    const rngSeed = Number.isFinite(seed) ? seed : 0;
+    const seedResult = await resolveSeedPopulation({
+      config,
+      rngSeed,
+      evaluator: evaluation.evaluator,
+    });
+    currentPopulation = seedResult.genomes;
+    await writeSeedReport({ baseDir, runId, report: seedResult.report });
+  } else {
+    throw new Error(
+      "Runner requires either options.population or config.seeding",
+    );
+  }
+  assertPopulation(currentPopulation);
   const rng = options.rng ?? (Number.isFinite(seed) ? createSeededRng(seed) : null);
 
   const evolutionConfig = isPlainObject(config.evolution) ? config.evolution : {};

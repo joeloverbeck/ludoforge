@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "players": {
+    "count": 2
+  },
+  "state": {
+    "variables": [
+      {
+        "id": "gold",
+        "scope": "global",
+        "type": { "kind": "int", "min": 0, "max": 50 },
+        "initial": 0
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "trade",
+      "actor": "player",
+      "preconditions": {
+        "kind": "cmp",
+        "op": "<",
+        "left": { "kind": "ref", "ref": { "kind": "var", "id": "gold" } },
+        "right": { "kind": "value", "value": 50 }
+      },
+      "effects": [
+        {
+          "kind": "inc",
+          "target": { "kind": "var", "id": "gold" },
+          "amount": 5
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "scheduler": "round_robin"
+  },
+  "termination": {
+    "conditions": [
+      {
+        "condition": {
+          "kind": "cmp",
+          "op": ">=",
+          "left": { "kind": "ref", "ref": { "kind": "var", "id": "gold" } },
+          "right": { "kind": "value", "value": 50 }
+        },
+        "outcome": {
+          "type": "win",
+          "players": "active"
+        }
+      }
+    ],
+    "maxTurns": 20
+  }
+}

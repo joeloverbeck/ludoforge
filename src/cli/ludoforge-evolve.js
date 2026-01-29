@@ -108,13 +108,13 @@ async function loadConfig(configPath, deps) {
 
 function createUsage() {
   return [
-    "Usage: ludoforge-evolve --config <path> --seeds <path> [options]",
+    "Usage: ludoforge-evolve --config <path> [--seeds <path>] [options]",
     "",
     "Required:",
     "  --config <path>    Path to runner config JSON",
-    "  --seeds <path>     Path to seed population JSON or JSONL",
     "",
     "Options:",
+    "  --seeds <path>     Path to seed population JSON or JSONL (overrides config seeding)",
     "  --run-id <id>      Explicit run ID (UUID)",
     "  --resume           Resume an existing run (requires --run-id)",
     "  --out <dir>        Base output directory (default: cwd)",
@@ -200,18 +200,52 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     runId = deps.createRunId();
   }
 
-  if (!parsed.seeds) {
-    throw new Error("Missing required --seeds <path>");
+  if (parsed.seeds) {
+    const population = await deps.loadSeedPopulation(parsed.seeds);
+    if (parsed.dryRun) {
+      return {
+        runId,
+        baseDir,
+        dryRun: true,
+        resumed: false,
+        populationSize: population.length,
+      };
+    }
+
+    const evaluation = createEvaluator();
+    await deps.writeRunMetadata(baseDir, runId, { config });
+
+    const result = await deps.runEvolutionRunner({
+      baseDir,
+      runId,
+      config,
+      population,
+      evaluation,
+    });
+
+    return {
+      runId,
+      baseDir,
+      dryRun: false,
+      resumed: false,
+      result,
+    };
   }
 
-  const population = await deps.loadSeedPopulation(parsed.seeds);
+  if (!config.seeding) {
+    throw new Error(
+      "Missing --seeds <path> and no seeding block in config. " +
+      "Provide --seeds or add a seeding block to your runner config.",
+    );
+  }
+
   if (parsed.dryRun) {
     return {
       runId,
       baseDir,
       dryRun: true,
       resumed: false,
-      populationSize: population.length,
+      populationSize: config.seeding.populationSize,
     };
   }
 
@@ -222,7 +256,6 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     baseDir,
     runId,
     config,
-    population,
     evaluation,
   });
 

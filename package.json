@@ -15,7 +15,7 @@
     "test": "npm run test:unit",
     "test:unit": "node --experimental-test-module-mocks --test --test-reporter=spec test/unit/**/*.test.mjs && tsc -p tsconfig.json",
     "test:integration": "node --test --test-reporter=spec test/integration/**/*.test.mjs",
-    "test:e2e": "node --test --test-reporter=spec test/e2e/**/*.test.mjs",
+    "test:e2e": "node --experimental-test-module-mocks --test --test-reporter=spec test/e2e/**/*.test.mjs",
     "test:performance": "node --test --test-reporter=spec test/performance/**/*.test.mjs",
     "test:memory": "node --test --test-reporter=spec test/memory/**/*.test.mjs"
   }

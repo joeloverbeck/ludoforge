@@ -62,7 +62,7 @@ mutation operator.
 ### Configuration
 
 Motif mining is configured via `evolution.motifMining` in the runner config
-(`schemas/evolution-runner/runner-config.v1.json`):
+(`schemas/evolution-runner/runner-config.schema.json`):
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -92,6 +92,56 @@ Per-generation directory includes `motifs.jsonl` when motif mining is enabled.
 Each record uses the JSONL envelope pattern (`{ type: "motif", payload }`) with
 required metadata fields (`id`, `version`, `createdAt`) and domain fields
 (`signature`, `support`).
+
+## Seeding
+
+The runner resolves the initial seed population before entering the generation loop.
+Seeding mode is configured via the `seeding` block in the runner config
+(`schemas/evolution-runner/runner-config.schema.json`).
+
+### Modes
+
+| Mode | Description |
+|------|-------------|
+| `generate` | Grammar-based generation with descriptor-aware coverage targeting. The core `src/seed-generation/` module produces schema-valid definitions and bins them against MAP-Elites descriptors to fill niches. |
+| `folder` | Load user-provided game definitions from a directory on disk. Each JSON file contains a single DSL game definition (not a Genome wrapper). The runner assigns deterministic genome IDs via content hashing. |
+| `mixed` | Load folder seeds first (up to `mix.folderFraction` of `populationSize`), then fill the remainder with the generator. |
+
+### Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `mode` | `"generate"` \| `"folder"` \| `"mixed"` | Seeding strategy |
+| `populationSize` | integer | Target number of seed genomes |
+| `folder.path` | string | Directory containing seed definition JSON files |
+| `folder.onInvalid` | `"error"` \| `"skip"` | Behavior when a folder file fails validation |
+| `generate.coverage.strategy` | `"uniform-bins"` \| `"underfilled-first"` \| `"random"` | Bin-filling strategy |
+| `generate.coverage.maxAttempts` | integer | Hard stop to prevent infinite loops |
+| `generate.coverage.fallback.strategy` | `"accept-any-valid"` | Fallback when coverage targets cannot be met |
+| `generate.grammar.limits` | object | Ranges for generated construct counts (variables, actions) |
+| `generate.grammar.weights` | object | Probability weights for effect kinds and constructs |
+| `mix.folderFraction` | number (0–1) | Fraction of `populationSize` to fill from folder |
+
+### Seed Resolution Flow
+
+1. Runner reads `config.seeding` to determine the mode.
+2. `src/evolution-runner/seed-resolver.js` dispatches to the appropriate source(s):
+   - **generate**: calls `generateSeedPopulation()` from `src/seed-generation/generate-seed-population.js`
+   - **folder**: calls `loadFolderSeeds()` from `src/evolution-runner/folder-seeder.js`
+   - **mixed**: loads folder seeds, then generates remainder
+3. The resulting genomes are written as `population.jsonl` in generation-0.
+
+### Artifacts
+
+- `seed-report.json`: persisted per run, contains generation statistics (`attempts`,
+  `accepted`, `rejectedByReason`), bin distribution (`binCounts`), coverage target
+  summary, and folder file list (if applicable).
+
+### Relevant Code
+
+- `src/seed-generation/` — core seed generation module (no disk IO)
+- `src/evolution-runner/seed-resolver.js` — runner-level mode dispatch
+- `src/evolution-runner/folder-seeder.js` — folder loading with deterministic IDs
 
 ## Current Implementation Status
 
