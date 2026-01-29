@@ -1,4 +1,5 @@
 import { applyTriggers } from "./triggers.js";
+import { clearFlags } from "./flags.js";
 
 const DEFAULT_MAX_TRIGGER_DEPTH = 8;
 const DEFAULT_MAX_STEPS_PER_TURN = 1000;
@@ -139,17 +140,24 @@ export function advanceTurnPhase(definition, state, options = {}) {
     return endResult;
   }
 
+  clearFlags(state, "phase");
+
   const { nextPhase, nextPlayer, nextTurn } = advanceRoundRobin(definition, state);
   const maxTurns = resolveMaxTurns(definition, options);
   if (typeof maxTurns === "number" && nextTurn > maxTurns) {
     return { ok: false, reason: "max-turns" };
   }
 
+  const turnAdvanced = nextTurn !== state.turn.turn;
   state.turn = {
     currentPlayer: nextPlayer,
     phase: nextPhase,
     turn: nextTurn,
   };
+
+  if (turnAdvanced) {
+    clearFlags(state, "turn");
+  }
 
   const startResult = applyTriggers(definition, state, "start_phase", {
     playerId: nextPlayer,

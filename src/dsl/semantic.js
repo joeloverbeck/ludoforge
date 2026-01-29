@@ -150,11 +150,15 @@ export function collectSemanticIssues(definition) {
         );
       }
     }
+    const actionBindingIds = new Set(
+      targets.map((t) => t?.id).filter((id) => typeof id === "string")
+    );
+    const effectOptions = actionBindingIds.size > 0 ? { actionBindingIds } : {};
     costs.forEach((effect, effectIndex) => {
-      validateEffect(effect, `/actions/${index}/costs/${effectIndex}`);
+      validateEffect(effect, `/actions/${index}/costs/${effectIndex}`, effectOptions);
     });
     effects.forEach((effect, effectIndex) => {
-      validateEffect(effect, `/actions/${index}/effects/${effectIndex}`);
+      validateEffect(effect, `/actions/${index}/effects/${effectIndex}`, effectOptions);
     });
     targets.forEach((target, targetIndex) => {
       validateSelector(target?.selector, `/actions/${index}/targets/${targetIndex}/selector`);

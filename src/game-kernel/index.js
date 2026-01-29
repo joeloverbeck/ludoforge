@@ -5,3 +5,14 @@ export { applyTriggers } from "./triggers.js";
 export { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
 export { createEventStream, recordStateUpdate, recordTermination } from "./events.js";
 export { computeScoresAtState, evaluateTermination } from "./termination.js";
+export { clearFlags } from "./flags.js";
+export { resolveSelector, resolveActionTargets } from "./selectors.js";
+export {
+  applyTokenSpawn,
+  applyTokenMove,
+  applyTokenDestroy,
+  applyTokenReveal,
+  applyTokenHide,
+  findTokenZone,
+  getZoneTokens,
+} from "./token-effects.js";

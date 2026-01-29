@@ -15,14 +15,28 @@ export function createSemanticValidators({
     }
   }
 
-  function validateEffect(effect, path) {
+  function validateEffect(effect, path, options = {}) {
     if (!effect || typeof effect !== "object") {
       return;
     }
     if (effect.target) {
-      validateRef(effect.target, joinPath(path, "target"), { allowMeta: false });
+      validateRef(effect.target, joinPath(path, "target"), {
+        allowMeta: false,
+        actionBindingIds: options.actionBindingIds,
+      });
     }
     validateZoneRef(effect.toZone, joinPath(path, "toZone"));
+
+    if (effect.kind === "move_spatial") {
+      validateZoneRef(effect.zone, joinPath(path, "zone"));
+    }
+
+    if (effect.kind === "repeat") {
+      const subEffects = Array.isArray(effect.effects) ? effect.effects : [];
+      subEffects.forEach((subEffect, idx) => {
+        validateEffect(subEffect, joinPath(path, `effects/${idx}`), options);
+      });
+    }
   }
 
   function validateExpr(expr, path) {

@@ -80,7 +80,7 @@ describe("effect trace data", () => {
       assert.equal(result.appliedEffect, undefined);
     });
 
-    it("does not return appliedEffect for non-variable targets", () => {
+    it("returns failure for token spawn with unknown zone", () => {
       const state = createInitialState(baseDefinition);
       const variableIndex = buildVariableIndex(baseDefinition);
       const result = applyEffect(
@@ -88,8 +88,8 @@ describe("effect trace data", () => {
         { kind: "spawn", target: { kind: "token", id: "t1" }, toZone: "board" },
         { state, playerId: 1, variableIndex }
       );
-      assert.equal(result.ok, true);
-      assert.equal(result.appliedEffect, undefined);
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "unknown-zone");
     });
 
     it("defaults amount to 0 when omitted", () => {

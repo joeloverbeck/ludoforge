@@ -88,15 +88,16 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
 
-- `EFFECT_KINDS`: canonical list of atomic effect kinds (`set`, `inc`, `dec`, `move`,
-  `spawn`, `destroy`, `reveal`, `hide`).
-- `buildRandomEffect(definition, rng)`: generates a random atomic effect with a valid
+- `EFFECT_KINDS`: canonical list of effect kinds (`set`, `inc`, `dec`, `move`,
+  `spawn`, `destroy`, `reveal`, `hide`, `move_spatial`, `repeat`, `set_flag`).
+- `buildRandomEffect(definition, rng)`: generates a random effect with a valid
   target and properties drawn from the game definition.
 - `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
-  the given effect kind (variable for set/inc/dec, token for move/spawn/destroy, zone
-  for reveal/hide).
+  the given effect kind (variable for set/inc/dec, token for move/spawn/destroy/
+  move_spatial/set_flag, zone for reveal/hide).
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
-  `{ amount: 1 }` for inc/dec, `{ toZone }` for move/spawn).
+  `{ amount: 1 }` for inc/dec, `{ toZone }` for move/spawn, `{ zone, toNode }` for
+  move_spatial, `{ flag, duration }` for set_flag, `{ count, effects }` for repeat).
 
 ## Crossover Operators
 

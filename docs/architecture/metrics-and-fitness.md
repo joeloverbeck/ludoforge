@@ -255,7 +255,11 @@ trajectory steps (each element is a `TrajectoryStep[]` from a simulation result)
   edges labelled `"pass"`. Edges are deduplicated and sorted.
 - `canonicalLabel(appliedEffects)` normalizes each effect into
   `kind:scope:id:source[:amt=N][:val=V]`, sorts the fragments, and joins with `;`.
-  Empty effects yield `"pass"`.
+  Empty effects yield `"pass"`. The canonical label captures the core identity of each
+  effect (kind + target + source + numeric/value payload). Additional kind-specific
+  fields (`toZone`, `tokenId`, `zone`, `toNode`, `flag`, `duration`, `count`) are not
+  included in the label — motif patterns are therefore grouped by effect kind and
+  target, not by destination or flag name.
 
 ### Motif Miner
 

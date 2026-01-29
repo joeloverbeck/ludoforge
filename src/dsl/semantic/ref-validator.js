@@ -64,7 +64,9 @@ export function createRefValidator({
     }
     if (kind === "token") {
       if (typeof id === "string") {
-        if (!tokenTypeIds.has(id)) {
+        if (options.actionBindingIds?.has(id)) {
+          // id refers to a target binding declared on the enclosing action
+        } else if (!tokenTypeIds.has(id)) {
           pushIssue(path, `Unknown token type: ${id}`, "ref-unknown");
         } else {
           usedTokenTypeIds.add(id);
@@ -93,6 +95,28 @@ export function createRefValidator({
       return;
     }
     if (kind === "player") {
+      return;
+    }
+    if (kind === "zone_query") {
+      if (typeof id === "string") {
+        if (!zoneIds.has(id)) {
+          pushIssue(path, `Unknown zone: ${id}`, "zone-unknown");
+        } else {
+          usedZoneIds.add(id);
+        }
+      }
+      if (typeof ref.tokenType === "string") {
+        if (!tokenTypeIds.has(ref.tokenType)) {
+          pushIssue(
+            joinPath(path, "tokenType"),
+            `Unknown token type: ${ref.tokenType}`,
+            "token-type-unknown"
+          );
+        }
+      }
+      return;
+    }
+    if (kind === "flag_query") {
       return;
     }
   }

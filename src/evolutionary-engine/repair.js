@@ -92,6 +92,108 @@ function repairTokenTypes(tokenTypes) {
   return repaired;
 }
 
+function collectZoneIds(definition) {
+  const zones = normalizeArray(definition?.state?.zones);
+  return new Set(zones.map((z) => z?.id).filter((id) => typeof id === "string"));
+}
+
+function collectSpatialZoneNodes(definition) {
+  const zones = normalizeArray(definition?.state?.zones);
+  const map = new Map();
+  for (const zone of zones) {
+    if (zone?.spatial?.nodes?.length > 0) {
+      map.set(zone.id, new Set(zone.spatial.nodes));
+    }
+  }
+  return map;
+}
+
+function repairEffect(effect, definition, depth) {
+  if (!effect || typeof effect !== "object") {
+    return effect;
+  }
+  const zoneIds = collectZoneIds(definition);
+
+  if ((effect.kind === "move" || effect.kind === "spawn") && effect.toZone) {
+    if (!zoneIds.has(effect.toZone)) {
+      const validZones = [...zoneIds];
+      if (validZones.length > 0) {
+        return { ...effect, toZone: validZones[0] };
+      }
+    }
+  }
+
+  if (effect.kind === "move_spatial") {
+    const spatialMap = collectSpatialZoneNodes(definition);
+    if (effect.zone && !spatialMap.has(effect.zone)) {
+      const validSpatial = [...spatialMap.keys()];
+      if (validSpatial.length > 0) {
+        const newZone = validSpatial[0];
+        const nodes = [...spatialMap.get(newZone)];
+        return { ...effect, zone: newZone, toNode: nodes[0] ?? effect.toNode };
+      }
+    } else if (effect.zone && spatialMap.has(effect.zone)) {
+      const nodes = spatialMap.get(effect.zone);
+      if (effect.toNode && !nodes.has(effect.toNode)) {
+        return { ...effect, toNode: [...nodes][0] };
+      }
+    }
+  }
+
+  if (effect.kind === "repeat") {
+    const maxDepth = 2;
+    if (depth >= maxDepth) {
+      return null;
+    }
+    const count = typeof effect.count === "number"
+      ? clampNumber(effect.count, 1, 10)
+      : 1;
+    const subEffects = normalizeArray(effect.effects).map((e) =>
+      repairEffect(e, definition, depth + 1)
+    ).filter(Boolean);
+    if (subEffects.length === 0) {
+      return null;
+    }
+    return { ...effect, count, effects: subEffects };
+  }
+
+  if (effect.kind === "set_flag") {
+    const validDurations = ["action", "phase", "turn"];
+    if (effect.duration && !validDurations.includes(effect.duration)) {
+      return { ...effect, duration: "action" };
+    }
+  }
+
+  return effect;
+}
+
+function repairEffects(effects, definition) {
+  return normalizeArray(effects).map((e) => repairEffect(e, definition, 0)).filter(Boolean);
+}
+
+function repairActions(definition) {
+  const actions = normalizeArray(definition.actions);
+  return actions.map((action) => {
+    if (!action || typeof action !== "object") {
+      return action;
+    }
+    const costs = repairEffects(action.costs, definition);
+    const effects = repairEffects(action.effects, definition);
+    return { ...action, costs, effects };
+  });
+}
+
+function repairTriggers(definition) {
+  const triggers = normalizeArray(definition.triggers);
+  return triggers.map((trigger) => {
+    if (!trigger || typeof trigger !== "object") {
+      return trigger;
+    }
+    const effects = repairEffects(trigger.effects, definition);
+    return { ...trigger, effects };
+  });
+}
+
 export const dslSafetyRepair = {
   name: "dsl-safety",
   repair(genome) {
@@ -113,6 +215,11 @@ export const dslSafetyRepair = {
       variables,
       ...(tokenTypes ? { tokenTypes } : {}),
     };
+
+    definition.actions = repairActions(definition);
+    if (definition.triggers) {
+      definition.triggers = repairTriggers(definition);
+    }
 
     return {
       ...genome,

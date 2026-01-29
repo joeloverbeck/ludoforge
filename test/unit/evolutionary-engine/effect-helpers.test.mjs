@@ -10,8 +10,8 @@ function cloneDefinition(definition) {
 
 describe("effect-helpers", () => {
   describe("EFFECT_KINDS", () => {
-    it("contains all 8 valid effect kinds", () => {
-      assert.equal(EFFECT_KINDS.length, 8);
+    it("contains all 11 valid effect kinds", () => {
+      assert.equal(EFFECT_KINDS.length, 11);
       assert.ok(EFFECT_KINDS.includes("set"));
       assert.ok(EFFECT_KINDS.includes("inc"));
       assert.ok(EFFECT_KINDS.includes("dec"));
@@ -20,6 +20,9 @@ describe("effect-helpers", () => {
       assert.ok(EFFECT_KINDS.includes("destroy"));
       assert.ok(EFFECT_KINDS.includes("reveal"));
       assert.ok(EFFECT_KINDS.includes("hide"));
+      assert.ok(EFFECT_KINDS.includes("move_spatial"));
+      assert.ok(EFFECT_KINDS.includes("repeat"));
+      assert.ok(EFFECT_KINDS.includes("set_flag"));
     });
   });
 

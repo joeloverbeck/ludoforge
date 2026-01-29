@@ -35,6 +35,7 @@ export function createInitialState(definition) {
       role: definition.players.roles?.[playerId - 1],
       team: resolveTeamId(definition.players, playerId),
       variables: { ...perPlayerVarsTemplate },
+      flags: {},
     });
   }
 

@@ -47,7 +47,7 @@ describe("effects", () => {
       assert.equal(state.variables.perPlayer[1].health, 10);
     });
 
-    it("treats non-variable effects as no-ops", () => {
+    it("returns failure for token spawn with unknown zone", () => {
       const state = createInitialState(baseDefinition);
       const variableIndex = buildVariableIndex(baseDefinition);
 
@@ -56,7 +56,8 @@ describe("effects", () => {
         { kind: "spawn", target: { kind: "token", id: "t1" }, toZone: "board" },
         { state, playerId: 1, variableIndex }
       );
-      assert.equal(result.ok, true);
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "unknown-zone");
       assert.equal(state.variables.global.score, 5);
       assert.deepEqual(state.tokens, {});
     });

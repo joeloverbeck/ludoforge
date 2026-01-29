@@ -282,6 +282,42 @@
             "kind": { "const": "hide" },
             "target": { "$ref": "#/$defs/Ref" }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "zone"],
+          "properties": {
+            "kind": { "const": "move_spatial" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "zone": { "type": "string" },
+            "toNode": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "effects"],
+          "properties": {
+            "kind": { "const": "repeat" },
+            "count": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "effects": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Effect" },
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "flag"],
+          "properties": {
+            "kind": { "const": "set_flag" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "flag": { "type": "string" },
+            "duration": { "type": "string", "enum": ["action", "phase", "turn"] }
+          }
         }
       ]
     },
@@ -527,6 +563,28 @@
             "kind": { "const": "player" },
             "id": { "type": "string" },
             "attribute": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "query"],
+          "properties": {
+            "kind": { "const": "zone_query" },
+            "id": { "type": "string" },
+            "query": { "type": "string", "enum": ["count", "has_token"] },
+            "tokenType": { "type": "string" },
+            "player": { "type": "string", "enum": ["self", "opponent", "any"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "flag"],
+          "properties": {
+            "kind": { "const": "flag_query" },
+            "id": { "type": "string" },
+            "flag": { "type": "string" }
           }
         }
       ]

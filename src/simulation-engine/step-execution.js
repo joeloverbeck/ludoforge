@@ -4,6 +4,8 @@
  */
 
 import { buildVariableIndex, applyEffect, applyTriggers } from "../game-kernel/index.js";
+import { clearFlags } from "../game-kernel/flags.js";
+import { resolveActionTargets } from "../game-kernel/selectors.js";
 
 /**
  * Deep-clone a game state via JSON round-trip.
@@ -23,9 +25,14 @@ export function cloneState(state) {
  */
 export function applyAction(definition, state, action, context) {
   const variableIndex = buildVariableIndex(definition);
+  const bindings = resolveActionTargets(definition, state, action, {
+    ...context,
+    variableIndex,
+  });
+  const effectContext = { state, ...context, variableIndex, bindings, definition };
   const appliedEffects = [];
   for (const effect of action.costs ?? []) {
-    const result = applyEffect(state, effect, { state, ...context, variableIndex });
+    const result = applyEffect(state, effect, effectContext);
     if (!result.ok) {
       throw new Error(`Action cost failed: ${result.reason ?? "unknown"}`);
     }
@@ -34,7 +41,7 @@ export function applyAction(definition, state, action, context) {
     }
   }
   for (const effect of action.effects ?? []) {
-    const result = applyEffect(state, effect, { state, ...context, variableIndex });
+    const result = applyEffect(state, effect, effectContext);
     if (!result.ok) {
       throw new Error(`Action effect failed: ${result.reason ?? "unknown"}`);
     }
@@ -42,6 +49,7 @@ export function applyAction(definition, state, action, context) {
       appliedEffects.push({ ...result.appliedEffect, source: "effect" });
     }
   }
+  clearFlags(state, "action");
   return { appliedEffects };
 }
 

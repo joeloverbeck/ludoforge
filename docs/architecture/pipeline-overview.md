@@ -41,10 +41,19 @@ then repeats.
    - Simulation produces trajectories and termination outcomes, including optional
      trace fields (`stateHash`, `bindings`, `appliedEffects`) for motif mining and
      replay verification.
+   - The game kernel dispatches 11 effect kinds: `set`, `inc`, `dec`, `move`, `spawn`,
+     `destroy`, `reveal`, `hide`, `move_spatial`, `repeat`, `set_flag`. Token lifecycle
+     effects operate on token instances in zones; spatial movement validates adjacency;
+     repeat wrappers execute sub-effects up to N times; scoped flags attach temporary
+     booleans to tokens or players.
+   - Action legality checks include target selector resolution — actions declaring
+     `targets` arrays are only legal when all selectors find matching tokens.
    - Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
    - All of these steps are encapsulated by `createEvaluator()`; see
-     `docs/architecture/metrics-and-fitness.md` for the full pipeline description.
-   - Relevant code: `src/simulation-engine/loop.js`, `src/evaluation-analytics/*`.
+     `docs/architecture/metrics-and-fitness.md` for the full pipeline description and
+     `docs/architecture/simulation-engine.md` for game kernel module details.
+   - Relevant code: `src/simulation-engine/loop.js`, `src/game-kernel/`,
+     `src/evaluation-analytics/*`.
    - Config: `configs/simulation.json` (cutoffs, loop detection, RNG seed),
      `configs/metrics-core.json` (enabled metrics, normalization, feature order),
      `configs/metrics-extended.json` (meaningful choice, comeback, skill expression),

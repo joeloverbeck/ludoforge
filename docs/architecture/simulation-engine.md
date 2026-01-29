@@ -50,11 +50,20 @@ Per step:
 
 The effective `turn.noLegalActions` policy is taken from the game definition when set;
 otherwise it falls back to `configs/simulation.json`.
-7. Validate action legality (`validateActionChoice`).
-8. Apply action costs, then action effects (`applyEffect`).
-9. Apply after-action triggers (`applyTriggers`).
-10. Record state update in the event stream.
-11. Persist the step snapshot (turn, phase, player, action, legalActionCount).
+7. Validate action legality (`validateActionChoice`). This includes resolving
+   action target selectors — if a target selector finds no matching tokens, the
+   action is rejected.
+8. Resolve action targets (`resolveActionTargets` from `selectors.js`) to bind
+   abstract target names to concrete token instance IDs. Bindings are passed
+   into the effect context so effects can reference targets by binding name.
+9. Apply action costs, then action effects (`applyEffect`). Effect dispatch
+   handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
+   (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
+   (`move_spatial`), repeat wrappers (`repeat`), and scoped flags (`set_flag`).
+10. Clear action-scoped flags (`clearFlags(state, "action")`).
+11. Apply after-action triggers (`applyTriggers`).
+12. Record state update in the event stream.
+13. Persist the step snapshot (turn, phase, player, action, legalActionCount).
 
 No-legal-actions handling never prompts the agent. The pass policy does not run
 after-action triggers because no action occurred.
@@ -100,8 +109,8 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 
 - `stateHash` (string, optional): deterministic hash of the step's state via
   `defaultStateHasher(state)` from `src/simulation-engine/loop-detection.js`.
-- `bindings` (object, optional): reserved for resolved target bindings. Currently
-  always `{}`.
+- `bindings` (object, optional): resolved target bindings mapping binding names
+  to concrete token instance IDs (e.g., `{ unit: "t3" }`).
 - `appliedEffects` (AppliedEffect[], optional): ordered list of atomic effects
   actually executed in this step, including trigger-origin effects.
 
@@ -109,7 +118,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 
 ```
 {
-  kind: string,           // effect kind (set, inc, dec, move, spawn, destroy, reveal, hide)
+  kind: string,           // effect kind (see list below)
   target: {
     scope: string,        // "global" | "perPlayer"
     id: string,           // variable, token type, or zone id
@@ -118,9 +127,20 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
   source: string,         // "cost" | "effect" | "trigger"
   amount?: number,        // for inc/dec
   value?: any,            // for set
-  toZone?: string         // for move/spawn
+  toZone?: string,        // for move/spawn
+  tokenId?: string,       // for spawn/move/destroy/reveal/hide (resolved instance id)
+  zone?: string,          // for move_spatial
+  fromNode?: string,      // for move_spatial
+  toNode?: string,        // for move_spatial
+  flag?: string,          // for set_flag
+  duration?: string,      // for set_flag ("action" | "phase" | "turn")
+  count?: number,         // for repeat (iterations executed)
+  applied?: AppliedEffect[] // for repeat (nested applied effects)
 }
 ```
+
+Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
+`move_spatial`, `repeat`, `set_flag`.
 
 ### Pass-Step Rules
 
@@ -137,6 +157,63 @@ When `actionId === null` (pass step):
 - `replayEffectsOnState(state, appliedEffects, context?)`: applies `appliedEffects`
   to a cloned state's variables (supports `inc`, `dec`, `set` on global and perPlayer
   targets). Returns the new state without mutating the input.
+
+## Game Kernel Modules
+
+### Effect Dispatch (`effects.js`)
+
+`applyEffect(state, effect, context, options)` dispatches effects by kind:
+
+- **Variable effects** (`set`/`inc`/`dec`): target `{ kind: "var" }`. Reads/writes
+  via `resolveVarValue`/`writeVarValue`, respects bounds mode (reject or clamp).
+- **Token lifecycle** (`spawn`/`move`/`destroy`/`reveal`/`hide`): target
+  `{ kind: "token" }`. Delegated to `token-effects.js`.
+- **Spatial movement** (`move_spatial`): validates adjacency on zone's spatial graph
+  before updating `token.node`.
+- **Repeat wrapper** (`repeat`): executes sub-effects up to `count` times. Stops
+  early on first sub-effect failure (up-to-N semantics).
+- **Scoped flags** (`set_flag`): attaches a flag with duration to a token or player.
+
+Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`
+(attribute access and existence), `zone_query` (count, has_token), and
+`flag_query` (checks if an entity has a flag).
+
+### Token Effects (`token-effects.js`)
+
+Handles spawn, move, destroy, reveal, and hide operations on token instances.
+Token IDs are resolved via `context.bindings?.[id] ?? id` — binding names from
+target selectors resolve to concrete instance IDs.
+
+- `applyTokenSpawn`: allocates a new token ID, creates the instance with attributes
+  from the token type definition, and places it in the target zone.
+- `applyTokenMove`: removes token from its current zone (found via `findTokenZone`)
+  and adds it to the destination zone.
+- `applyTokenDestroy`: removes token from its zone and deletes it from `state.tokens`.
+- `applyTokenReveal`/`applyTokenHide`: sets `token.revealed` to true/false.
+
+### Target Selectors (`selectors.js`)
+
+- `resolveSelector(selector, state, context)`: filters tokens in a zone by type,
+  optional `where` expression, random shuffle (via `context.rng`), and count limit.
+- `resolveActionTargets(definition, state, action, context)`: resolves all selectors
+  in `action.targets` and returns a bindings object mapping target IDs to concrete
+  token instance IDs.
+
+### Scoped Flags (`flags.js`)
+
+- `clearFlags(state, duration)`: removes all flags matching the given duration
+  (`"action"`, `"phase"`, or `"turn"`) from all agents and tokens.
+- Called after action execution (action), phase advance (phase), and turn advance (turn).
+
+### Action Legality (`actions.js`)
+
+`isActionLegal` checks preconditions and target selector availability. If an action
+declares targets, all selectors must resolve to at least one matching token for the
+action to be legal.
+
+`checkActionBounds` uses `structuredClone(state)` to deep-clone the full state
+(variables, zones, tokens) before trial-applying effects, preventing bounds checks
+from mutating the real game state.
 
 ## Canonical SimulationResult (Normative)
 

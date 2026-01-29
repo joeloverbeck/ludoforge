@@ -1,4 +1,5 @@
 import { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
+import { resolveActionTargets } from "./selectors.js";
 
 const DEFAULT_BOUNDS_MODE = "reject";
 
@@ -43,41 +44,48 @@ export function isActionLegal(definition, state, action, context = {}) {
   if (!isActorAllowed(action, state, context)) {
     return false;
   }
-  if (!action.preconditions) {
-    return true;
+  if (action.preconditions) {
+    const legal = evaluateExpr(action.preconditions, {
+      state,
+      playerId: context.playerId,
+      variableIndex,
+    });
+    if (!legal) {
+      return false;
+    }
   }
-  return evaluateExpr(action.preconditions, {
-    state,
-    playerId: context.playerId,
-    variableIndex,
-  });
+  const targets = action.targets ?? [];
+  if (targets.length > 0) {
+    const bindings = resolveActionTargets(definition, state, action, {
+      ...context,
+      variableIndex,
+    });
+    for (const target of targets) {
+      if (bindings[target.id] == null) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export function listLegalActions(definition, state, context = {}) {
   return definition.actions.filter((action) => isActionLegal(definition, state, action, context));
 }
 
-function cloneStateVariables(state) {
-  const perPlayer = {};
-  for (const [playerId, variables] of Object.entries(state.variables.perPlayer)) {
-    perPlayer[playerId] = { ...variables };
-  }
-  return {
-    global: { ...state.variables.global },
-    perPlayer,
-  };
-}
-
 function checkActionBounds(definition, state, action, context, boundsMode) {
   const variableIndex = buildVariableIndex(definition);
-  const workingState = {
-    ...state,
-    variables: cloneStateVariables(state),
-  };
+  const workingState = structuredClone(state);
+  const bindings = resolveActionTargets(definition, workingState, action, {
+    ...context,
+    variableIndex,
+  });
   const workingContext = {
     ...context,
     state: workingState,
     variableIndex,
+    bindings,
+    definition,
   };
 
   const effects = [...(action.costs ?? []), ...(action.effects ?? [])];
