@@ -10,7 +10,7 @@ export interface Genome {
 }
 
 export type DescriptorId = string;
-export type DescriptorValue = number;
+export type DescriptorValue = number | null;
 export type DescriptorSet = Record<DescriptorId, DescriptorValue>;
 
 export type FitnessScore = number | Record<string, number>;
@@ -23,7 +23,9 @@ export interface PopulationMember<TGenome = Genome> {
 
 export type Population<TGenome = Genome> = ReadonlyArray<PopulationMember<TGenome>>;
 
-export interface Niche<TCoordinates = ReadonlyArray<number>> {
+export type BinToken = number | "unknown" | "under" | "over";
+
+export interface Niche<TCoordinates = ReadonlyArray<BinToken>> {
   id: string;
   coordinates?: TCoordinates;
   descriptors?: DescriptorSet;
@@ -49,7 +51,7 @@ export interface MapElitesConfig<TGenome = Genome> {
 export interface MapElitesPlacement<TGenome = Genome> {
   member: PopulationMember<TGenome>;
   nicheId: string;
-  coordinates: ReadonlyArray<number>;
+  coordinates: ReadonlyArray<BinToken>;
   isElite: boolean;
   noveltyScore: number;
 }

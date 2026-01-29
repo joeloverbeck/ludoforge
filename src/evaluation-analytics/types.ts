@@ -104,6 +104,11 @@ export interface DegeneracyReport {
 
 export type FeatureVector = Record<string, number>;
 
+export interface FeatureVectorResult {
+  vector: FeatureVector;
+  nonFiniteKeys: ReadonlyArray<string>;
+}
+
 export interface CompositeScore {
   score: number;
   components?: FeatureVector;

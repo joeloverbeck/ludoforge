@@ -14,6 +14,7 @@ import { runEvolutionRunner } from "../evolution-runner/runner.js";
 import { validateRunnerConfig } from "../evolution-runner/config.js";
 import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
 import { CLIError } from "./cli-error.js";
+import { validateDescriptorKeys } from "./validate-descriptor-keys.js";
 
 const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
 const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h"]);
@@ -190,6 +191,18 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
   }
 
   const config = await loadConfig(parsed.config, deps);
+
+  const descriptorKeys = config.mapElites.descriptors.map((d) => d.id);
+  const descriptorValidation = validateDescriptorKeys(descriptorKeys);
+  if (!descriptorValidation.valid) {
+    throw new CLIError(
+      `Unknown MAP-Elites descriptor ID(s): ${descriptorValidation.unknownIds.join(", ")}`,
+      {
+        hint: `Valid descriptor IDs are: ${descriptorValidation.availableMetrics.join(", ")}`,
+      },
+    );
+  }
+
   const baseDir = parsed.out ? resolve(parsed.out) : process.cwd();
 
   const existingRuns = await deps.listRuns(baseDir);
@@ -227,7 +240,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       };
     }
 
-    const evaluation = createEvaluator();
+    const evaluation = createEvaluator({ descriptorKeys });
 
     const result = await deps.runEvolutionRunner({
       baseDir,
@@ -279,7 +292,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       };
     }
 
-    const evaluation = createEvaluator();
+    const evaluation = createEvaluator({ descriptorKeys });
     await deps.writeRunMetadata(baseDir, runId, { config });
 
     const result = await deps.runEvolutionRunner({
@@ -320,7 +333,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     };
   }
 
-  const evaluation = createEvaluator();
+  const evaluation = createEvaluator({ descriptorKeys });
   await deps.writeRunMetadata(baseDir, runId, { config });
 
   const result = await deps.runEvolutionRunner({

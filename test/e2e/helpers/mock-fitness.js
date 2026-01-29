@@ -43,7 +43,8 @@ function resolveFeatureVector({ featureVector, metrics, degeneracy, featureVecto
     return featureVector;
   }
   const metricList = normalizeMetrics(metrics);
-  return assembleFeatureVector(metricList, normalizeDegeneracy(degeneracy), featureVectorOptions);
+  const { vector } = assembleFeatureVector(metricList, normalizeDegeneracy(degeneracy), featureVectorOptions);
+  return vector;
 }
 
 export function createMockFitness(options = {}) {

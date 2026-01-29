@@ -1,4 +1,5 @@
 import type {
+  BinToken,
   DescriptorSet,
   Genome,
   MapElitesConfig,
@@ -8,18 +9,18 @@ import type {
 } from "./types.js";
 
 export function binDescriptorValue(
-  value: number,
+  value: number | null | undefined,
   config: MapElitesDescriptorConfig
-): number;
+): BinToken;
 
 export function getDescriptorCoordinates(
-  descriptors: DescriptorSet,
+  descriptors: DescriptorSet | null | undefined,
   config: MapElitesConfig
-): ReadonlyArray<number>;
+): ReadonlyArray<BinToken>;
 
 export function getNicheId(
   config: MapElitesConfig,
-  coordinates: ReadonlyArray<number>
+  coordinates: ReadonlyArray<BinToken>
 ): string;
 
 export function placePopulationInMapElites<TGenome = Genome>(

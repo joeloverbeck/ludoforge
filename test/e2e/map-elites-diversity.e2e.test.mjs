@@ -163,6 +163,43 @@ describe("map-elites-diversity", () => {
     });
   });
 
+  describe("non-finite descriptor lands in unknown niche", () => {
+    it("genome with NaN descriptor occupies a distinct 'unknown' niche, not bin 0", () => {
+      const population = [
+        {
+          genome: { id: "g-normal", definition: {} },
+          fitness: 0.5,
+          descriptors: { agency: 0.1, variety: 0.1 },
+        },
+        {
+          genome: { id: "g-nan", definition: {} },
+          fitness: 0.5,
+          descriptors: { agency: null, variety: 0.1 },
+        },
+      ];
+
+      const result = placePopulationInMapElites(population, MAP_ELITES_CONFIG);
+
+      const nicheIds = result.placements.map((p) => p.nicheId);
+      const normalNiche = nicheIds[0];
+      const nanNiche = nicheIds[1];
+
+      assert.notEqual(
+        normalNiche,
+        nanNiche,
+        "NaN descriptor should land in a different niche than a normal value"
+      );
+      assert.ok(
+        nanNiche.includes("unknown"),
+        `NaN descriptor niche should contain 'unknown', got: ${nanNiche}`
+      );
+      assert.ok(
+        !normalNiche.includes("unknown"),
+        "normal descriptor niche should not contain 'unknown'"
+      );
+    });
+  });
+
   describe("multi-generation diversity maintenance", () => {
     it("3 generations maintain niche count (does not collapse to 1)", async () => {
       const definitions = await Promise.all([

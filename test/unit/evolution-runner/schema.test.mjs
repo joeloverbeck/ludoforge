@@ -15,7 +15,7 @@ const validate = ajv.compile(schemaJson);
 const baseConfig = {
   runner: { generations: 2 },
   mapElites: {
-    descriptors: [{ id: "balance", min: 0, max: 1, bins: 4 }],
+    descriptors: [{ id: "agency", min: 0, max: 1, bins: 4 }],
   },
   seeding: {
     mode: "generate",

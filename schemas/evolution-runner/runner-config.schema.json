@@ -95,7 +95,18 @@
       "additionalProperties": false,
       "required": ["id", "min", "max", "bins"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "string",
+          "enum": [
+            "agency",
+            "strategic_depth",
+            "seat_imbalance",
+            "variety",
+            "pacing_tension",
+            "turn_taking_rate",
+            "interaction_rate"
+          ]
+        },
         "min": { "type": "number" },
         "max": { "type": "number" },
         "bins": { "type": "integer", "minimum": 1 }

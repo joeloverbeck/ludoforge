@@ -2,7 +2,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { generateSeedPopulation } from "../../../src/seed-generation/generate-seed-population.js";
+import {
+  generateSeedPopulation,
+  hasSpecialBin,
+} from "../../../src/seed-generation/generate-seed-population.js";
 
 /**
  * Creates a mock evaluator that cycles through descriptor values.
@@ -38,6 +41,7 @@ describe("generateSeedPopulation", () => {
     assert.equal(typeof result.report.accepted, "number");
     assert.equal(typeof result.report.rejectedByReason, "object");
     assert.equal(typeof result.report.binCounts, "object");
+    assert.equal(typeof result.report.specialBinCounts, "object");
     assert.equal(typeof result.report.coverageTargetSummary, "object");
   });
 
@@ -201,6 +205,174 @@ describe("generateSeedPopulation", () => {
     assert.equal(summary.populationSize, 4);
     assert.equal(summary.totalBinCount, 2);
     assert.equal(summary.targetPerBin, 2); // ceil(4/2) = 2
+  });
+
+  describe("hasSpecialBin", () => {
+    it("returns true for niche containing 'unknown'", () => {
+      assert.equal(hasSpecialBin("axis:unknown"), true);
+      assert.equal(hasSpecialBin("axis:unknown|other:0"), true);
+      assert.equal(hasSpecialBin("axis:0|other:unknown"), true);
+    });
+
+    it("returns true for niche containing 'under'", () => {
+      assert.equal(hasSpecialBin("axis:under"), true);
+      assert.equal(hasSpecialBin("axis:under|other:1"), true);
+    });
+
+    it("returns true for niche containing 'over'", () => {
+      assert.equal(hasSpecialBin("axis:over"), true);
+      assert.equal(hasSpecialBin("axis:0|other:over"), true);
+    });
+
+    it("returns false for fully in-range niche", () => {
+      assert.equal(hasSpecialBin("axis:0"), false);
+      assert.equal(hasSpecialBin("axis:0|other:1"), false);
+      assert.equal(hasSpecialBin("axis:3|other:4"), false);
+    });
+  });
+
+  describe("special bin exclusion from coverage", () => {
+    it("special-bin genome is always accepted regardless of strategy", () => {
+      const unknownEvaluator = () => ({ descriptors: { axis: null } });
+      const result = generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 200,
+        evaluator: unknownEvaluator,
+        coverageStrategy: "uniform-bins",
+      });
+      assert.equal(result.genomes.length, 3);
+    });
+
+    it("special-bin genomes appear in specialBinCounts, not binCounts", () => {
+      const unknownEvaluator = () => ({ descriptors: { axis: null } });
+      const result = generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 200,
+        evaluator: unknownEvaluator,
+        coverageStrategy: "uniform-bins",
+      });
+      const specialKeys = Object.keys(result.report.specialBinCounts);
+      assert.ok(specialKeys.length > 0, "should have special bin entries");
+      assert.ok(
+        specialKeys.every((k) => k.includes("unknown")),
+        "special bin keys contain 'unknown'"
+      );
+      // binCounts should be empty since all genomes are special-bin
+      assert.equal(Object.keys(result.report.binCounts).length, 0);
+    });
+
+    it("in-range bin counting is unaffected by special-bin acceptances", () => {
+      let callCount = 0;
+      // Alternate: 1 in-range, then 1 special (null), repeat
+      const mixedEvaluator = () => {
+        callCount++;
+        if (callCount % 2 === 1) {
+          return { descriptors: { axis: 0.2 } };
+        }
+        return { descriptors: { axis: null } };
+      };
+      const result = generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 4,
+        maxAttempts: 200,
+        evaluator: mixedEvaluator,
+        coverageStrategy: "random",
+      });
+      assert.equal(result.genomes.length, 4);
+      // In-range genomes in binCounts, special in specialBinCounts
+      const binKeys = Object.keys(result.report.binCounts);
+      const specialKeys = Object.keys(result.report.specialBinCounts);
+      assert.ok(binKeys.length > 0, "should have in-range bin entries");
+      assert.ok(specialKeys.length > 0, "should have special bin entries");
+    });
+
+    it("uniform-bins still rejects full in-range bins despite special-bin acceptances", () => {
+      let callCount = 0;
+      // Produce: 2 in-range bin 0, then specials, then more in-range bin 0
+      // With 4 bins and pop=3, targetPerBin = ceil(3/4)=1
+      // After 1 in-range bin-0 acceptance, next in-range bin-0 should be rejected
+      const fourBinConfig = {
+        descriptors: [{ id: "axis", min: 0, max: 1, bins: 4 }],
+      };
+      const sequenceEvaluator = () => {
+        callCount++;
+        if (callCount === 2) {
+          return { descriptors: { axis: null } }; // special bin
+        }
+        return { descriptors: { axis: 0.1 } }; // always bin 0
+      };
+      const result = generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 2000,
+        evaluator: sequenceEvaluator,
+        mapElitesConfig: fourBinConfig,
+        coverageStrategy: "uniform-bins",
+        fallback: { strategy: "accept-any-valid" },
+      });
+      assert.equal(result.genomes.length, 3);
+      // Should have bin-full rejections for the repeated in-range bin-0 hits
+      assert.ok(
+        (result.report.rejectedByReason["bin-full"] ?? 0) > 0,
+        "should reject full in-range bins"
+      );
+      // Special bin counts should exist
+      assert.ok(
+        Object.keys(result.report.specialBinCounts).length > 0,
+        "should have special bin entries"
+      );
+    });
+
+    it("totalBinCount equals product of d.bins (in-range only)", () => {
+      const unknownEvaluator = () => ({ descriptors: { axis: null } });
+      const result = generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 200,
+        evaluator: unknownEvaluator,
+        coverageStrategy: "uniform-bins",
+      });
+      // 2 bins for axis
+      assert.equal(result.report.coverageTargetSummary.totalBinCount, 2);
+    });
+
+    it("special-bin acceptance does not reset coverageRejectStreak", () => {
+      // This test verifies that accepting a special-bin genome does NOT reset
+      // the coverageRejectStreak counter, so fallback still triggers correctly.
+      let callCount = 0;
+      const fourBinConfig = {
+        descriptors: [{ id: "axis", min: 0, max: 1, bins: 4 }],
+      };
+      // Produce: 1 in-range bin-0 (accepted), then alternate null (special) and
+      // in-range bin-0 (rejected as bin-full). The specials should NOT reset streak.
+      const evaluator = () => {
+        callCount++;
+        if (callCount === 1) {
+          return { descriptors: { axis: 0.1 } }; // in-range bin 0 (accepted)
+        }
+        if (callCount % 2 === 0) {
+          return { descriptors: { axis: null } }; // special bin
+        }
+        return { descriptors: { axis: 0.1 } }; // in-range bin 0 (rejected)
+      };
+      const result = generateSeedPopulation({
+        populationSize: 4,
+        maxAttempts: 5000,
+        rngSeed: 42,
+        evaluator,
+        mapElitesConfig: fourBinConfig,
+        coverageStrategy: "uniform-bins",
+        fallback: { strategy: "accept-any-valid" },
+      });
+      assert.equal(result.genomes.length, 4);
+      // Fallback should have been triggered because specials don't reset streak
+      assert.ok(
+        (result.report.rejectedByReason["bin-full"] ?? 0) > 0,
+        "should have bin-full rejections before fallback"
+      );
+    });
   });
 
   it("no node:fs import in source files", () => {

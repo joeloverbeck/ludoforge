@@ -147,5 +147,11 @@ Seeding mode is configured via the `seeding` block in the runner config
 
 - The evolution runner is implemented in `src/evolution-runner/` with unit coverage.
 - The CLI entrypoint is `src/cli/ludoforge-evolve.js` (registered as `ludoforge-evolve` in `package.json`).
-- The CLI requires an evaluator module for non-dry runs because evaluator functions are not representable in JSON.
+- The CLI creates the built-in evaluator via `createEvaluator({ descriptorKeys })`,
+  passing the descriptor IDs from the runner config so that the evaluator extracts
+  exactly the metrics required by the MAP-Elites grid.
+- Before entering the generation loop, the CLI validates that all descriptor IDs in
+  the config are known metric names (see
+  `docs/architecture/evolutionary-engine.md` § Descriptor ID Validation).
+  Unknown IDs produce a `CLIError` listing the invalid names and available metrics.
 - Data persistence modules support run-scoped records via required `runId` fields for metrics and trajectory logs; feedback can optionally include `runId`.

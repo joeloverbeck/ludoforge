@@ -21,18 +21,52 @@ Diagnostics include validation results, safety failures, and evaluator-specific 
 
 Implemented in `src/evolutionary-engine/map-elites.js`.
 
+### Descriptor ID Validation
+
+Descriptor `id` values must be one of the known metric names:
+`agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
+`turn_taking_rate`, `interaction_rate`. This is enforced at two levels:
+
+1. **Schema**: `MapElitesDescriptorConfig.id` is an `enum` in both
+   `schemas/evolution-runner/runner-config.schema.json` and
+   `schemas/config/map-elites.schema.json`.
+2. **CLI runtime**: `src/cli/validate-descriptor-keys.js` checks descriptor IDs
+   against `DEFAULT_FEATURE_ORDER` before the pipeline starts, producing a clear
+   error listing unknown IDs and available metrics.
+
 ### Descriptor Binning
 
-- Each descriptor maps to a bin index:
-  - `normalized = (clamp(value, min, max) - min) / (max - min)`
-  - `index = floor(normalized * bins)`
-  - clamped into `[0, bins - 1]`.
-- Descriptor configs are validated (finite numbers, `bins` is a positive integer,
-  and `max > min`); invalid configs throw.
+`binDescriptorValue(value, config)` returns a bin token:
+
+- **In range** (`min <= value <= max`): integer bin index
+  `floor((value - min) / (max - min) * bins)`, clamped to `[0, bins - 1]`.
+- **Below range** (`value < min`): `"under"`.
+- **Above range** (`value > max`): `"over"`.
+- **Non-finite / null / undefined**: `"unknown"`.
+
+Descriptor configs are validated (finite numbers, `bins` is a positive integer,
+and `max > min`); invalid configs throw.
 
 ### Niche Id
 
-- Coordinates are serialized as `descriptorId:bin` and joined by `|`.
+Coordinates are serialized as `descriptorId:binToken` and joined by `|`.
+
+Grammar:
+
+- `segment := <descriptorId> ":" <binToken>`
+- `nicheId := segment ("|" segment)*`
+- `binToken := integer | "unknown" | "under" | "over"`
+
+Examples: `agency:2|variety:1`, `agency:unknown|variety:0`, `agency:under|variety:over`.
+
+### nonFiniteKeys Metadata
+
+The evaluation pipeline tracks which metric values were non-finite before
+normalization. `assembleFeatureVector()` returns `{ vector, nonFiniteKeys }`
+where `nonFiniteKeys` lists metric ids whose raw values were `NaN`, `Infinity`,
+`-Infinity`, `null`, or `undefined`. The built-in evaluator (Step 12) uses
+`nonFiniteKeys` to set descriptor values to `null` for those keys, ensuring
+they bin to `"unknown"` rather than being conflated with a real numeric bin.
 
 ### Elite Selection
 

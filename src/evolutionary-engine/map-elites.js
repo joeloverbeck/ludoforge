@@ -25,15 +25,8 @@ async function loadDefaultMapElitesConfig() {
 
 export const DEFAULT_MAP_ELITES_CONFIG = await loadDefaultMapElitesConfig();
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
 export function binDescriptorValue(value, config) {
   const { min, max, bins } = config;
-  if (!Number.isFinite(value)) {
-    throw new Error("Descriptor value must be a finite number");
-  }
   if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(bins)) {
     throw new Error("Descriptor config must use finite numbers");
   }
@@ -44,20 +37,26 @@ export function binDescriptorValue(value, config) {
     throw new Error("Descriptor max must be greater than min");
   }
 
-  const normalized = (clamp(value, min, max) - min) / (max - min);
-  const index = Math.floor(normalized * bins);
-  return Math.min(Math.max(index, 0), bins - 1);
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "unknown";
+  }
+  if (value < min) {
+    return "under";
+  }
+  if (value > max) {
+    return "over";
+  }
+
+  const t = (value - min) / (max - min);
+  return Math.min(bins - 1, Math.floor(t * bins));
 }
 
 export function getDescriptorCoordinates(descriptors, config) {
   if (!descriptors) {
-    throw new Error("Descriptors are required to compute coordinates");
+    return config.descriptors.map(() => "unknown");
   }
   return config.descriptors.map((descriptorConfig) => {
     const value = descriptors[descriptorConfig.id];
-    if (value === undefined) {
-      throw new Error(`Missing descriptor value for ${descriptorConfig.id}`);
-    }
     return binDescriptorValue(value, descriptorConfig);
   });
 }

@@ -7,10 +7,10 @@
   },
   "mapElites": {
     "descriptors": [
-      { "id": "complexity", "min": 0, "max": 1, "bins": 5 },
-      { "id": "interactivity", "min": 0, "max": 1, "bins": 5 },
-      { "id": "decision-depth", "min": 0, "max": 1, "bins": 5 },
-      { "id": "randomness", "min": 0, "max": 1, "bins": 5 }
+      { "id": "agency", "min": 0, "max": 1, "bins": 5 },
+      { "id": "variety", "min": 0, "max": 1, "bins": 5 },
+      { "id": "strategic_depth", "min": 0, "max": 50, "bins": 5 },
+      { "id": "interaction_rate", "min": 0, "max": 1, "bins": 5 }
     ],
     "tieBreak": "replace"
   },

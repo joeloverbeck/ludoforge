@@ -7,6 +7,11 @@ export interface FeatureVectorOptions {
   degeneracyPrefix?: string;
 }
 
+export interface FeatureVectorResult {
+  vector: FeatureVector;
+  nonFiniteKeys: ReadonlyArray<string>;
+}
+
 export const DEFAULT_FEATURE_ORDER: ReadonlyArray<string>;
 export const DEFAULT_DEGENERACY_ORDER: ReadonlyArray<DegeneracyFlag>;
 
@@ -14,4 +19,4 @@ export function assembleFeatureVector(
   metrics: MetricResults,
   degeneracy: DegeneracyReport,
   options?: FeatureVectorOptions
-): FeatureVector;
+): FeatureVectorResult;

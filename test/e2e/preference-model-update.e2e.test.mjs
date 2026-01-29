@@ -48,7 +48,8 @@ function buildFeatureVector(definition, results) {
   const summaries = adapterResult.value.trajectorySummaries;
   const metrics = computeCoreMetrics(summaries);
   const degeneracy = detectDegeneracy(summaries);
-  return assembleFeatureVector(metrics, degeneracy);
+  const { vector } = assembleFeatureVector(metrics, degeneracy);
+  return vector;
 }
 
 describe("preference-model-update", () => {

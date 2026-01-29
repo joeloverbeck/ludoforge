@@ -5,7 +5,7 @@ import { validateRunnerConfig } from "../../../src/evolution-runner/config.js";
 const baseConfig = {
   runner: { generations: 3 },
   mapElites: {
-    descriptors: [{ id: "balance", min: 0, max: 1, bins: 5 }],
+    descriptors: [{ id: "agency", min: 0, max: 1, bins: 5 }],
   },
   seeding: {
     mode: "generate",
@@ -102,7 +102,7 @@ describe("config", () => {
 
     it("reports duplicate descriptor ids", () => {
       const candidate = cloneConfig(baseConfig);
-      candidate.mapElites.descriptors.push({ id: "balance", min: 0, max: 10, bins: 4 });
+      candidate.mapElites.descriptors.push({ id: "agency", min: 0, max: 10, bins: 4 });
 
       const result = validateRunnerConfig(candidate);
 

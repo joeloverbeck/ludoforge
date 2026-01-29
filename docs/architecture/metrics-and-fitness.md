@@ -125,8 +125,14 @@ Default policies: `loop` and `non-terminating` → reject; all others → penali
 
 Implemented in `src/evaluation-analytics/feature-vector.js`:
 
-- Feature vectors are objects keyed by metric id (not positional arrays).
-- Metrics are normalized (non-finite values become 0).
+- `assembleFeatureVector(metrics, degeneracy, options?)` returns
+  `{ vector, nonFiniteKeys }`.
+- `vector` is an object keyed by metric id (not a positional array).
+- `nonFiniteKeys` is a `string[]` listing metric ids whose raw values were
+  non-finite (`NaN`, `Infinity`, `-Infinity`, `null`, or `undefined`).
+  The feature vector normalizes these to 0 for fitness stability, but
+  `nonFiniteKeys` allows downstream consumers (e.g. descriptor extraction)
+  to distinguish "unknown" from a real 0.
 - Ordering defaults to `configs/metrics-core.json` `featureOrder`:
   `agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
   `turn_taking_rate`, `interaction_rate`.
@@ -195,7 +201,7 @@ passes it to the runner as `options.evaluation`.
 | `fitnessOptions` | `object` | `{}` | Overrides for `computePreferenceAwareFitness` |
 | `degeneracyThresholds` | `object` | `{}` | Overrides for `detectDegeneracy` |
 | `preferenceModelState` | `object\|null` | `null` | Preference model state for fitness blending |
-| `descriptorKeys` | `string[]` | `["agency", "variety"]` | Feature vector keys to extract as MAP-Elites descriptors |
+| `descriptorKeys` | `string[]` | `["agency", "variety"]` | Feature vector keys to extract as MAP-Elites descriptors. The CLI passes the descriptor IDs from the runner config so the evaluator produces exactly the descriptors the MAP-Elites grid expects. |
 | `includeExtendedMetrics` | `boolean` | `false` | Whether to compute extended metrics |
 | `extendedMetricsOptions` | `object` | `{}` | Options for `computeExtendedMetrics` |
 | `seed` | `number\|null` | `null` | Base RNG seed (each run offsets by index) |
@@ -211,9 +217,9 @@ passes it to the runner as `options.evaluation`.
 7. **Optionally compute extended metrics** — if `includeExtendedMetrics`, call `computeExtendedMetrics(definition, trajectorySummaries, { ...extendedMetricsOptions, simulations: results })`.
 8. **Concatenate metrics** — `[...coreMetrics, ...extendedMetrics]`.
 9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
-10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)`.
-11. **Compute fitness** — `computePreferenceAwareFitness(featureVector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
-12. **Extract descriptors** — pick `descriptorKeys` from feature vector.
+10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.
+11. **Compute fitness** — `computePreferenceAwareFitness(vector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
+12. **Extract descriptors** — for each `descriptorKey`, if the key is in `nonFiniteKeys` the descriptor value is `null` (maps to `"unknown"` bin token); otherwise use the numeric value from `vector`.
 13. **Return** — `{ fitness, descriptors, diagnostics }`.
 
 ### Return Value

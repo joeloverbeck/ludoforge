@@ -80,10 +80,14 @@ function normalizeMetricValue(value) {
 function assembleFeatureVector(metrics, degeneracy, options = {}) {
   const metricList = Array.isArray(metrics) ? metrics : [];
   const metricMap = new Map();
+  const nonFiniteKeys = [];
 
   for (const metric of metricList) {
     if (!metric || typeof metric.id !== "string") {
       continue;
+    }
+    if (!Number.isFinite(metric.value)) {
+      nonFiniteKeys.push(metric.id);
     }
     metricMap.set(metric.id, normalizeMetricValue(metric.value));
   }
@@ -133,7 +137,7 @@ function assembleFeatureVector(metrics, degeneracy, options = {}) {
     }
   }
 
-  return vector;
+  return { vector, nonFiniteKeys };
 }
 
 export { DEFAULT_FEATURE_ORDER, DEFAULT_DEGENERACY_ORDER, assembleFeatureVector };

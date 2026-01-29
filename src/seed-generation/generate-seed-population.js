@@ -17,6 +17,17 @@ import {
   shouldAcceptCandidate,
 } from "./coverage-policy.js";
 
+const SPECIAL_BIN_RE = /:(unknown|under|over)(\||$)/;
+
+/**
+ * Returns true if any segment of the nicheId contains a special bin token.
+ * @param {string} nicheId
+ * @returns {boolean}
+ */
+export function hasSpecialBin(nicheId) {
+  return SPECIAL_BIN_RE.test(nicheId);
+}
+
 /**
  * @param {{
  *   populationSize: number,
@@ -52,6 +63,8 @@ export function generateSeedPopulation({
   const seenIds = new Set();
   /** @type {Map<string, number>} */
   const binCounts = new Map();
+  /** @type {Map<string, number>} */
+  const specialBinCounts = new Map();
   const rejectedByReason = {};
   let attempts = 0;
   let inFallback = false;
@@ -102,6 +115,14 @@ export function generateSeedPopulation({
     );
     const nicheId = getNicheId(mapElitesConfig, coordinates);
 
+    // Special-bin niches are always accepted and tracked separately.
+    if (hasSpecialBin(nicheId)) {
+      seenIds.add(id);
+      genomes.push(genome);
+      specialBinCounts.set(nicheId, (specialBinCounts.get(nicheId) ?? 0) + 1);
+      continue;
+    }
+
     if (inFallback) {
       seenIds.add(id);
       genomes.push(genome);
@@ -143,6 +164,7 @@ export function generateSeedPopulation({
   }
 
   const binCountsObject = Object.fromEntries(binCounts);
+  const specialBinCountsObject = Object.fromEntries(specialBinCounts);
 
   return {
     genomes,
@@ -151,6 +173,7 @@ export function generateSeedPopulation({
       accepted: genomes.length,
       rejectedByReason,
       binCounts: binCountsObject,
+      specialBinCounts: specialBinCountsObject,
       coverageTargetSummary: {
         strategy: coverageStrategy,
         targetPerBin,

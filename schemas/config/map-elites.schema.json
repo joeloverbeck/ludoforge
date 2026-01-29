@@ -9,6 +9,7 @@
     "version": { "type": "integer", "minimum": 1 },
     "updatedAt": { "type": "string" },
     "descriptors": {
+      "description": "Descriptor axes defining the MAP-Elites behavioral grid. Each descriptor maps a metric to binned coordinates. Out-of-range values produce special bin tokens ('unknown', 'under', 'over') rather than clamping to edge bins.",
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/DescriptorConfig" }
@@ -23,14 +24,37 @@
   },
   "$defs": {
     "DescriptorConfig": {
+      "description": "Configuration for a single MAP-Elites descriptor axis. Values outside [min, max] produce special bin tokens: 'under' (below min), 'over' (above max), or 'unknown' (null/non-finite). In-range values are binned into [0, bins-1].",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "min", "max", "bins"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "min": { "type": "number" },
-        "max": { "type": "number" },
-        "bins": { "type": "integer", "minimum": 1 }
+        "id": {
+          "description": "Metric id used as the descriptor axis. Must match a known metric name from the evaluation pipeline.",
+          "type": "string",
+          "enum": [
+            "agency",
+            "strategic_depth",
+            "seat_imbalance",
+            "variety",
+            "pacing_tension",
+            "turn_taking_rate",
+            "interaction_rate"
+          ]
+        },
+        "min": {
+          "description": "Lower bound of the in-range bin interval. Values below this produce the 'under' bin token.",
+          "type": "number"
+        },
+        "max": {
+          "description": "Upper bound of the in-range bin interval. Values above this produce the 'over' bin token. Must be greater than min.",
+          "type": "number"
+        },
+        "bins": {
+          "description": "Number of uniform bins for in-range values. Produces bin indices [0, bins-1].",
+          "type": "integer",
+          "minimum": 1
+        }
       }
     }
   }

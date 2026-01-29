@@ -46,7 +46,7 @@ export interface EvaluationDiagnosticsFailure {
 
 export interface EvaluationResultSuccess {
   fitness: number;
-  descriptors: Record<string, number>;
+  descriptors: Record<string, number | null>;
   diagnostics: EvaluationDiagnosticsSuccess;
 }
 

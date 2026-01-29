@@ -10,7 +10,7 @@ import { CLIError } from "../../../src/cli/cli-error.js";
 function createRunnerConfig() {
   return {
     runner: { generations: 1, shortlistSize: 0 },
-    mapElites: { descriptors: [{ id: "axis", min: 0, max: 1, bins: 2 }] },
+    mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
     seeding: { mode: "folder", populationSize: 1, folder: { path: "./seeds" } },
   };
 }
@@ -229,7 +229,7 @@ describe("ludoforge-evolve", () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-cli-noseeding-"));
       const configNoSeeding = {
         runner: { generations: 1, shortlistSize: 0 },
-        mapElites: { descriptors: [{ id: "axis", min: 0, max: 1, bins: 2 }] },
+        mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
         seeding: { mode: "folder", populationSize: 1, folder: { path: "./seeds" } },
       };
       const configPath = join(baseDir, "runner-config.json");
@@ -239,7 +239,7 @@ describe("ludoforge-evolve", () => {
       // remove seeding from parsed config to simulate missing block
       const configWithoutSeeding = {
         runner: { generations: 1, shortlistSize: 0 },
-        mapElites: { descriptors: [{ id: "axis", min: 0, max: 1, bins: 2 }] },
+        mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
       };
       const noSeedingConfigPath = join(baseDir, "no-seeding.json");
       await writeFile(noSeedingConfigPath, JSON.stringify(configWithoutSeeding), "utf8");

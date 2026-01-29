@@ -105,7 +105,7 @@ export function createEvaluator(options = {}) {
     const degeneracyReport = detectDegeneracy(trajectorySummaries, degeneracyThresholds);
 
     // Step 10: Assemble feature vector
-    const featureVector = assembleFeatureVector(allMetrics, degeneracyReport);
+    const { vector: featureVector, nonFiniteKeys } = assembleFeatureVector(allMetrics, degeneracyReport);
 
     // Step 11: Compute fitness
     const fitnessResult = computePreferenceAwareFitness(featureVector, {
@@ -115,8 +115,9 @@ export function createEvaluator(options = {}) {
     });
 
     // Step 12: Extract descriptors
+    const nonFiniteSet = new Set(nonFiniteKeys);
     const descriptors = Object.fromEntries(
-      descriptorKeys.map((k) => [k, featureVector[k] ?? 0])
+      descriptorKeys.map((k) => [k, nonFiniteSet.has(k) ? null : (featureVector[k] ?? 0)])
     );
 
     // Step 13: Return result
