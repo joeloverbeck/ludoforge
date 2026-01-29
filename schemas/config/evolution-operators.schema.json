@@ -8,22 +8,93 @@
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
     "updatedAt": { "type": "string" },
-    "mutation": { "$ref": "#/$defs/OperatorGroup" },
-    "crossover": { "$ref": "#/$defs/OperatorGroup" },
-    "repair": { "$ref": "#/$defs/OperatorGroup" }
+    "mutation": { "$ref": "#/$defs/MutationGroup" },
+    "crossover": { "$ref": "#/$defs/CrossoverGroup" },
+    "repair": { "$ref": "#/$defs/RepairGroup" }
   },
   "$defs": {
-    "OperatorGroup": {
+    "MutationOperatorKind": {
+      "type": "string",
+      "enum": [
+        "numeric-tweak",
+        "boolean-toggle",
+        "enum-cycle",
+        "action-duplicate",
+        "action-remove",
+        "action-effect-magnitude",
+        "precondition-negation",
+        "termination-threshold",
+        "termination-outcome",
+        "phase-add",
+        "phase-remove",
+        "token-zone-target-add",
+        "token-type-remove",
+        "zone-remove",
+        "effect-insert",
+        "effect-delete",
+        "effect-param-tweak",
+        "effect-kind-swap",
+        "effect-reorder",
+        "action-add-small",
+        "motif-inject"
+      ]
+    },
+    "CrossoverOperatorKind": {
+      "type": "string",
+      "enum": [
+        "subtree-swap"
+      ]
+    },
+    "RepairOperatorKind": {
+      "type": "string",
+      "enum": [
+        "dsl-safety"
+      ]
+    },
+    "MutationGroup": {
       "type": "object",
       "additionalProperties": false,
       "required": ["enabled"],
       "properties": {
         "enabled": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/$defs/MutationOperatorKind" }
         },
         "weights": {
           "type": "object",
+          "propertyNames": { "$ref": "#/$defs/MutationOperatorKind" },
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "CrossoverGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CrossoverOperatorKind" }
+        },
+        "weights": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/CrossoverOperatorKind" },
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "RepairGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RepairOperatorKind" }
+        },
+        "weights": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/RepairOperatorKind" },
           "additionalProperties": { "type": "number" }
         }
       }

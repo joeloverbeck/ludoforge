@@ -105,7 +105,12 @@ function runSimulationLoop(config) {
       }
 
       if (policy === "pass") {
-        const step = buildStep(state, null, 0);
+        const passHash = defaultStateHasher(state);
+        const step = buildStep(state, null, 0, undefined, {
+          stateHash: passHash,
+          bindings: {},
+          appliedEffects: [],
+        });
         trajectory.steps.push(step);
         config.stepControl?.onStep?.(step);
         stepsTaken += 1;
@@ -158,7 +163,12 @@ function runSimulationLoop(config) {
 
       if (policy === "terminate") {
         const detail = noLegalActions?.reason;
-        const step = buildStep(state, undefined, 0);
+        const terminateHash = defaultStateHasher(state);
+        const step = buildStep(state, null, 0, undefined, {
+          stateHash: terminateHash,
+          bindings: {},
+          appliedEffects: [],
+        });
         trajectory.steps.push(step);
         config.stepControl?.onStep?.(step);
         stepsTaken += 1;
@@ -179,7 +189,12 @@ function runSimulationLoop(config) {
         };
       }
 
-      const step = buildStep(state, undefined, 0);
+      const stalemateHash = defaultStateHasher(state);
+      const step = buildStep(state, null, 0, undefined, {
+        stateHash: stalemateHash,
+        bindings: {},
+        appliedEffects: [],
+      });
       trajectory.steps.push(step);
       config.stepControl?.onStep?.(step);
       const outcome = buildDrawOutcome(definition);
