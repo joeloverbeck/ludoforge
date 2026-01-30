@@ -26,6 +26,7 @@ import {
   resolveFeedbackProvider,
 } from "./serialization-utils.js";
 import { applyEvolution } from "./evolution-applicator.js";
+import { computeHealthMetrics } from "./health-metrics.js";
 
 export async function runEvolutionRunner(options) {
   if (!options || typeof options !== "object") {
@@ -109,11 +110,25 @@ export async function runEvolutionRunner(options) {
   const feedbackProvider = resolveFeedbackProvider(options.feedback);
   const feedbackEnabled = config.humanFeedback?.enabled === true;
 
+  const logger = options.logger ?? null;
+
+  const rejectionRateThreshold = runnerConfig.rejectionRateThreshold ?? 0.8;
+  const maxConsecutiveRejections = runnerConfig.maxConsecutiveRejections ?? 3;
+  let consecutiveHighRejections = 0;
+
   const results = [];
   let pendingOperatorNames = null;
+  let haltedReason = null;
 
   for (let offset = 0; offset < generations; offset += 1) {
     const generation = startGeneration + offset;
+
+    if (logger) {
+      logger.info(
+        { generation, totalGenerations: generations, populationSize: currentPopulation.length },
+        "generation start",
+      );
+    }
 
     const loopResult = runGenerationLoop({
       population: currentPopulation,
@@ -179,6 +194,13 @@ export async function runEvolutionRunner(options) {
       : [defaultPreferenceModelSnapshot({ runId, generation, seed })];
     assertNonEmptyArray(preferenceModelSnapshots, "Preference model snapshots");
 
+    const health = computeHealthMetrics({
+      evaluated: loopResult.evaluated,
+      rejected: loopResult.rejected,
+      mapElites: loopResult.mapElites,
+      telemetry,
+    });
+
     const artifacts = await writeGenerationArtifacts({
       baseDir,
       runId,
@@ -195,6 +217,7 @@ export async function runEvolutionRunner(options) {
       preferenceModelSnapshots,
       determinism,
       operatorStats: serializeTelemetry(telemetry),
+      health,
     });
 
     if (runnerConfig.maxRetainedGenerations != null) {
@@ -215,6 +238,59 @@ export async function runEvolutionRunner(options) {
       artifacts,
     });
 
+    const totalEvaluated = loopResult.evaluated.length + loopResult.rejected.length;
+    const rejectionRate = totalEvaluated > 0
+      ? loopResult.rejected.length / totalEvaluated
+      : 0;
+
+    if (logger) {
+      logger.info(
+        {
+          generation,
+          evaluated: loopResult.evaluated.length,
+          rejected: loopResult.rejected.length,
+          rejectionRate,
+          populationSize: evolvedPopulation.length,
+        },
+        "generation end",
+      );
+    }
+
+    if (rejectionRate > rejectionRateThreshold) {
+      consecutiveHighRejections += 1;
+    } else {
+      consecutiveHighRejections = 0;
+    }
+
+    if (consecutiveHighRejections >= maxConsecutiveRejections) {
+      const reasonCounts = new Map();
+      for (const entry of loopResult.rejected) {
+        const reason = entry.reason ?? "unknown";
+        reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+      }
+      let dominantReason = "unknown";
+      let dominantCount = 0;
+      for (const [reason, count] of reasonCounts) {
+        if (count > dominantCount) {
+          dominantReason = reason;
+          dominantCount = count;
+        }
+      }
+
+      haltedReason = {
+        generation,
+        rejectionRate,
+        consecutiveHighRejections,
+        dominantReason,
+      };
+
+      if (logger) {
+        logger.warn(haltedReason, "evolution halted due to high rejection rate");
+      }
+
+      break;
+    }
+
     currentPopulation = evolvedPopulation;
   }
 
@@ -222,5 +298,6 @@ export async function runEvolutionRunner(options) {
     runId,
     baseDir,
     generations: results,
+    ...(haltedReason ? { haltedReason } : {}),
   };
 }

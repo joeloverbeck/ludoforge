@@ -100,6 +100,93 @@ describe("artifact-writer", () => {
       assert.equal(result.generationDir, generationPath);
     });
 
+    it("writes health.json with correct structure", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-health-"));
+      const runId = createRunId();
+
+      const health = {
+        meanFitness: 2.5,
+        medianFitness: 2.0,
+        rejectionRate: 0.25,
+        rejectionReasons: { "repair-failure": 1 },
+        degeneracyFlags: { "forced-move": 2, stalemate: 1 },
+        nicheOccupancy: 3,
+        repairFailureRate: 0.1,
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        health,
+      });
+
+      assert.ok(result.healthPath);
+      const healthContents = await readFile(result.healthPath, "utf8");
+      const parsed = JSON.parse(healthContents);
+      assert.equal(parsed.meanFitness, 2.5);
+      assert.equal(parsed.medianFitness, 2.0);
+      assert.equal(parsed.rejectionRate, 0.25);
+      assert.deepEqual(parsed.rejectionReasons, { "repair-failure": 1 });
+      assert.deepEqual(parsed.degeneracyFlags, { "forced-move": 2, stalemate: 1 });
+      assert.equal(parsed.nicheOccupancy, 3);
+      assert.equal(parsed.repairFailureRate, 0.1);
+    });
+
+    it("all health.json numeric fields are finite numbers", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-health-finite-"));
+      const runId = createRunId();
+
+      const health = {
+        meanFitness: 0,
+        medianFitness: 0,
+        rejectionRate: 0,
+        rejectionReasons: {},
+        degeneracyFlags: {},
+        nicheOccupancy: 0,
+        repairFailureRate: 0,
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        health,
+      });
+
+      const healthContents = await readFile(result.healthPath, "utf8");
+      const parsed = JSON.parse(healthContents);
+      for (const key of ["meanFitness", "medianFitness", "rejectionRate", "nicheOccupancy", "repairFailureRate"]) {
+        assert.ok(Number.isFinite(parsed[key]), `${key} should be finite, got ${parsed[key]}`);
+      }
+    });
+
     it("rejects invalid population entries", async () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-"));
       const runId = createRunId();

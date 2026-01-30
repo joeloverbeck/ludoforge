@@ -70,6 +70,7 @@ export async function writeGenerationArtifacts({
   preferenceModelSnapshots,
   determinism,
   operatorStats,
+  health,
 }) {
   assertValidRunId(runId);
   assertGenerationNumber(generation);
@@ -152,6 +153,15 @@ export async function writeGenerationArtifacts({
     const operatorStatsPath = resolveRunPath(generationDir, "operator-stats.json");
     await writeJson(operatorStatsPath, operatorStats);
     paths.operatorStatsPath = operatorStatsPath;
+  }
+
+  if (health !== undefined) {
+    if (!isPlainObject(health)) {
+      throw new Error("Health metrics must be an object");
+    }
+    const healthPath = resolveRunPath(generationDir, "health.json");
+    await writeJson(healthPath, health);
+    paths.healthPath = healthPath;
   }
 
   return paths;

@@ -93,7 +93,7 @@ describe("ludoforge-evolve", () => {
           },
           runEvolutionRunner: async (options) => {
             capturedOptions = options;
-            return { runId: options.runId };
+            return { runId: options.runId, generations: [] };
           },
         },
       });
@@ -142,7 +142,7 @@ describe("ludoforge-evolve", () => {
           },
           runEvolutionRunner: async (options) => {
             capturedOptions = options;
-            return { runId: options.runId };
+            return { runId: options.runId, generations: [] };
           },
         },
       });
@@ -181,7 +181,7 @@ describe("ludoforge-evolve", () => {
           writeRunMetadata: async () => "ok",
           runEvolutionRunner: async (options) => {
             capturedOptions = options;
-            return { runId: options.runId };
+            return { runId: options.runId, generations: [] };
           },
         },
       });
@@ -217,7 +217,7 @@ describe("ludoforge-evolve", () => {
           writeRunMetadata: async () => "ok",
           runEvolutionRunner: async (options) => {
             capturedOptions = options;
-            return { runId: options.runId };
+            return { runId: options.runId, generations: [] };
           },
         },
       });

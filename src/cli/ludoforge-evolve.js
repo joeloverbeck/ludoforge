@@ -20,6 +20,8 @@ import { createUsage } from "./usage.js";
 import { validateDescriptorKeys } from "./validate-descriptor-keys.js";
 import { createConsoleIO } from "./console-io.js";
 import { createFeedbackProvider } from "../human-interface/create-feedback-provider.js";
+import { createLogger } from "./create-logger.js";
+import { createProgressReporter } from "./create-progress-reporter.js";
 
 async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunner) {
   let consoleIO;
@@ -64,6 +66,16 @@ function formatRunList(runs) {
   return `Available runs: ${runs.join(", ")}`;
 }
 
+function resolveLoggerOptions(parsed) {
+  if (parsed.quiet) {
+    return { level: "error", pretty: false };
+  }
+  if (parsed.verbose) {
+    return { level: "debug", pretty: true };
+  }
+  return { level: process.env.LOG_LEVEL ?? "info", pretty: false };
+}
+
 export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides } = {}) {
   const deps = resolveDeps(overrides);
   const parsed = parseArgs(argv);
@@ -78,6 +90,10 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       hint: "At minimum, pass --config <path> to specify the runner config file.",
     });
   }
+
+  const loggerOpts = resolveLoggerOptions(parsed);
+  const logger = createLogger(loggerOpts);
+  const reporter = createProgressReporter({ silent: parsed.quiet });
 
   const config = await loadConfig(parsed.config, deps);
 
@@ -139,9 +155,16 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       startGeneration: resumeState.generation + 1,
       preferenceModelSnapshots: [resumeState.preferenceModel],
       evaluation,
+      logger,
     };
 
     const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
+
+    reporter.onRunComplete({
+      runId,
+      generationsCompleted: result.generations.length,
+      halted: !!result.haltedReason,
+    });
 
     return {
       runId,
@@ -192,9 +215,16 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       config,
       population,
       evaluation,
+      logger,
     };
 
     const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
+
+    reporter.onRunComplete({
+      runId,
+      generationsCompleted: result.generations.length,
+      halted: !!result.haltedReason,
+    });
 
     return {
       runId,
@@ -234,9 +264,16 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     runId,
     config,
     evaluation,
+    logger,
   };
 
   const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
+
+  reporter.onRunComplete({
+    runId,
+    generationsCompleted: result.generations.length,
+    halted: !!result.haltedReason,
+  });
 
   return {
     runId,
@@ -248,6 +285,11 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
 }
 
 async function main() {
+  const logger = createLogger({
+    level: process.env.LOG_LEVEL ?? "info",
+    pretty: false,
+  });
+
   try {
     const result = await runLudoforgeEvolve({ argv: process.argv });
     if (result?.help) {
@@ -265,6 +307,7 @@ async function main() {
         parts.push("", createUsage());
       }
     }
+    logger.error({ err: error }, parts[0]);
     process.stderr.write(`${parts.join("\n")}\n`);
     process.exitCode = 1;
   }

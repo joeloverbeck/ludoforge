@@ -1,7 +1,7 @@
 import { CLIError } from "./cli-error.js";
 
 const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
-const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h"]);
+const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h", "--verbose", "-v", "--quiet", "-q"]);
 const ALL_FLAGS = new Set([...VALUE_FLAGS, ...BOOLEAN_FLAGS]);
 
 function validFlagList() {
@@ -14,6 +14,8 @@ export function parseArgs(argv) {
     dryRun: false,
     resume: false,
     help: false,
+    verbose: false,
+    quiet: false,
     _hasArgs: args.length > 0,
   };
 
@@ -29,6 +31,14 @@ export function parseArgs(argv) {
     }
     if (arg === "--help" || arg === "-h") {
       parsed.help = true;
+      continue;
+    }
+    if (arg === "--verbose" || arg === "-v") {
+      parsed.verbose = true;
+      continue;
+    }
+    if (arg === "--quiet" || arg === "-q") {
+      parsed.quiet = true;
       continue;
     }
 

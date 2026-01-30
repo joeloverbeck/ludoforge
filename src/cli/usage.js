@@ -11,6 +11,8 @@ export function createUsage() {
     "  --resume           Resume an existing run (requires --run-id)",
     "  --out <dir>        Base output directory (default: cwd)",
     "  --dry-run          Validate inputs without executing the runner",
+    "  --verbose, -v      Show debug-level logs with pretty printing",
+    "  --quiet, -q        Suppress progress output, only show errors",
     "  --help             Show this help",
   ].join("\n");
 }

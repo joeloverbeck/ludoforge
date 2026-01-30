@@ -23,7 +23,9 @@
         "generations": { "type": "integer", "minimum": 1 },
         "shortlistSize": { "type": "integer", "minimum": 0 },
         "saveEvery": { "type": "integer", "minimum": 1 },
-        "maxRetainedGenerations": { "type": "integer", "minimum": 1 }
+        "maxRetainedGenerations": { "type": "integer", "minimum": 1 },
+        "rejectionRateThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maxConsecutiveRejections": { "type": "integer", "minimum": 1 }
       }
     },
     "EvaluationConfig": {

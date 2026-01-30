@@ -52,7 +52,7 @@ describe("CLI runner paths (integration)", () => {
         writeRunMetadata: async () => "ok",
         runEvolutionRunner: async (options) => {
           capturedOptions = options;
-          return { runId: options.runId };
+          return { runId: options.runId, generations: [] };
         },
       },
     });
