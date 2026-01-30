@@ -172,6 +172,12 @@ about the seeded simulation and evolution loop.
   - Metrics that require a scoring expression degrade gracefully to 0 without one.
   - Extended metrics are null when `includeExtendedMetrics` is false.
 
+- Agent portfolio metrics (suite wiring + determinism)
+  - `test/e2e/agent-portfolio-metrics.e2e.test.mjs`
+  - SuiteResults are present when portfolio metrics are enabled.
+  - `advantage_reversal_rate` and `policy_sensitivity` are deterministic and within [0,1].
+  - Feature vector includes the portfolio metric ids.
+
 ## Gaps and Not Yet Proven in E2E
 
 - Worker-thread batch simulations.
