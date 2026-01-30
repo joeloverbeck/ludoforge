@@ -97,6 +97,8 @@ export interface TriggerDef {
     | "end_turn"
     | "start_phase"
     | "end_phase"
+    | "start_round"
+    | "end_round"
     | "after_action"
     | "state_change"
     | "threshold";

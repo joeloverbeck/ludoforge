@@ -316,7 +316,7 @@
             "kind": { "const": "set_flag" },
             "target": { "$ref": "#/$defs/Ref" },
             "flag": { "type": "string" },
-            "duration": { "type": "string", "enum": ["action", "phase", "turn"] }
+            "duration": { "type": "string", "enum": ["action", "phase", "turn", "round"] }
           }
         }
       ]
@@ -333,6 +333,8 @@
             "end_turn",
             "start_phase",
             "end_phase",
+            "start_round",
+            "end_round",
             "after_action",
             "state_change",
             "threshold"

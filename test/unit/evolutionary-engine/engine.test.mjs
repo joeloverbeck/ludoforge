@@ -176,6 +176,127 @@ describe("engine", () => {
     });
   });
 
+  describe("shortlist novelty tie-break", () => {
+    it("prefers higher novelty when useNovelty is true and fitness is equal", () => {
+      // Four genomes in different niches, all equal fitness.
+      // g1 (bin [0,0]), g2 (bin [1,0]), g3 (bin [1,1]) are clustered.
+      // g4 (bin [4,3]) is far from all others → highest novelty.
+      // With useNovelty: true and equal fitness, g4 should be picked first.
+      const population = [
+        { id: "g1", definition: baseDefinition },
+        { id: "g2", definition: baseDefinition },
+        { id: "g3", definition: baseDefinition },
+        { id: "g4", definition: baseDefinition },
+      ];
+
+      // Bins for mapElitesConfig: length [0-100, 5 bins], randomness [0-1, 4 bins]
+      // g1: length=5 → bin 0, randomness=0.05 → bin 0  → coords [0,0]
+      // g2: length=25 → bin 1, randomness=0.05 → bin 0 → coords [1,0]
+      // g3: length=25 → bin 1, randomness=0.3 → bin 1  → coords [1,1]
+      // g4: length=90 → bin 4, randomness=0.9 → bin 3  → coords [4,3]
+      const descriptorsById = {
+        g1: { length: 5, randomness: 0.05 },
+        g2: { length: 25, randomness: 0.05 },
+        g3: { length: 25, randomness: 0.3 },
+        g4: { length: 90, randomness: 0.9 },
+      };
+
+      const result = runGenerationLoop({
+        population,
+        evaluation: {
+          evaluator: (genome) => ({
+            fitness: 0.5,
+            descriptors: descriptorsById[genome.id],
+          }),
+        },
+        mapElites: mapElitesConfig,
+        shortlistSize: 2,
+        useNovelty: true,
+        rng: createSeededRng(42),
+      });
+
+      // g4 is the most novel (farthest from the cluster), so with equal
+      // fitness it should be sorted first and picked as the initial candidate.
+      assert.equal(result.shortlist[0].id, "g4");
+      assert.equal(result.shortlist.length, 2);
+    });
+
+    it("ignores novelty when useNovelty is false (default)", () => {
+      // Same setup but without novelty. Existing tests still pass and
+      // shortlist returns correct count.
+      const population = [
+        { id: "g1", definition: baseDefinition },
+        { id: "g2", definition: baseDefinition },
+        { id: "g3", definition: baseDefinition },
+        { id: "g4", definition: baseDefinition },
+      ];
+
+      const descriptorsById = {
+        g1: { length: 5, randomness: 0.05 },
+        g2: { length: 25, randomness: 0.05 },
+        g3: { length: 25, randomness: 0.3 },
+        g4: { length: 90, randomness: 0.9 },
+      };
+
+      const withoutNovelty = runGenerationLoop({
+        population,
+        evaluation: {
+          evaluator: (genome) => ({
+            fitness: 0.5,
+            descriptors: descriptorsById[genome.id],
+          }),
+        },
+        mapElites: mapElitesConfig,
+        shortlistSize: 2,
+        rng: createSeededRng(42),
+      });
+
+      assert.equal(withoutNovelty.shortlist.length, 2);
+      // Without useNovelty, initial pick is by randomKey, not novelty.
+      // We just confirm it works and returns valid results.
+      for (const genome of withoutNovelty.shortlist) {
+        assert.ok(typeof genome.id === "string");
+      }
+    });
+
+    it("novelty tie-break is deterministic with the same seed", () => {
+      const population = [
+        { id: "g1", definition: baseDefinition },
+        { id: "g2", definition: baseDefinition },
+        { id: "g3", definition: baseDefinition },
+      ];
+
+      const descriptorsById = {
+        g1: { length: 10, randomness: 0.1 },
+        g2: { length: 50, randomness: 0.5 },
+        g3: { length: 90, randomness: 0.9 },
+      };
+
+      const run = (seed) =>
+        runGenerationLoop({
+          population,
+          evaluation: {
+            evaluator: (genome) => ({
+              fitness: 0.5,
+              descriptors: descriptorsById[genome.id],
+            }),
+          },
+          mapElites: mapElitesConfig,
+          shortlistSize: 2,
+          useNovelty: true,
+          rng: createSeededRng(seed),
+        });
+
+      const first = run(99);
+      const second = run(99);
+
+      assert.deepEqual(
+        first.shortlist.map((g) => g.id),
+        second.shortlist.map((g) => g.id)
+      );
+    });
+  });
+
   describe("shortlist", () => {
     it("favors diversity after fitness ordering", () => {
       const population = [

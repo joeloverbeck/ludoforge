@@ -6,6 +6,8 @@ const TRIGGER_EVENTS = [
   "end_turn",
   "start_phase",
   "end_phase",
+  "start_round",
+  "end_round",
   "after_action",
 ];
 

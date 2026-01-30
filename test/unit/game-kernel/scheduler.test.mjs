@@ -290,6 +290,236 @@ describe("scheduler", () => {
     });
   });
 
+  describe("round triggers", () => {
+    it("fires start_round trigger at the beginning of each new round", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "start_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 10 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // P1 main → P2 (no round boundary)
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 0);
+
+      // P2 main → P1 (round 1→2, fires start_round)
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 10);
+      assert.equal(state.turn.round, 2);
+    });
+
+    it("fires end_round trigger at the end of each completed round", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "end_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 5 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // P1 → P2 (no round boundary)
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 0);
+
+      // P2 → P1 (round boundary, fires end_round)
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 5);
+    });
+
+    it("fires end_round before start_round (ordering)", () => {
+      const definition = {
+        ...baseDefinition,
+        state: {
+          variables: [
+            { id: "counter", scope: "global", type: { kind: "int" }, initial: 0 },
+            { id: "order_log", scope: "global", type: { kind: "int" }, initial: 0 },
+          ],
+        },
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "end_round",
+            effects: [{ kind: "set", target: { kind: "var", id: "order_log" }, value: 1 }],
+          },
+          {
+            event: "start_round",
+            effects: [{ kind: "set", target: { kind: "var", id: "order_log" }, value: 2 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // Advance through full round to trigger boundary
+      advanceTurnPhase(definition, state); // P2
+      advanceTurnPhase(definition, state); // P1, round 2
+
+      // end_round set it to 1, then start_round overwrote it to 2
+      assert.equal(state.variables.global.order_log, 2);
+    });
+
+    it("end_round trigger effects can modify state before the new round", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "end_round",
+            effects: [{ kind: "set", target: { kind: "var", id: "counter" }, value: 0 }],
+          },
+          {
+            event: "start_phase",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // Phase transitions increment counter via start_phase
+      advanceTurnPhase(definition, state); // P2, start_phase fires → counter=1
+      advanceTurnPhase(definition, state); // round boundary: end_round resets to 0, then start_phase → counter=1
+      assert.equal(state.variables.global.counter, 1);
+    });
+
+    it("start_round trigger effects see the updated round number", () => {
+      // The start_round trigger fires after state.turn.round is updated.
+      // We verify by checking that a condition on round=2 fires correctly.
+      const definition = {
+        ...baseDefinition,
+        state: {
+          variables: [
+            { id: "counter", scope: "global", type: { kind: "int" }, initial: 0 },
+            { id: "round_snapshot", scope: "global", type: { kind: "int" }, initial: 0 },
+          ],
+        },
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "start_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      advanceTurnPhase(definition, state); // P2, round 1
+      advanceTurnPhase(definition, state); // P1, round 2 — start_round fires
+      assert.equal(state.turn.round, 2);
+      assert.equal(state.variables.global.counter, 1);
+
+      advanceTurnPhase(definition, state); // P2, round 2
+      advanceTurnPhase(definition, state); // P1, round 3 — start_round fires
+      assert.equal(state.turn.round, 3);
+      assert.equal(state.variables.global.counter, 2);
+    });
+
+    it("triggers with conditions on start_round only fire when condition is true", () => {
+      const definition = {
+        ...baseDefinition,
+        state: {
+          variables: [
+            { id: "counter", scope: "global", type: { kind: "int" }, initial: 0 },
+            { id: "flag", scope: "global", type: { kind: "int" }, initial: 0 },
+          ],
+        },
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "start_round",
+            condition: {
+              kind: "cmp",
+              op: "==",
+              left: { kind: "ref", ref: { kind: "var", id: "flag" } },
+              right: { kind: "value", value: 1 },
+            },
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 100 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // Round 1→2: flag=0, condition false → counter stays 0
+      advanceTurnPhase(definition, state);
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 0);
+
+      // Set flag=1, then advance to round 3
+      state.variables.global.flag = 1;
+      advanceTurnPhase(definition, state);
+      advanceTurnPhase(definition, state);
+      assert.equal(state.variables.global.counter, 100);
+    });
+
+    it("round triggers fire once per full cycle, not once per player turn", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [
+          {
+            event: "start_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+          {
+            event: "end_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      // Full round: P1→P2 (no triggers), P2→P1 (both fire once each = +2)
+      advanceTurnPhase(definition, state); // P2, no round boundary
+      assert.equal(state.variables.global.counter, 0);
+
+      advanceTurnPhase(definition, state); // P1, round 2 — end_round +1, start_round +1
+      assert.equal(state.variables.global.counter, 2);
+
+      // Another full round
+      advanceTurnPhase(definition, state); // P2, no round boundary
+      assert.equal(state.variables.global.counter, 2);
+
+      advanceTurnPhase(definition, state); // P1, round 3 — end_round +1, start_round +1
+      assert.equal(state.variables.global.counter, 4);
+    });
+
+    it("clears round-duration flags at round boundary", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "round_robin", phases: ["main"] },
+        termination: { conditions: [], maxTurns: 20 },
+        triggers: [],
+      };
+      const state = createInitialState(definition);
+
+      // Manually set a round-duration flag on agent
+      state.agents[0].flags = { round_buff: { duration: "round" } };
+
+      // P1→P2: no round boundary, flag persists
+      advanceTurnPhase(definition, state);
+      assert.ok(state.agents[0].flags.round_buff);
+
+      // P2→P1: round boundary, round flags cleared
+      advanceTurnPhase(definition, state);
+      assert.equal(state.agents[0].flags.round_buff, undefined);
+    });
+  });
+
   describe("applyTriggers", () => {
     it("blocks re-entry when recursion depth is exceeded", () => {
       const definition = {

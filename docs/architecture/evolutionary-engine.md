@@ -137,7 +137,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns); can also use mined motifs when motif mining is enabled.
 - `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
 - `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
-- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
+- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
 
 ### Operator Selection
 

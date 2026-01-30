@@ -16,7 +16,7 @@ Default parameters are loaded from config files under `configs/`:
 - `configs/metrics-core.json` for feature ordering and normalization policy.
 - `configs/metrics-extended.json` for optional metric parameters and enabled flags.
 - `configs/degeneracy.json` for thresholds, policy-per-flag, penalty weights, and `minStepsForNoChoices` guard.
-- `configs/fitness.json` for weights and preference/diversity blending defaults.
+- `configs/fitness.json` for weights and preference blending defaults.
 
 Explicit options passed into metric/fitness helpers override config defaults.
 
@@ -270,8 +270,6 @@ Preference learning is comparison-first (comparisons are the primary training si
 Implemented in `src/evaluation-analytics/fitness.js` and `scoring.js`:
 
 - Base = composite score.
-- Diversity contribution uses defaults from `configs/fitness.json`:
-  `diversityPressure * diversityWeight`.
 - Preference contribution uses defaults from `configs/fitness.json`, centered,
   uncertainty-damped, and capped:
   - `centered = (pMean - 0.5) * 2`
@@ -282,7 +280,14 @@ Implemented in `src/evaluation-analytics/fitness.js` and `scoring.js`:
 - Bootstrap: if sample count < `preferenceBootstrapSamples`, cap is reduced to
   `preferenceBootstrapCap`.
 
-Final fitness = `(base + diversity + preference) * (1 - clamp(penalty, 0, 1))`.
+Final fitness = `(base + preference) * (1 - clamp(penalty, 0, 1))`.
+
+Diversity is **not** part of the fitness blend. It is maintained by:
+- MAP-Elites niche placement (per-niche elite retention),
+- shortlist L1-distance diversification (with optional novelty-score tie-break
+  via `useNovelty`, using mean k-NN L1 distance in coordinate space),
+- the `structural_complexity` descriptor axis,
+- active-learning `diversityQuota`.
 
 The degeneracy penalty is computed by summing per-flag penalties for all raised flags
 whose policy is `"penalize"`. Each flag's penalty entry specifies a `weight` and an

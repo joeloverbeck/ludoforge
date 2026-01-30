@@ -154,6 +154,20 @@ export function advanceTurnPhase(definition, state, options = {}) {
   }
 
   const turnAdvanced = nextTurn !== state.turn.turn;
+  const roundAdvanced = nextRound !== state.turn.round;
+
+  if (roundAdvanced) {
+    const endRoundResult = applyTriggers(definition, state, "end_round", {
+      playerId: state.turn.currentPlayer,
+      phase: state.turn.phase ?? null,
+      guard: triggerGuard,
+    });
+    if (!endRoundResult.ok) {
+      return endRoundResult;
+    }
+    clearFlags(state, "round");
+  }
+
   state.turn = {
     currentPlayer: nextPlayer,
     phase: nextPhase,
@@ -163,6 +177,17 @@ export function advanceTurnPhase(definition, state, options = {}) {
 
   if (turnAdvanced) {
     clearFlags(state, "turn");
+  }
+
+  if (roundAdvanced) {
+    const startRoundResult = applyTriggers(definition, state, "start_round", {
+      playerId: nextPlayer,
+      phase: nextPhase,
+      guard: triggerGuard,
+    });
+    if (!startRoundResult.ok) {
+      return startRoundResult;
+    }
   }
 
   const startResult = applyTriggers(definition, state, "start_phase", {

@@ -71,9 +71,9 @@ then repeats.
 
 5. Fitness computation
    - Metrics + degeneracy flags become a feature vector.
-   - Composite score + preference score + diversity pressure blend into fitness.
+   - Composite score + preference score blend into fitness.
    - Relevant code: `src/evaluation-analytics/feature-vector.js`, `src/evaluation-analytics/fitness.js`.
-   - Config: `configs/fitness.json` (weights, diversity pressure, preference blending).
+   - Config: `configs/fitness.json` (weights, preference blending).
 
 6. MAP-Elites placement
    - Evaluated genomes are binned into descriptor niches.
@@ -83,6 +83,13 @@ then repeats.
 
 7. Shortlisting (optional)
    - Elites can be ranked and diversified into a shortlist for human review.
+   - Selection picks the highest-fitness elite first, then greedily adds the
+     candidate with the largest minimum L1 coordinate distance to the already-
+     selected set. Tie-breaks chain: fitness → novelty score (optional, gated
+     by `useNovelty`) → random key → insertion order.
+   - When `useNovelty` is `true`, `computeNoveltyScores` assigns each candidate
+     the mean k-nearest-neighbour L1 distance (k = min(5, n−1)) in MAP-Elites
+     coordinate space. This is used only as a tie-break, not as a fitness signal.
    - Relevant code: `src/evolutionary-engine/engine.js`.
 
 8. Evolution operators (optional between generations)

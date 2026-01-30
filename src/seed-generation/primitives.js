@@ -189,7 +189,7 @@ export function generateZone({ rng, id, tokenTypeId }) {
   };
 }
 
-const TRIGGER_EVENTS = ["start_turn", "end_turn", "after_action"];
+const TRIGGER_EVENTS = ["start_turn", "end_turn", "start_round", "end_round", "after_action"];
 
 /**
  * @param {{ rng: { next(): number, nextInt(n: number): number }, variables: Array<{ id: string }> }} opts

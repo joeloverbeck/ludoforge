@@ -35,6 +35,28 @@ function coordinateDistance(a, b) {
   return total;
 }
 
+function computeNoveltyScores(candidates, k) {
+  const n = candidates.length;
+  const effectiveK = Math.min(k, n - 1);
+  if (effectiveK <= 0) {
+    return candidates.map(() => 0);
+  }
+  return candidates.map((candidate) => {
+    const distances = candidates
+      .filter((other) => other !== candidate)
+      .map((other) =>
+        coordinateDistance(
+          candidate.placement.coordinates,
+          other.placement.coordinates
+        )
+      )
+      .sort((a, b) => a - b);
+    const kNearest = distances.slice(0, effectiveK);
+    const sum = kNearest.reduce((acc, d) => acc + d, 0);
+    return sum / effectiveK;
+  });
+}
+
 function selectShortlist(placements, config, options) {
   const size = Math.max(0, options?.size ?? 0);
   if (size === 0) {
@@ -42,6 +64,8 @@ function selectShortlist(placements, config, options) {
   }
 
   const rng = options?.rng;
+  const useNovelty = options?.useNovelty ?? false;
+
   const candidates = placements
     .filter((placement) => placement.isElite)
     .map((placement, index) => {
@@ -51,6 +75,7 @@ function selectShortlist(placements, config, options) {
         fitnessValue,
         randomKey: getRandomValue(rng),
         index,
+        noveltyScore: 0,
       };
     });
 
@@ -58,11 +83,21 @@ function selectShortlist(placements, config, options) {
     return [];
   }
 
+  if (useNovelty) {
+    const scores = computeNoveltyScores(candidates, 5);
+    candidates.forEach((candidate, i) => {
+      candidate.noveltyScore = scores[i];
+    });
+  }
+
   candidates.sort((a, b) => {
     const fitnessA = a.fitnessValue ?? -Infinity;
     const fitnessB = b.fitnessValue ?? -Infinity;
     if (fitnessA !== fitnessB) {
       return fitnessB - fitnessA;
+    }
+    if (useNovelty && a.noveltyScore !== b.noveltyScore) {
+      return b.noveltyScore - a.noveltyScore;
     }
     if (a.randomKey !== b.randomKey) {
       return a.randomKey - b.randomKey;
@@ -82,6 +117,7 @@ function selectShortlist(placements, config, options) {
     let bestIndex = 0;
     let bestDistance = -Infinity;
     let bestFitness = -Infinity;
+    let bestNovelty = -Infinity;
     let bestRandom = Infinity;
     let bestOriginalIndex = Infinity;
 
@@ -95,6 +131,7 @@ function selectShortlist(placements, config, options) {
       }, Infinity);
 
       const fitnessValue = candidate.fitnessValue ?? -Infinity;
+      const noveltyScore = candidate.noveltyScore;
       const randomKey = candidate.randomKey;
       const originalIndex = candidate.index;
 
@@ -103,9 +140,15 @@ function selectShortlist(placements, config, options) {
         (minDistance === bestDistance && fitnessValue > bestFitness) ||
         (minDistance === bestDistance &&
           fitnessValue === bestFitness &&
+          useNovelty &&
+          noveltyScore > bestNovelty) ||
+        (minDistance === bestDistance &&
+          fitnessValue === bestFitness &&
+          (!useNovelty || noveltyScore === bestNovelty) &&
           randomKey < bestRandom) ||
         (minDistance === bestDistance &&
           fitnessValue === bestFitness &&
+          (!useNovelty || noveltyScore === bestNovelty) &&
           randomKey === bestRandom &&
           originalIndex < bestOriginalIndex);
 
@@ -113,6 +156,7 @@ function selectShortlist(placements, config, options) {
         bestIndex = index;
         bestDistance = minDistance;
         bestFitness = fitnessValue;
+        bestNovelty = noveltyScore;
         bestRandom = randomKey;
         bestOriginalIndex = originalIndex;
       }
@@ -174,6 +218,7 @@ export function runGenerationLoop(options) {
   const shortlist = selectShortlist(mapElites.placements, options.mapElites, {
     size: options.shortlistSize ?? 0,
     rng: options.rng,
+    useNovelty: options.useNovelty ?? false,
   });
 
   return {
