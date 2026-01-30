@@ -12,7 +12,6 @@ and edge cases.
 - `human-feedback.md`: Human scoring capture and preference model updates.
 - `evolutionary-engine.md`: Evaluation adapter, MAP-Elites placement, and genetic operators.
 - `evolution-runner.md`: Runner responsibilities, run isolation, artifact layout, and CLI entrypoint.
-- `e2e-coverage.md`: Proven behaviors from `test/e2e/` and gaps.
 
 ## Config File Ownership
 

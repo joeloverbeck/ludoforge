@@ -10,7 +10,6 @@ const DEFAULT_PREFERENCE_CAP = 0.25;
 const DEFAULT_PREFERENCE_BOOTSTRAP_CAP = 0.1;
 const DEFAULT_PREFERENCE_BOOTSTRAP_SAMPLES = 20;
 const DEFAULT_PREFERENCE_WEIGHT = 1;
-const DEFAULT_DIVERSITY_WEIGHT = 1;
 
 function resolvePreferenceCap(options = {}) {
   const cap = Math.max(0, safeNumber(options.preferenceCap ?? DEFAULT_PREFERENCE_CAP));
@@ -146,16 +145,18 @@ function computeCompositeScore(featureVector, options = {}) {
   };
 }
 
-function combineFitnessScores(compositeScore, preferenceScore, diversityPressure, options = {}) {
+function combineFitnessScores(compositeScore, preferenceScore, optionsOrLegacy, maybeOptions = {}) {
+  const options =
+    optionsOrLegacy && typeof optionsOrLegacy === "object"
+      ? optionsOrLegacy
+      : maybeOptions ?? {};
   const base = safeNumber(compositeScore);
-  const diversityWeight = safeNumber(options.diversityWeight ?? DEFAULT_DIVERSITY_WEIGHT);
-  const diversityContribution = safeNumber(diversityPressure) * diversityWeight;
   const { contribution: preferenceContribution, cap } = computePreferenceContribution(
     preferenceScore,
     options
   );
   const degeneracyPenalty = clamp(safeNumber(options.degeneracyPenalty), 0, 1);
-  const combined = base + diversityContribution + preferenceContribution;
+  const combined = base + preferenceContribution;
   const penaltyMultiplier = 1 - degeneracyPenalty;
 
   return {
@@ -163,7 +164,6 @@ function combineFitnessScores(compositeScore, preferenceScore, diversityPressure
     components: {
       base,
       preference: preferenceContribution,
-      diversity: diversityContribution,
       preferenceCap: cap,
       degeneracyPenalty,
     },

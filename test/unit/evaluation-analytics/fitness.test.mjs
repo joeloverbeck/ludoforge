@@ -84,8 +84,6 @@ describe("fitness", () => {
 
       const result = computePreferenceAwareFitness(featureVector, {
         preferenceModelState,
-        diversityPressure: 0.2,
-        diversityWeight: 2,
       });
 
       assert.ok(Number.isFinite(result.diagnostics.preferenceScore));
@@ -93,7 +91,6 @@ describe("fitness", () => {
       assert.equal(typeof result.diagnostics.blend, "object");
       assert.ok(Number.isFinite(result.diagnostics.blend.base));
       assert.ok(Number.isFinite(result.diagnostics.blend.preference));
-      assert.ok(Number.isFinite(result.diagnostics.blend.diversity));
       assert.ok(Number.isFinite(result.diagnostics.blend.preferenceCap));
     });
   });

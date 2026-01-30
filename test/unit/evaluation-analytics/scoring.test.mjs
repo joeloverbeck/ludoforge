@@ -99,7 +99,7 @@ describe("scoring", () => {
 
   describe("combineFitnessScores", () => {
     it("caps preference influence during bootstrap", () => {
-      const result = combineFitnessScores(1, 1, 0, {
+      const result = combineFitnessScores(1, 1, {
         preferenceCap: 0.4,
         preferenceBootstrapCap: 0.1,
         preferenceBootstrapSamples: 5,
@@ -112,7 +112,7 @@ describe("scoring", () => {
     });
 
     it("uses full cap after bootstrap threshold", () => {
-      const result = combineFitnessScores(1, 0, 0, {
+      const result = combineFitnessScores(1, 0, {
         preferenceCap: 0.4,
         preferenceBootstrapCap: 0.1,
         preferenceBootstrapSamples: 5,
@@ -124,19 +124,15 @@ describe("scoring", () => {
       assert.equal(result.score, 0.6);
     });
 
-    it("skips preference when disabled and applies diversity weight", () => {
-      const result = combineFitnessScores(0.5, 1, 0.2, {
-        allowPreference: false,
-        diversityWeight: 2,
-      });
+    it("skips preference when disabled", () => {
+      const result = combineFitnessScores(0.5, 1, { allowPreference: false });
 
       assert.equal(result.components.preference, 0);
-      assert.equal(result.components.diversity, 0.4);
-      assert.equal(result.score, 0.9);
+      assert.equal(result.score, 0.5);
     });
 
     it("applies degeneracy penalty as multiplicative discount", () => {
-      const result = combineFitnessScores(0.6, null, 0, {
+      const result = combineFitnessScores(0.6, null, {
         degeneracyPenalty: 0.3,
       });
 
@@ -145,7 +141,7 @@ describe("scoring", () => {
     });
 
     it("clamps degeneracyPenalty to 1", () => {
-      const result = combineFitnessScores(0.6, null, 0, {
+      const result = combineFitnessScores(0.6, null, {
         degeneracyPenalty: 2,
       });
 
@@ -154,7 +150,7 @@ describe("scoring", () => {
     });
 
     it("defaults degeneracyPenalty to 0", () => {
-      const result = combineFitnessScores(0.6, null, 0, {});
+      const result = combineFitnessScores(0.6, null, {});
 
       assert.equal(result.components.degeneracyPenalty, 0);
       assert.equal(result.score, 0.6);
@@ -166,14 +162,14 @@ describe("scoring", () => {
         preferenceBootstrapSamples: 0,
       };
       // preferenceScore=1 → centered=1, weight=1, no uncertainty → contribution = cap
-      const confident = combineFitnessScores(0, 1, 0, {
+      const confident = combineFitnessScores(0, 1, {
         ...opts,
         preferenceUncertainty: 0,
       });
       assert.equal(confident.components.preference, 0.5);
 
       // Same inputs but full uncertainty → contribution = 0
-      const uncertain = combineFitnessScores(0, 1, 0, {
+      const uncertain = combineFitnessScores(0, 1, {
         ...opts,
         preferenceUncertainty: 1,
       });
@@ -183,7 +179,7 @@ describe("scoring", () => {
     it("partially damps preference at intermediate uncertainty", () => {
       // preferenceScore=1 → centered=(1-0.5)*2=1, weight=1, uncertainty=0.5
       // weighted = 1 * 1 * (1 - 0.5) = 0.5 → clamped to min(0.5, cap=1) = 0.5
-      const result = combineFitnessScores(0, 1, 0, {
+      const result = combineFitnessScores(0, 1, {
         preferenceCap: 1,
         preferenceBootstrapSamples: 0,
         preferenceUncertainty: 0.5,
@@ -197,14 +193,14 @@ describe("scoring", () => {
         preferenceBootstrapSamples: 0,
       };
       // Negative uncertainty treated as 0 → full contribution
-      const negativeUncertainty = combineFitnessScores(0, 1, 0, {
+      const negativeUncertainty = combineFitnessScores(0, 1, {
         ...opts,
         preferenceUncertainty: -0.5,
       });
       assert.equal(negativeUncertainty.components.preference, 0.5);
 
       // Uncertainty > 1 treated as 1 → zero contribution
-      const overUncertainty = combineFitnessScores(0, 1, 0, {
+      const overUncertainty = combineFitnessScores(0, 1, {
         ...opts,
         preferenceUncertainty: 2,
       });
@@ -213,11 +209,21 @@ describe("scoring", () => {
 
     it("preserves old behavior when preferenceUncertainty is absent", () => {
       // No preferenceUncertainty option → defaults to 0 → no damping
-      const result = combineFitnessScores(0, 1, 0, {
+      const result = combineFitnessScores(0, 1, {
         preferenceCap: 0.5,
         preferenceBootstrapSamples: 0,
       });
       assert.equal(result.components.preference, 0.5);
+    });
+
+    it("ignores legacy diversity argument and omits diversity component", () => {
+      const result = combineFitnessScores(0.5, 1, 0.2, {
+        allowPreference: false,
+        diversityWeight: 2,
+      });
+
+      assert.equal(result.score, 0.5);
+      assert.equal(Object.prototype.hasOwnProperty.call(result.components, "diversity"), false);
     });
   });
 });

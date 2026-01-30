@@ -16,7 +16,6 @@ export interface FitnessBlendOptions {
   preferenceBootstrapCap?: number;
   preferenceBootstrapSamples?: number;
   preferenceSampleCount?: number;
-  diversityWeight?: number;
   allowPreference?: boolean;
   degeneracyPenalty?: number;
 }
@@ -24,7 +23,6 @@ export interface FitnessBlendOptions {
 export interface FitnessBlendComponents {
   base: number;
   preference: number;
-  diversity: number;
   preferenceCap: number;
   degeneracyPenalty: number;
 }
@@ -48,6 +46,5 @@ export function computeCompositeScore(
 export function combineFitnessScores(
   compositeScore: number,
   preferenceScore: number | null | undefined,
-  diversityPressure: number | null | undefined,
   options?: FitnessBlendOptions
 ): FitnessBlendResult;
