@@ -25,6 +25,11 @@
     "activeLearning": {
       "uncertaintyThreshold": 0.15,
       "diversityQuota": 1
+    },
+    "adaptiveBudget": {
+      "enabled": false,
+      "lowUncertaintyThreshold": 0.1,
+      "highUncertaintyThreshold": 0.35
     }
   }
 }

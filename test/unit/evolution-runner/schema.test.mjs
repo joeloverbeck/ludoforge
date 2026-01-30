@@ -62,6 +62,26 @@ describe("schema", () => {
       delete candidate.mapElites;
       assertInvalid(candidate);
     });
+
+    it("accepts adaptive human feedback budget config", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.humanFeedback.adaptiveBudget = {
+        enabled: true,
+        lowUncertaintyThreshold: 0.1,
+        highUncertaintyThreshold: 0.6,
+      };
+      assertValid(candidate);
+    });
+
+    it("rejects adaptive budget thresholds outside range", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.humanFeedback.adaptiveBudget = {
+        enabled: true,
+        lowUncertaintyThreshold: -0.1,
+        highUncertaintyThreshold: 1.2,
+      };
+      assertInvalid(candidate);
+    });
   });
 
   describe("evaluation.degeneracy", () => {

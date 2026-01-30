@@ -10,6 +10,11 @@ export interface FeedbackProviderConfig {
     uncertaintyThreshold?: number;
     diversityQuota?: number;
   };
+  adaptiveBudget?: {
+    enabled?: boolean;
+    lowUncertaintyThreshold?: number;
+    highUncertaintyThreshold?: number;
+  };
 }
 
 export interface FeedbackProviderOptions {

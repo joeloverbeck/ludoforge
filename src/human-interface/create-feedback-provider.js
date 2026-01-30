@@ -8,6 +8,7 @@ import {
   promptForPairwiseComparison,
   promptForRating,
 } from "./feedback.js";
+import { computeAdaptiveBudget } from "../evolution-runner/adaptive-budget.js";
 
 function extractCandidates(evaluated) {
   if (!Array.isArray(evaluated)) {
@@ -28,14 +29,28 @@ function extractCandidates(evaluated) {
     }));
 }
 
-function buildActiveLearningOptions(config, generation) {
+function buildActiveLearningOptions(config, generation, maxSamplesPerGen) {
   const al = config.activeLearning;
   return {
-    maxPairs: config.maxSamplesPerGen ?? 5,
+    maxPairs: maxSamplesPerGen ?? config.maxSamplesPerGen ?? 5,
     uncertaintyThreshold: al?.uncertaintyThreshold,
     diversityQuota: al?.diversityQuota,
     iteration: generation,
   };
+}
+
+function collectMetricIds(candidates) {
+  const metricIds = new Set();
+  for (const candidate of candidates ?? []) {
+    const featureVector = candidate?.featureVector;
+    if (!featureVector || typeof featureVector !== "object") {
+      continue;
+    }
+    for (const key of Object.keys(featureVector)) {
+      metricIds.add(key);
+    }
+  }
+  return Array.from(metricIds).sort();
 }
 
 function wrapAsFeedbackRecord(feedback, runId, generation) {
@@ -75,7 +90,7 @@ function buildSnapshotRecord(modelState, runId, generation, seed) {
 /**
  * @param {{
  *   io: import("./prompt.js").HumanIO,
- *   config: { mode?: string, maxSamplesPerGen?: number, activeLearning?: { uncertaintyThreshold?: number, diversityQuota?: number } },
+ *   config: { mode?: string, maxSamplesPerGen?: number, activeLearning?: { uncertaintyThreshold?: number, diversityQuota?: number }, adaptiveBudget?: { enabled?: boolean, lowUncertaintyThreshold?: number, highUncertaintyThreshold?: number } },
  *   initialModelState?: import("../evaluation-analytics/types.js").PreferenceModelState,
  *   seed?: number,
  * }} options
@@ -94,16 +109,33 @@ export function createFeedbackProvider({ io, config, initialModelState, seed } =
 
   let currentModelState = initialModelState ?? createPreferenceModelState();
   const mode = config.mode ?? "comparison";
+  let previousMetricIds = null;
 
   async function feedbackProvider(generationContext) {
     const { generation, runId, loopResult } = generationContext;
     const candidates = extractCandidates(loopResult.evaluated);
+    const metricIds = collectMetricIds(candidates);
 
     if (candidates.length < 2) {
+      if (metricIds.length > 0) {
+        previousMetricIds = metricIds;
+      }
       return [];
     }
 
-    const alOptions = buildActiveLearningOptions(config, generation);
+    const adaptiveBudget = config.adaptiveBudget;
+    const baseMaxSamples = config.maxSamplesPerGen ?? 5;
+    const maxSamplesPerGen = computeAdaptiveBudget({
+      preferenceModelState: currentModelState,
+      baseMaxSamples,
+      metricIds,
+      previousMetricIds,
+      candidates,
+      lowUncertaintyThreshold: adaptiveBudget?.lowUncertaintyThreshold,
+      highUncertaintyThreshold: adaptiveBudget?.highUncertaintyThreshold,
+      enabled: adaptiveBudget?.enabled === true,
+    });
+    const alOptions = buildActiveLearningOptions(config, generation, maxSamplesPerGen);
     const pairs = selectActiveLearningPairs(
       candidates,
       currentModelState,
@@ -111,6 +143,9 @@ export function createFeedbackProvider({ io, config, initialModelState, seed } =
     );
 
     if (pairs.length === 0) {
+      if (metricIds.length > 0) {
+        previousMetricIds = metricIds;
+      }
       return [];
     }
 
@@ -166,6 +201,10 @@ export function createFeedbackProvider({ io, config, initialModelState, seed } =
         feedbackSample,
       );
       records.push(wrapAsFeedbackRecord(feedbackSample, runId, generation));
+    }
+
+    if (metricIds.length > 0) {
+      previousMetricIds = metricIds;
     }
 
     return records;

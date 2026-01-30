@@ -139,6 +139,15 @@
             "uncertaintyThreshold": { "type": "number", "minimum": 0 },
             "diversityQuota": { "type": "number", "minimum": 0 }
           }
+        },
+        "adaptiveBudget": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "lowUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+            "highUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
         }
       }
     },
