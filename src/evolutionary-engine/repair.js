@@ -171,6 +171,45 @@ function repairEffects(effects, definition) {
   return normalizeArray(effects).map((e) => repairEffect(e, definition, 0)).filter(Boolean);
 }
 
+function effectReferencesZone(effect) {
+  if (!effect || typeof effect !== "object") {
+    return false;
+  }
+  if ((effect.kind === "move" || effect.kind === "spawn") && typeof effect.toZone === "string") {
+    return true;
+  }
+  if (effect.kind === "move_spatial" && typeof effect.zone === "string") {
+    return true;
+  }
+  if (effect.kind === "repeat") {
+    return normalizeArray(effect.effects).some((child) => effectReferencesZone(child));
+  }
+  return false;
+}
+
+function hasZoneReferencingEffects(definition) {
+  const actions = normalizeArray(definition?.actions);
+  for (const action of actions) {
+    if (normalizeArray(action?.effects).some((effect) => effectReferencesZone(effect))) {
+      return true;
+    }
+    if (normalizeArray(action?.costs).some((effect) => effectReferencesZone(effect))) {
+      return true;
+    }
+  }
+  const triggers = normalizeArray(definition?.triggers);
+  for (const trigger of triggers) {
+    if (normalizeArray(trigger?.effects).some((effect) => effectReferencesZone(effect))) {
+      return true;
+    }
+  }
+  const stepEffects = normalizeArray(definition?.turn?.stepEffects);
+  if (stepEffects.some((effect) => effectReferencesZone(effect))) {
+    return true;
+  }
+  return false;
+}
+
 function repairActions(definition) {
   const actions = normalizeArray(definition.actions);
   return actions.map((action) => {
@@ -219,6 +258,28 @@ export const dslSafetyRepair = {
     definition.actions = repairActions(definition);
     if (definition.triggers) {
       definition.triggers = repairTriggers(definition);
+    }
+
+    const actions = normalizeArray(definition.actions);
+    if (actions.length === 0) {
+      return null;
+    }
+
+    const hasActionWithEffects = actions.some(
+      (action) => Array.isArray(action?.effects) && action.effects.length > 0
+    );
+    if (!hasActionWithEffects) {
+      return null;
+    }
+
+    const conditions = normalizeArray(definition?.termination?.conditions);
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const zones = normalizeArray(definition?.state?.zones);
+    if (zones.length === 0 && hasZoneReferencingEffects(definition)) {
+      return null;
     }
 
     return {
