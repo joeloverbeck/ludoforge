@@ -5,6 +5,7 @@ import {
   baseDefinition,
   dominantActionDefinition,
   exampleDefinition,
+  missingTerminationConditionsDefinition,
   missingTerminationDefinition,
   noMeaningfulActionsDefinition
 } from "./fixtures.mjs";
@@ -15,6 +16,10 @@ function cloneDefinition(definition) {
 
 function findRule(issues, rule) {
   return issues.some((issue) => issue.rule === rule);
+}
+
+function findIssue(issues, rule) {
+  return issues.find((issue) => issue.rule === rule);
 }
 
 describe("semantic", () => {
@@ -29,6 +34,58 @@ describe("semantic", () => {
       const result = validateSemanticDefinition(cloneDefinition(exampleDefinition));
       assert.equal(result.valid, true);
       assert.deepEqual(result.issues, []);
+    });
+
+    it("returns valid false when no meaningful actions exist", () => {
+      const result = validateSemanticDefinition(cloneDefinition(noMeaningfulActionsDefinition));
+
+      const issue = findIssue(result.issues, "no-meaningful-actions");
+      assert.equal(result.valid, false);
+      assert.ok(issue);
+      assert.equal(issue.severity, "error");
+    });
+
+    it("returns valid false for missing termination conditions", () => {
+      const result = validateSemanticDefinition(
+        cloneDefinition(missingTerminationConditionsDefinition)
+      );
+
+      const issue = findIssue(result.issues, "termination-conditions");
+      assert.equal(result.valid, false);
+      assert.ok(issue);
+      assert.equal(issue.severity, "error");
+    });
+
+    it("returns valid false for termination conditions with unknown refs", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.termination.conditions[0].condition.left = {
+        kind: "ref",
+        ref: { kind: "var", id: "missingVar" },
+      };
+
+      const result = validateSemanticDefinition(candidate);
+      const issue = findIssue(result.issues, "ref-unknown");
+
+      assert.equal(result.valid, false);
+      assert.ok(issue);
+      assert.equal(issue.severity, "error");
+    });
+
+    it("returns valid true when only unused variables are present", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.state.variables.push({
+        id: "unusedVar",
+        scope: "global",
+        type: { kind: "int", min: 0, max: 1 },
+        initial: 0,
+      });
+
+      const result = validateSemanticDefinition(candidate);
+      const issue = findIssue(result.issues, "unused-variable");
+
+      assert.equal(result.valid, true);
+      assert.ok(issue);
+      assert.equal(issue.severity, "warning");
     });
   });
 

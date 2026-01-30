@@ -2,6 +2,7 @@ export interface SemanticIssue {
   path: string;
   message: string;
   rule: string;
+  severity: "error" | "warning" | "info";
 }
 
 export function collectSemanticIssues(definition: unknown): SemanticIssue[];

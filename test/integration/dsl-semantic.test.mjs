@@ -93,7 +93,12 @@ function hasRule(issues, rule) {
 }
 
 function assertValidMatchesIssues(result) {
-  assert.equal(result.valid, result.issues.length === 0);
+  const hasErrors = result.issues.some((issue) => issue.severity === "error");
+  assert.equal(result.valid, !hasErrors);
+}
+
+function findIssue(issues, rule) {
+  return issues.find((issue) => issue.rule === rule);
 }
 
 describe("dsl-semantic", () => {
@@ -247,7 +252,9 @@ describe("dsl-semantic", () => {
       const result = validateSemanticDefinition(definition);
 
       assertValidMatchesIssues(result);
-      assert.ok(hasRule(result.issues, "action-precondition-unsatisfiable"));
+      const issue = findIssue(result.issues, "action-precondition-unsatisfiable");
+      assert.ok(issue);
+      assert.equal(issue.severity, "warning");
     });
 
     it("reports free-lunch actions", () => {
@@ -271,7 +278,9 @@ describe("dsl-semantic", () => {
       const result = validateSemanticDefinition(definition);
 
       assertValidMatchesIssues(result);
-      assert.ok(hasRule(result.issues, "free-lunch"));
+      const issue = findIssue(result.issues, "free-lunch");
+      assert.ok(issue);
+      assert.equal(issue.severity, "info");
     });
 
     it("reports dominant actions", () => {
@@ -317,7 +326,9 @@ describe("dsl-semantic", () => {
       const result = validateSemanticDefinition(definition);
 
       assertValidMatchesIssues(result);
-      assert.ok(hasRule(result.issues, "dominant-action"));
+      const issue = findIssue(result.issues, "dominant-action");
+      assert.ok(issue);
+      assert.equal(issue.severity, "info");
     });
 
     it("reports no meaningful actions", () => {

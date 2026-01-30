@@ -1,7 +1,10 @@
-export function createIssueCollector() {
+export function createIssueCollector(options = {}) {
+  const { classifySeverity } = options;
   const issues = [];
-  const pushIssue = (path, message, rule) => {
-    issues.push({ path, message, rule });
+  const pushIssue = (path, message, rule, severity) => {
+    const resolvedSeverity =
+      severity ?? classifySeverity?.({ path, message, rule }) ?? "warning";
+    issues.push({ path, message, rule, severity: resolvedSeverity });
   };
   return { issues, pushIssue };
 }

@@ -8,7 +8,7 @@ import {
 import {
   baseDefinition,
   missingMaxTurnsDefinition,
-  dominantActionDefinition,
+  noMeaningfulActionsDefinition,
 } from "../dsl/fixtures.mjs";
 
 function cloneDefinition(definition) {
@@ -59,7 +59,7 @@ describe("serialization", () => {
     });
 
     it("rejects semantic-invalid definitions", () => {
-      const result = validateGenomeDefinition(cloneDefinition(dominantActionDefinition));
+      const result = validateGenomeDefinition(cloneDefinition(noMeaningfulActionsDefinition));
 
       assert.equal(result.valid, false);
       assert.deepEqual(result.errors, []);

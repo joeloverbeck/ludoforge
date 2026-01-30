@@ -11,8 +11,30 @@ import {
   summarizeAction,
 } from "./semantic/action-analysis.js";
 
+const warningRules = new Set([
+  "action-precondition-unsatisfiable",
+  "unused-variable",
+  "unused-token-type",
+  "unused-zone",
+]);
+
+const infoRules = new Set(["dominant-action", "free-lunch"]);
+
+function classifySeverity({ path, rule }) {
+  if (rule === "ref-unknown" && path.startsWith("/termination/conditions/")) {
+    return "error";
+  }
+  if (warningRules.has(rule)) {
+    return "warning";
+  }
+  if (infoRules.has(rule)) {
+    return "info";
+  }
+  return "error";
+}
+
 export function collectSemanticIssues(definition) {
-  const { issues, pushIssue } = createIssueCollector();
+  const { issues, pushIssue } = createIssueCollector({ classifySeverity });
   if (!definition || typeof definition !== "object") {
     pushIssue("", "Game definition must be an object", "invalid-definition");
     return issues;
@@ -234,8 +256,9 @@ export function collectSemanticIssues(definition) {
 
 export function validateSemanticDefinition(definition) {
   const issues = collectSemanticIssues(definition);
+  const hasErrors = issues.some((issue) => issue.severity === "error");
   return {
-    valid: issues.length === 0,
+    valid: !hasErrors,
     issues,
   };
 }
