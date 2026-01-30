@@ -17,8 +17,25 @@ function createOperatorCounters() {
       filledEmpty: 0,
       improvedElite: 0,
     },
+    noOp: 0,
+    repairFailed: 0,
+    rejected: {
+      validationFailure: 0,
+      safetyFailure: 0,
+      evaluationError: 0,
+      evaluationNull: 0,
+    },
+    evaluated: 0,
+    validEvaluated: 0,
   };
 }
+
+const REJECTED_REASONS = new Set([
+  "validationFailure",
+  "safetyFailure",
+  "evaluationError",
+  "evaluationNull",
+]);
 
 function normalizeOperatorList(operatorNames) {
   if (!Array.isArray(operatorNames) || operatorNames.length === 0) {
@@ -81,6 +98,36 @@ export function recordOutcome(telemetry, operatorName, outcome = {}) {
   }
 }
 
+export function recordNoOp(telemetry, operatorName) {
+  const entry = resolveOperator(telemetry, operatorName);
+  entry.noOp += 1;
+}
+
+export function recordRepairFailed(telemetry, operatorName) {
+  const entry = resolveOperator(telemetry, operatorName);
+  entry.repairFailed += 1;
+}
+
+export function recordRejection(telemetry, operatorName, reason) {
+  if (!REJECTED_REASONS.has(reason)) {
+    throw new Error(
+      `Invalid rejection reason: ${reason}. Must be one of: ${[...REJECTED_REASONS].join(", ")}`,
+    );
+  }
+  const entry = resolveOperator(telemetry, operatorName);
+  entry.rejected[reason] += 1;
+}
+
+export function recordEvaluated(telemetry, operatorName) {
+  const entry = resolveOperator(telemetry, operatorName);
+  entry.evaluated += 1;
+}
+
+export function recordValidEvaluated(telemetry, operatorName) {
+  const entry = resolveOperator(telemetry, operatorName);
+  entry.validEvaluated += 1;
+}
+
 export function mergeTelemetry(a, b) {
   if (!isPlainObject(a) || !isPlainObject(b)) {
     throw new Error("telemetry inputs must be objects");
@@ -106,6 +153,16 @@ export function mergeTelemetry(a, b) {
         filledEmpty: left.gridContributions.filledEmpty + right.gridContributions.filledEmpty,
         improvedElite: left.gridContributions.improvedElite + right.gridContributions.improvedElite,
       },
+      noOp: left.noOp + right.noOp,
+      repairFailed: left.repairFailed + right.repairFailed,
+      rejected: {
+        validationFailure: left.rejected.validationFailure + right.rejected.validationFailure,
+        safetyFailure: left.rejected.safetyFailure + right.rejected.safetyFailure,
+        evaluationError: left.rejected.evaluationError + right.rejected.evaluationError,
+        evaluationNull: left.rejected.evaluationNull + right.rejected.evaluationNull,
+      },
+      evaluated: left.evaluated + right.evaluated,
+      validEvaluated: left.validEvaluated + right.validEvaluated,
     };
   }
 

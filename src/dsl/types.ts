@@ -89,7 +89,10 @@ export type Effect =
   | { kind: "destroy"; target: Ref }
   | { kind: "reveal"; target: Ref }
   | { kind: "hide"; target: Ref }
+  | { kind: "move_spatial"; target: Ref; zone: string; toNode: string }
+  | { kind: "repeat"; effects: Effect[]; count: number }
   | { kind: "conditional"; condition: Expr; then: Effect[]; else?: Effect[] }
+  | { kind: "set_flag"; target: Ref; flag: string; duration?: "action" | "phase" | "turn" | "round" }
 ;
 
 export interface TriggerDef {

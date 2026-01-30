@@ -12,9 +12,12 @@ export interface MutationRepairOptions<TGenome = Genome> extends MutationOptions
   repairOperators?: ReadonlyArray<RepairOperator<TGenome>>;
 }
 
+export type MutationOutcome = "ok" | "noOp" | "repairFailed";
+
 export interface MutationResult<TGenome = Genome> {
   genome: TGenome | null;
   operatorName: string | null;
+  outcome?: MutationOutcome;
 }
 
 export const numericTweakMutation: MutationOperator<Genome>;

@@ -14,7 +14,7 @@ describe("mutation orchestrator", () => {
     assert.notEqual(repaired, genome);
   });
 
-  it("returns original genome and null operator on repair failure (selector)", () => {
+  it("returns null genome and preserves operatorName on repair failure (selector)", () => {
     const genome = { definition: { id: "base" } };
     const operators = [{ name: "mutator", mutate: (value) => ({ ...value, mutated: true }) }];
     const repairOperators = [{ repair: () => null }];
@@ -22,9 +22,9 @@ describe("mutation orchestrator", () => {
 
     const repaired = mutateAndRepairGenome(genome, { operators, repairOperators, selector });
 
-    assert.deepEqual(repaired.genome, genome);
-    assert.notEqual(repaired.genome, genome);
-    assert.equal(repaired.operatorName, null);
+    assert.equal(repaired.genome, null);
+    assert.equal(repaired.operatorName, "mutator");
+    assert.equal(repaired.outcome, "repairFailed");
   });
 
   it("preserves operatorName when repair succeeds (selector)", () => {
@@ -36,6 +36,7 @@ describe("mutation orchestrator", () => {
     const repaired = mutateAndRepairGenome(genome, { operators, repairOperators, selector });
 
     assert.equal(repaired.operatorName, "mutator");
+    assert.equal(repaired.outcome, "ok");
     assert.equal(repaired.genome.mutated, true);
     assert.equal(repaired.genome.repaired, true);
   });

@@ -206,7 +206,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
   fromNode?: string,      // for move_spatial
   toNode?: string,        // for move_spatial
   flag?: string,          // for set_flag
-  duration?: string,      // for set_flag ("action" | "phase" | "turn")
+  duration?: string,      // for set_flag ("action" | "phase" | "turn" | "round")
   count?: number,         // for repeat (iterations executed)
   conditionMet?: boolean, // for conditional (evaluated branch)
   applied?: AppliedEffect[] // for repeat/conditional (nested applied effects)

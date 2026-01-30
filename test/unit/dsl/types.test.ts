@@ -156,6 +156,32 @@ const effect: Effect = {
   target: { kind: "zone", id: "board" },
 };
 
+const spatialEffect: Effect = {
+  kind: "move_spatial",
+  target: { kind: "token", id: "pawn" },
+  zone: "board",
+  toNode: "b",
+};
+
+const repeatEffect: Effect = {
+  kind: "repeat",
+  count: 2,
+  effects: [
+    {
+      kind: "inc",
+      target: { kind: "var", id: "score" },
+      amount: 1,
+    },
+  ],
+};
+
+const flagEffect: Effect = {
+  kind: "set_flag",
+  target: { kind: "player", id: "self" },
+  flag: "no_engage",
+  duration: "turn",
+};
+
 // @ts-expect-error - random effect kind was removed
 const randomEffect: Effect = { kind: "random", target: { kind: "zone", id: "board" } };
 
@@ -167,6 +193,9 @@ void expr;
 void metaExpr;
 void ref;
 void effect;
+void spatialEffect;
+void repeatEffect;
+void flagEffect;
 void randomEffect;
 void foreachEffect;
 

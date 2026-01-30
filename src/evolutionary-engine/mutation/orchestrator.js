@@ -101,12 +101,19 @@ export function mutateAndRepairGenome(genome, options = {}) {
 
   if (selector) {
     const mutationResult = mutated ?? { genome: null, operatorName: null };
+    const operatorName = mutationResult.operatorName ?? null;
     const mutatedGenome = mutationResult.genome ?? originalGenome;
+
+    const isNoOp = JSON.stringify(mutatedGenome) === JSON.stringify(originalGenome);
+    if (isNoOp) {
+      return { genome: mutatedGenome, operatorName, outcome: "noOp" };
+    }
+
     const repaired = repairGenome(mutatedGenome, { operators: repairOperators, rng });
     if (!repaired) {
-      return { genome: originalGenome, operatorName: null };
+      return { genome: null, operatorName, outcome: "repairFailed" };
     }
-    return { genome: repaired, operatorName: mutationResult.operatorName ?? null };
+    return { genome: repaired, operatorName, outcome: "ok" };
   }
 
   const repaired = repairGenome(mutated, { operators: repairOperators, rng });
