@@ -23,6 +23,7 @@ import { zoneAddMutation } from "./mutation/operators/zone-add.js";
 import { tokenTypeAddMutation } from "./mutation/operators/token-type-add.js";
 import { triggerAddMutation } from "./mutation/operators/trigger-add.js";
 import { schedulerSwapMutation } from "./mutation/operators/scheduler-swap.js";
+import { schedulerParamTweakMutation } from "./mutation/operators/scheduler-param-tweak.js";
 
 export {
   defaultMutationOperators,
@@ -57,6 +58,7 @@ export {
   tokenTypeAddMutation,
   triggerAddMutation,
   schedulerSwapMutation,
+  schedulerParamTweakMutation,
 };
 
 export { WeightedSelector } from "./operator-selector.js";

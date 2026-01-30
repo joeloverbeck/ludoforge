@@ -27,7 +27,8 @@
       "zone-add",
       "token-type-add",
       "trigger-add",
-      "scheduler-swap"
+      "scheduler-swap",
+      "scheduler-param-tweak"
     ],
     "weights": {
       "numeric-tweak": 3,
@@ -54,7 +55,8 @@
       "zone-add": 3,
       "token-type-add": 3,
       "trigger-add": 3,
-      "scheduler-swap": 1
+      "scheduler-swap": 1,
+      "scheduler-param-tweak": 1.5
     }
   },
   "crossover": {

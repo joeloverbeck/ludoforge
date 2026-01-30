@@ -40,7 +40,8 @@
         "zone-add",
         "token-type-add",
         "trigger-add",
-        "scheduler-swap"
+        "scheduler-swap",
+        "scheduler-param-tweak"
       ]
     },
     "CrossoverOperatorKind": {
