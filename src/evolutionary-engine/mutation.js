@@ -24,6 +24,7 @@ import { tokenTypeAddMutation } from "./mutation/operators/token-type-add.js";
 import { triggerAddMutation } from "./mutation/operators/trigger-add.js";
 import { schedulerSwapMutation } from "./mutation/operators/scheduler-swap.js";
 import { schedulerParamTweakMutation } from "./mutation/operators/scheduler-param-tweak.js";
+import { conditionalEffectInsertMutation } from "./mutation/operators/conditional-effect-insert.js";
 
 export {
   defaultMutationOperators,
@@ -59,6 +60,7 @@ export {
   triggerAddMutation,
   schedulerSwapMutation,
   schedulerParamTweakMutation,
+  conditionalEffectInsertMutation,
 };
 
 export { WeightedSelector } from "./operator-selector.js";

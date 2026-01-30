@@ -28,7 +28,8 @@
       "token-type-add",
       "trigger-add",
       "scheduler-swap",
-      "scheduler-param-tweak"
+      "scheduler-param-tweak",
+      "conditional-effect-insert"
     ],
     "weights": {
       "numeric-tweak": 3,
@@ -56,7 +57,8 @@
       "token-type-add": 3,
       "trigger-add": 3,
       "scheduler-swap": 1,
-      "scheduler-param-tweak": 1.5
+      "scheduler-param-tweak": 1.5,
+      "conditional-effect-insert": 1.5
     }
   },
   "crossover": {

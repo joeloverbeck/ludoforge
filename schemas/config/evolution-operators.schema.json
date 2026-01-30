@@ -41,7 +41,8 @@
         "token-type-add",
         "trigger-add",
         "scheduler-swap",
-        "scheduler-param-tweak"
+        "scheduler-param-tweak",
+        "conditional-effect-insert"
       ]
     },
     "CrossoverOperatorKind": {

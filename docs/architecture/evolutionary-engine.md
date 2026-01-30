@@ -145,6 +145,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
 - `scheduler-swap`: changes `turn.scheduler` to a different type (`round_robin`, `priority_queue`, `token_holder`). Generates required auxiliary fields (`orderBy` for priority_queue; `tokenType` + `zone` for token_holder) from existing definition state, and strips fields that are no longer relevant. No-op when no valid swap target exists (e.g., no per-player integer variables for priority_queue, no per-player zones with matching token types for token_holder).
 - `scheduler-param-tweak`: tweaks parameters of the current scheduler without changing type. For `priority_queue`: flips `direction` (`asc`/`desc`) or swaps `variable` to a different per-player int variable. For `token_holder`: swaps `tokenType` or `zone` to a different valid option. No-op for `round_robin` (no parameters to tweak).
+- `conditional-effect-insert`: wraps an existing effect from a random action in a `conditional` block. The `then` branch contains the original effect, and the condition is a `cmp` expression comparing a random game variable to a random threshold. No-op when no actions have effects or no variables exist for condition generation.
 
 ### Operator Selection
 
@@ -169,6 +170,7 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 `effect-delete` is weighted at 1 (between destructive and moderate).
 `scheduler-swap` is weighted at 1 (structural change with validation guards).
 `scheduler-param-tweak` is weighted at 1.5 (parameter variation within existing scheduler).
+`conditional-effect-insert` is weighted at 1.5 (adds conditional branching to existing effects).
 The tiering ensures destructive removal mutations fire less frequently than
 conservative value tweaks, reducing invalid-offspring rates.
 

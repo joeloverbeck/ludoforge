@@ -30,6 +30,7 @@ import { tokenTypeAddMutation } from "./operators/token-type-add.js";
 import { triggerAddMutation } from "./operators/trigger-add.js";
 import { schedulerSwapMutation } from "./operators/scheduler-swap.js";
 import { schedulerParamTweakMutation } from "./operators/scheduler-param-tweak.js";
+import { conditionalEffectInsertMutation } from "./operators/conditional-effect-insert.js";
 
 const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
@@ -58,6 +59,7 @@ const ALL_MUTATION_OPERATORS = [
   triggerAddMutation,
   schedulerSwapMutation,
   schedulerParamTweakMutation,
+  conditionalEffectInsertMutation,
 ];
 
 export const defaultMutationOperators = filterOperatorsByEnabled(
