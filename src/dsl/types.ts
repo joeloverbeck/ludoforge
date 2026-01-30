@@ -96,6 +96,8 @@ export type Effect =
   | { kind: "set_turn_order"; order: "by_variable"; variable: string; direction: "asc" | "desc" }
   | { kind: "choose"; options: Effect[][]; count?: number }
   | { kind: "shuffle"; target: Ref }
+  | { kind: "queue_push"; target: Ref; toZone: string }
+  | { kind: "queue_pop"; fromZone: string; toZone?: string }
 ;
 
 export interface TriggerDef {

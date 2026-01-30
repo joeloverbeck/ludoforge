@@ -372,6 +372,26 @@
             "kind": { "const": "shuffle" },
             "target": { "$ref": "#/$defs/Ref" }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "toZone"],
+          "properties": {
+            "kind": { "const": "queue_push" },
+            "target": { "$ref": "#/$defs/Ref" },
+            "toZone": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fromZone"],
+          "properties": {
+            "kind": { "const": "queue_pop" },
+            "fromZone": { "type": "string" },
+            "toZone": { "type": "string" }
+          }
         }
       ]
     },

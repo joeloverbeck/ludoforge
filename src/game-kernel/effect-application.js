@@ -7,7 +7,7 @@ import {
 } from "./token-effects.js";
 import { applyVariableDispatch } from "./variable-effects.js";
 import { applyMoveSpatial } from "./spatial-effects.js";
-import { applyShuffle } from "./zone-effects.js";
+import { applyShuffle, applyQueuePush, applyQueuePop } from "./zone-effects.js";
 import { applySetFlag } from "./entity-effects.js";
 import { applySetTurnOrder } from "./turn-order-effects.js";
 import {
@@ -47,6 +47,14 @@ export function applyEffect(state, effect, context, options) {
 
   if (effect.kind === "shuffle") {
     return applyShuffle(state, effect, context);
+  }
+
+  if (effect.kind === "queue_push") {
+    return applyQueuePush(state, effect, context);
+  }
+
+  if (effect.kind === "queue_pop") {
+    return applyQueuePop(state, effect, context);
   }
 
   if (!effect.target) {

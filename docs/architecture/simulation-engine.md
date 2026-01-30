@@ -240,7 +240,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 
 Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
 `move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`, `choose`,
-`shuffle`.
+`shuffle`, `queue_push`, `queue_pop`.
 
 ### Pass-Step Rules
 
@@ -286,6 +286,14 @@ When `actionId === null` (pass step):
   using Fisher-Yates shuffle with `context.rng`. Target must be a zone ref.
   Zones with 0 or 1 tokens are a no-op. Per-player zones shuffle the acting
   player's token list.
+- **Queue push** (`queue_push`): removes a token from its current zone and
+  appends it to the end of the target zone. Target must be a token ref;
+  `toZone` specifies the destination. Supports both global and per-player zones.
+  Implemented in `zone-effects.js`.
+- **Queue pop** (`queue_pop`): removes the first token from `fromZone`. If
+  `toZone` is specified the token is moved there; otherwise the token is
+  destroyed. Empty zone is a no-op. Supports both global and per-player zones.
+  Implemented in `zone-effects.js`.
 
 Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`
 (attribute access and existence), `zone_query` (count, has_token), and
