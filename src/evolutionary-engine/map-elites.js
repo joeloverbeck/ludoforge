@@ -133,12 +133,14 @@ export function placePopulationInMapElites(population, config) {
       coordinates,
       isElite: false,
       noveltyScore: 0,
+      contributionKind: "none",
     });
 
     const currentElite = elites.get(nicheId);
     if (!currentElite) {
       elites.set(nicheId, member);
       elitePlacementIndex.set(nicheId, placementIndex);
+      placements[placementIndex].contributionKind = "filledEmpty";
       return;
     }
 
@@ -146,6 +148,7 @@ export function placePopulationInMapElites(population, config) {
     if (comparison > 0 || (comparison === 0 && config.tieBreak === "replace")) {
       elites.set(nicheId, member);
       elitePlacementIndex.set(nicheId, placementIndex);
+      placements[placementIndex].contributionKind = "improvedElite";
     }
   });
 

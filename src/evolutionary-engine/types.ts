@@ -54,6 +54,7 @@ export interface MapElitesPlacement<TGenome = Genome> {
   coordinates: ReadonlyArray<BinToken>;
   isElite: boolean;
   noveltyScore: number;
+  contributionKind: "filledEmpty" | "improvedElite" | "none";
 }
 
 export interface MapElitesSkippedCandidate<TGenome = Genome> {

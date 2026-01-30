@@ -378,7 +378,7 @@ describe("mutation", () => {
   });
 
   describe("mutateAndRepairGenome", () => {
-    it("returns null on invalid int bounds", () => {
+    it("falls back to original genome on invalid int bounds", () => {
       const definition = cloneDefinition(baseDefinition);
       definition.state.variables[0].type = { kind: "int", min: 5, max: 1 };
       const genome = { definition };
@@ -387,7 +387,8 @@ describe("mutation", () => {
         operators: [numericTweakMutation],
       });
 
-      assert.equal(repaired, null);
+      assert.deepEqual(repaired, genome);
+      assert.notEqual(repaired, genome);
     });
   });
 });

@@ -15,6 +15,14 @@ import {
 } from "../../src/evaluation-analytics/preference-model.js";
 import { assemblePreferenceFeedbackComparison } from "../../src/human-interface/feedback.js";
 
+function constantRng(value) {
+  return {
+    next() {
+      return value;
+    },
+  };
+}
+
 async function loadFixture(name) {
   const fileUrl = new URL(`./fixtures/${name}`, import.meta.url);
   const raw = await readFile(fileUrl, "utf8");
@@ -116,17 +124,22 @@ describe("preference-model-update", () => {
       learningRate: 0.1,
     });
 
-    const updated = updatePreferenceModelState(initialState, feedback);
+    const updated = updatePreferenceModelState(initialState, feedback, {
+      rng: constantRng(0.5),
+    });
 
     assert.equal(updated.sampleCount, initialState.sampleCount + 1);
     assert.equal(updated.version, initialState.version + 1);
     assert.equal(updated.history.length, 1);
     assert.equal(updated.history[0].type, "comparison");
 
-    const totalWeight = Object.values(updated.weights).reduce(
-      (total, value) => total + Math.abs(value),
-      0
-    );
+    const totalWeight = updated.models.reduce((total, model) => {
+      const modelWeight = Object.values(model.weights ?? {}).reduce(
+        (subtotal, value) => subtotal + Math.abs(value),
+        0
+      );
+      return total + modelWeight;
+    }, 0);
     assert.ok(totalWeight > 0, "Expected preference weights to update");
   });
 });

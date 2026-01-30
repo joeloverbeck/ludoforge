@@ -26,6 +26,7 @@ export interface GenerationArtifactInput {
   feedback?: FeedbackRecord[];
   preferenceModelSnapshots: PreferenceModelSnapshotRecord[];
   determinism?: GenerationArtifactDeterminism;
+  operatorStats?: Record<string, unknown>;
 }
 
 export interface GenerationArtifactPaths {
@@ -38,6 +39,7 @@ export interface GenerationArtifactPaths {
   shortlistPath?: string;
   feedbackPath?: string;
   determinismPath?: string;
+  operatorStatsPath?: string;
 }
 
 export function writeGenerationArtifacts(

@@ -116,14 +116,24 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `effect-reorder`: swaps two effects within a random action's effects list.
 - `action-add-small`: creates a new action with 1-2 random effects and a unique id.
 - `motif-inject`: inserts a mined motif effect sequence into a random action (requires motif mining enabled).
-- Operator chosen uniformly at random (seedable RNG).
+
+### Operator Selection
+
+Mutation operator selection is weighted when the runner orchestrates evolution.
+The runner builds a `WeightedSelector` from `configs/evolution-operators.json`
+(`mutation.weights`) and uses it to pick from the enabled operator list.
+
+The selection abstraction is `OperatorSelector` (`pick(rng) → operatorName`,
+`observe(name, outcome)`), allowing future strategies (bandits) without changing
+core mutation operators.
 
 ### Effect Helpers
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
 
-- `EFFECT_KINDS`: canonical list of effect kinds (`set`, `inc`, `dec`, `move`,
-  `spawn`, `destroy`, `reveal`, `hide`, `move_spatial`, `repeat`, `set_flag`).
+- `EFFECT_KINDS`: canonical list of the 11 effect kinds dispatched by the game
+  kernel. See [simulation-engine.md](simulation-engine.md) for the full effect
+  dispatch reference.
 - `buildRandomEffect(definition, rng)`: generates a random effect with a valid
   target and properties drawn from the game definition.
 - `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
@@ -170,7 +180,7 @@ Exported as `DEFAULT_MAP_ELITES_CONFIG` from `map-elites.js`.
 | Key | Type | Description |
 |-----|------|-------------|
 | `mutation.enabled` | string[] | Mutation operator names to include |
-| `mutation.weights` | object | Per-operator weights (reserved, all 1 currently) |
+| `mutation.weights` | object | Per-operator weights (required, finite > 0) |
 | `crossover.enabled` | string[] | Crossover operator names to include |
 | `repair.enabled` | string[] | Repair operator names to include |
 

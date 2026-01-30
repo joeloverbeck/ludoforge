@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -257,6 +257,50 @@ describe("runner", () => {
         const feedbackRecords = await readFeedbackJsonl(artifacts.feedbackPath);
         assert.equal(feedbackRecords.length, 1);
         assert.equal(feedbackRecords[0].id, "feedback-enabled");
+      });
+    });
+
+    describe("generation pruning", () => {
+      it("retains only the last N generation dirs when maxRetainedGenerations is set", async () => {
+        const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-prune-"));
+        const definition = await loadMinimalDefinition();
+
+        const population = [
+          { id: "seed-a", definition },
+          { id: "seed-b", definition },
+        ];
+
+        const evaluation = {
+          evaluator: (genome) => ({
+            fitness: genome.id === "seed-a" ? 1 : 2,
+            descriptors: { axis: genome.id === "seed-a" ? 0 : 1 },
+          }),
+        };
+
+        const config = createBaseConfig({
+          runner: { generations: 5, shortlistSize: 0, maxRetainedGenerations: 2 },
+          evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
+        });
+
+        const runId = "123e4567-e89b-42d3-a456-426614174099";
+        const result = await runEvolutionRunner({
+          baseDir,
+          runId,
+          seed: 42,
+          config,
+          population,
+          evaluation,
+        });
+
+        assert.equal(result.generations.length, 5);
+
+        const runDir = join(baseDir, "runs", runId);
+        const entries = await readdir(runDir);
+        const genDirs = entries
+          .filter((name) => /^generation-\d+$/.test(name))
+          .sort();
+
+        assert.deepStrictEqual(genDirs, ["generation-3", "generation-4"]);
       });
     });
   });

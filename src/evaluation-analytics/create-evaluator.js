@@ -66,7 +66,19 @@ export function createEvaluator(options = {}) {
     const engine = createSimulationEngine(resolvedConfig);
 
     // Step 4: Run N simulations
-    const results = engine.runBatch(simulationRuns);
+    let results;
+    try {
+      results = engine.runBatch(simulationRuns);
+    } catch (err) {
+      return {
+        fitness: null,
+        descriptors: null,
+        diagnostics: {
+          simulationError: true,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      };
+    }
 
     // Step 5: Adapt simulation log
     const adapted = adaptSimulationLog({

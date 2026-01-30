@@ -109,6 +109,12 @@ export function generateSeedPopulation({
       continue;
     }
 
+    if (evalResult.fitness === null || evalResult.descriptors === null) {
+      rejectedByReason["evaluation-error"] =
+        (rejectedByReason["evaluation-error"] ?? 0) + 1;
+      continue;
+    }
+
     const coordinates = getDescriptorCoordinates(
       evalResult.descriptors,
       mapElitesConfig
@@ -158,8 +164,11 @@ export function generateSeedPopulation({
   }
 
   if (genomes.length < populationSize) {
+    const breakdown = Object.entries(rejectedByReason)
+      .map(([reason, count]) => `${reason}: ${count}`)
+      .join(", ");
     throw new Error(
-      `Failed to generate ${populationSize} genomes after ${attempts} attempts (produced ${genomes.length})`
+      `Failed to generate ${populationSize} genomes after ${attempts} attempts (produced ${genomes.length}). Rejections: ${breakdown || "none"}`
     );
   }
 

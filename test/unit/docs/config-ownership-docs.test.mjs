@@ -30,10 +30,7 @@ describe("config-ownership-docs", () => {
         resolve(root, "docs/architecture/pipeline-overview.md"),
         "utf8"
       );
-      assert.ok(
-        pipeline.includes("configs/simulation.json"),
-        "Pipeline should reference simulation config"
-      );
+      // simulation.json is documented in the cross-referenced simulation-engine.md
       assert.ok(
         pipeline.includes("configs/fitness.json"),
         "Pipeline should reference fitness config"

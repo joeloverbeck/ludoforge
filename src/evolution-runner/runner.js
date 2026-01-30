@@ -1,10 +1,23 @@
+import { readFile } from "node:fs/promises";
 import { runGenerationLoop } from "../evolutionary-engine/engine.js";
 import { crossoverGenome } from "../evolutionary-engine/crossover.js";
-import { mutateAndRepairGenome } from "../evolutionary-engine/mutation.js";
+import {
+  defaultMutationOperators,
+  mutateAndRepairGenome,
+} from "../evolutionary-engine/mutation.js";
+import { DEFAULT_EVOLUTION_OPERATORS_CONFIG } from "../evolutionary-engine/operator-config.js";
+import { WeightedSelector } from "../evolutionary-engine/operator-selector.js";
 import { createSeededRng } from "../simulation-engine/rng.js";
 import { writeGenerationArtifacts, writeSeedReport } from "./artifact-writer.js";
-import { createRunId } from "./run-layout.js";
+import { pruneOldGenerations } from "./generation-cleanup.js";
+import { createRunId, resolveRunDir, resolveRunPath } from "./run-layout.js";
 import { resolveSeedPopulation } from "./seed-resolver.js";
+import {
+  createTelemetry,
+  recordAttempt,
+  recordOutcome,
+  serializeTelemetry,
+} from "./operator-telemetry.js";
 
 function assertNonEmptyArray(value, label) {
   if (!Array.isArray(value) || value.length === 0) {
@@ -29,6 +42,69 @@ function assertPopulation(population) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function canBuildWeightedSelector(operators, weights) {
+  if (!Array.isArray(operators) || operators.length === 0) {
+    return false;
+  }
+  if (!isPlainObject(weights)) {
+    return false;
+  }
+  return operators.every((operator) => {
+    const weight = weights[operator?.name];
+    return Number.isFinite(weight) && weight > 0;
+  });
+}
+
+function createMutationSelector(operators) {
+  const weights = DEFAULT_EVOLUTION_OPERATORS_CONFIG.mutation?.weights;
+  if (!canBuildWeightedSelector(operators, weights)) {
+    return null;
+  }
+  return new WeightedSelector({ operators, weights });
+}
+
+function ensureTelemetryOperators(telemetry, operatorNames) {
+  if (!telemetry || !isPlainObject(telemetry.operators)) {
+    throw new Error("Operator telemetry is missing operator counters");
+  }
+  operatorNames.forEach((name) => {
+    if (!telemetry.operators[name]) {
+      throw new Error(`Operator telemetry missing operator: ${name}`);
+    }
+  });
+}
+
+async function loadOperatorStats({ baseDir, runId, startGeneration, operatorNames }) {
+  if (!Number.isInteger(startGeneration) || startGeneration <= 0) {
+    return null;
+  }
+
+  const generation = startGeneration - 1;
+  const runDir = resolveRunDir(baseDir, runId);
+  const statsPath = resolveRunPath(runDir, `generation-${generation}`, "operator-stats.json");
+
+  let contents;
+  try {
+    contents = await readFile(statsPath, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON";
+    throw new Error(`Invalid operator stats at ${statsPath}: ${message}`);
+  }
+
+  ensureTelemetryOperators(parsed, operatorNames);
+  return parsed;
 }
 
 function resolveRate(value, label) {
@@ -74,12 +150,46 @@ function selectMateIndex(length, currentIndex, rng) {
   return index;
 }
 
+function buildOperatorOutcomes(loopResult) {
+  const contributionByGenome = new Map();
+  loopResult.mapElites?.placements?.forEach((placement) => {
+    if (!placement?.member?.genome) {
+      return;
+    }
+    contributionByGenome.set(
+      placement.member.genome,
+      placement.contributionKind ?? "none",
+    );
+  });
+
+  const outcomes = new Map();
+  loopResult.evaluated.forEach((entry) => {
+    outcomes.set(entry.genome, {
+      valid: true,
+      accepted: true,
+      gridContribution: contributionByGenome.get(entry.genome) ?? "none",
+    });
+  });
+
+  loopResult.rejected.forEach((entry) => {
+    outcomes.set(entry.genome, {
+      valid: false,
+      accepted: false,
+      gridContribution: "none",
+    });
+  });
+
+  return outcomes;
+}
+
 function applyEvolution(population, options) {
   const parents = clonePopulation(population);
   const next = [];
+  const operatorNames = new Array(parents.length).fill(null);
 
   parents.forEach((parent, index) => {
     let child = cloneGenome(parent);
+    let operatorName = null;
 
     if (options.crossoverRate > 0 && shouldApply(options.crossoverRate, options.rng)) {
       const mateIndex = selectMateIndex(parents.length, index, options.rng);
@@ -100,16 +210,26 @@ function applyEvolution(population, options) {
         operators: options.mutationOperators,
         rng: options.rng,
         repairOperators: options.repairOperators,
+        selector: options.mutationSelector ?? undefined,
       });
-      if (mutated) {
+      if (options.mutationSelector && mutated && typeof mutated === "object") {
+        operatorName = mutated.operatorName ?? null;
+        if (mutated.genome) {
+          child = mutated.genome;
+        }
+      } else if (mutated) {
         child = mutated;
+      }
+      if (operatorName && options.telemetry) {
+        recordAttempt(options.telemetry, operatorName);
       }
     }
 
     next.push(cloneGenome(child));
+    operatorNames[index] = operatorName;
   });
 
-  return next;
+  return { population: next, operatorNames };
 }
 
 function serializeMapElites(mapElites) {
@@ -228,11 +348,25 @@ export async function runEvolutionRunner(options) {
   const mutationRate = resolveRate(mutationConfig.rate, "evolution.mutation.rate");
   const crossoverRate = resolveRate(crossoverConfig.rate, "evolution.crossover.rate");
 
+  const mutationOperators = Array.isArray(options.mutationOperators)
+    ? options.mutationOperators
+    : defaultMutationOperators;
+  const mutationSelector = createMutationSelector(mutationOperators);
+  const operatorNames = mutationOperators.map((operator) => operator.name);
+  const telemetry =
+    (await loadOperatorStats({
+      baseDir,
+      runId,
+      startGeneration,
+      operatorNames,
+    })) ?? createTelemetry(operatorNames);
+
   const snapshotProvider = resolveSnapshotProvider(options.preferenceModelSnapshots);
   const feedbackProvider = resolveFeedbackProvider(options.feedback);
   const feedbackEnabled = config.humanFeedback?.enabled === true;
 
   const results = [];
+  let pendingOperatorNames = null;
 
   for (let offset = 0; offset < generations; offset += 1) {
     const generation = startGeneration + offset;
@@ -245,14 +379,33 @@ export async function runEvolutionRunner(options) {
       shortlistSize: runnerConfig.shortlistSize,
     });
 
-    const evolvedPopulation = applyEvolution(loopResult.nextGeneration, {
+    if (pendingOperatorNames) {
+      const outcomes = buildOperatorOutcomes(loopResult);
+      currentPopulation.forEach((genome, index) => {
+        const operatorName = pendingOperatorNames[index];
+        if (!operatorName) {
+          return;
+        }
+        const outcome = outcomes.get(genome);
+        if (outcome) {
+          recordOutcome(telemetry, operatorName, outcome);
+        }
+      });
+    }
+
+    const evolutionResult = applyEvolution(loopResult.nextGeneration, {
       rng: rng ?? undefined,
       mutationRate,
       crossoverRate,
-      mutationOperators: options.mutationOperators,
+      mutationOperators,
       crossoverOperators: options.crossoverOperators,
       repairOperators: options.repairOperators,
+      mutationSelector,
+      telemetry,
     });
+
+    const evolvedPopulation = evolutionResult.population;
+    pendingOperatorNames = evolutionResult.operatorNames;
 
     assertPopulation(evolvedPopulation);
 
@@ -297,7 +450,16 @@ export async function runEvolutionRunner(options) {
       feedback,
       preferenceModelSnapshots,
       determinism,
+      operatorStats: serializeTelemetry(telemetry),
     });
+
+    if (runnerConfig.maxRetainedGenerations != null) {
+      await pruneOldGenerations({
+        baseDir,
+        runId,
+        maxRetained: runnerConfig.maxRetainedGenerations,
+      });
+    }
 
     results.push({
       generation,

@@ -54,7 +54,7 @@
     "MutationGroup": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled"],
+      "required": ["enabled", "weights"],
       "properties": {
         "enabled": {
           "type": "array",
@@ -63,7 +63,7 @@
         "weights": {
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/MutationOperatorKind" },
-          "additionalProperties": { "type": "number" }
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
         }
       }
     },

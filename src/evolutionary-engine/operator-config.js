@@ -13,6 +13,41 @@ function formatValidationErrors(errors) {
     .join("\n");
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function assertMutationWeights(config) {
+  const mutation = config?.mutation;
+  const enabled = Array.isArray(mutation?.enabled) ? mutation.enabled : [];
+  const weights = mutation?.weights;
+
+  if (!isPlainObject(weights)) {
+    throw new Error("mutation.weights must be an object");
+  }
+
+  const errors = [];
+
+  enabled.forEach((name) => {
+    if (!(name in weights)) {
+      errors.push(`mutation.weights.${name}: missing weight for enabled operator`);
+      return;
+    }
+    const weight = weights[name];
+    if (!Number.isFinite(weight)) {
+      errors.push(`mutation.weights.${name}: weight must be finite`);
+      return;
+    }
+    if (weight <= 0) {
+      errors.push(`mutation.weights.${name}: weight must be greater than 0`);
+    }
+  });
+
+  if (errors.length > 0) {
+    throw new Error(`Evolution operators weight validation failed:\n${errors.join("\n")}`);
+  }
+}
+
 async function loadDefaultEvolutionOperatorsConfig() {
   const result = await loadConfigFile({ name: "evolution-operators" });
   if (!result.valid) {
@@ -20,7 +55,9 @@ async function loadDefaultEvolutionOperatorsConfig() {
       `Evolution operators config validation failed:\n${formatValidationErrors(result.errors)}`
     );
   }
-  return result.config ?? {};
+  const config = result.config ?? {};
+  assertMutationWeights(config);
+  return config;
 }
 
 export const DEFAULT_EVOLUTION_OPERATORS_CONFIG = await loadDefaultEvolutionOperatorsConfig();

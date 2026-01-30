@@ -50,3 +50,5 @@ export {
   motifInjectMutation,
   createMotifInjectMutation,
 };
+
+export { WeightedSelector } from "./operator-selector.js";

@@ -155,9 +155,9 @@ const preferenceMetrics: PreferenceMetrics = {
 
 const preferenceModelState: PreferenceModelState = {
   version: 1,
-  weights: { agency: 0.1 },
-  bias: 0,
   sampleCount: 1,
+  models: [{ weights: { agency: 0.1 }, bias: 0, sampleCount: 1 }],
+  ensemble: { size: 1, method: "online-bagging" },
   history: [
     { type: "rating", rating: 1, featureVector: { agency: 0.2 } },
   ],

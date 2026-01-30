@@ -1,6 +1,7 @@
 {
   "version": 1,
   "updatedAt": "2026-01-28T00:00:00Z",
+  "ensembleSize": 5,
   "learningRate": 0.05,
   "maxHistory": 100,
   "comparisonWeight": 1,

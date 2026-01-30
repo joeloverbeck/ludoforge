@@ -1,5 +1,6 @@
 import type {
   FeatureVector,
+  ModelSnapshot,
   PreferenceFeedbackSample,
   PreferenceModelState,
 } from "./types.js";
@@ -9,6 +10,8 @@ export interface PreferenceModelStateOptions {
   weights?: FeatureVector;
   bias?: number;
   sampleCount?: number;
+  models?: ReadonlyArray<ModelSnapshot>;
+  ensembleSize?: number;
   history?: ReadonlyArray<PreferenceFeedbackSample>;
   learningRate?: number;
   maxHistory?: number;
@@ -27,6 +30,8 @@ export interface PreferenceModelUpdateOptions {
   weightDecay?: number;
   maxWeightAbs?: number;
   maxBiasAbs?: number;
+  rng?: { next(): number };
+  seed?: number;
 }
 
 export function createPreferenceModelState(

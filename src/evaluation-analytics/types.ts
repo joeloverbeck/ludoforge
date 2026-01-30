@@ -137,6 +137,17 @@ export interface PreferenceMetrics {
   calibrationBuckets: ReadonlyArray<PreferenceCalibrationBucket>;
 }
 
+export interface ModelSnapshot {
+  weights: FeatureVector;
+  bias: number;
+  sampleCount: number;
+}
+
+export interface PreferenceModelEnsemble {
+  size: number;
+  method: "online-bagging";
+}
+
 export interface PreferenceModelUpdate {
   weights: FeatureVector;
   bias?: number;
@@ -146,9 +157,9 @@ export interface PreferenceModelUpdate {
 
 export interface PreferenceModelState {
   version: number;
-  weights: FeatureVector;
-  bias: number;
   sampleCount: number;
+  models: ReadonlyArray<ModelSnapshot>;
+  ensemble: PreferenceModelEnsemble;
   history: ReadonlyArray<PreferenceFeedbackSample>;
   learningRate: number;
   maxHistory: number;

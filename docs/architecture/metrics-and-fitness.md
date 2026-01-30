@@ -243,7 +243,7 @@ passes it to the runner as `options.evaluation`.
 ### Error Handling
 
 - If `adaptSimulationLog` fails (`ok: false`), return `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
-- If simulation throws, the error propagates (genome validation happens upstream in the evaluation adapter).
+- If `engine.runBatch()` throws (e.g., bounds violations from dec-at-zero actions), the evaluator catches the error and returns `{ fitness: null, descriptors: null, diagnostics: { simulationError: true, error: message } }`. Callers (e.g., `generateSeedPopulation`) treat null-fitness results as evaluation errors.
 - All metric/fitness functions handle edge cases (empty summaries, zero-step games) gracefully.
 
 ## LTS Builder and Motif Mining

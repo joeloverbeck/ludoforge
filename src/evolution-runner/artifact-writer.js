@@ -69,6 +69,7 @@ export async function writeGenerationArtifacts({
   feedback,
   preferenceModelSnapshots,
   determinism,
+  operatorStats,
 }) {
   assertValidRunId(runId);
   assertGenerationNumber(generation);
@@ -117,7 +118,7 @@ export async function writeGenerationArtifacts({
     paths.mapElitesPath = mapElitesPath;
   }
 
-  if (shortlist !== undefined) {
+  if (Array.isArray(shortlist) && shortlist.length > 0) {
     const shortlistPath = resolveRunPath(generationDir, "shortlist.json");
     await writeJson(shortlistPath, shortlist);
     paths.shortlistPath = shortlistPath;
@@ -142,6 +143,15 @@ export async function writeGenerationArtifacts({
       ...determinism,
     });
     paths.determinismPath = determinismPath;
+  }
+
+  if (operatorStats !== undefined) {
+    if (!isPlainObject(operatorStats)) {
+      throw new Error("Operator stats must be an object");
+    }
+    const operatorStatsPath = resolveRunPath(generationDir, "operator-stats.json");
+    await writeJson(operatorStatsPath, operatorStats);
+    paths.operatorStatsPath = operatorStatsPath;
   }
 
   return paths;

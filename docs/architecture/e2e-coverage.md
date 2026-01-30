@@ -92,6 +92,13 @@ about the seeded simulation and evolution loop.
   - `test/e2e/evolution-mutation-repair.e2e.test.mjs`
   - Confirms crossover, mutation, and repair produce valid child genomes at scale.
 
+- Seed generation pipeline with default config
+  - `test/e2e/seed-generation-pipeline.e2e.test.mjs`
+  - Generates 16 genomes using the default experiment config (4 descriptors, uniform-bins
+    coverage with accept-any-valid fallback) and asserts the evaluation-error rate stays
+    below 50%. Exercises the grammar generator's dec-precondition logic, the evaluator's
+    simulation-error resilience, and the seed population's null-fitness guard.
+
 ## Gaps and Not Yet Proven in E2E
 
 - Active learning selection is already covered; gaps below exclude it.

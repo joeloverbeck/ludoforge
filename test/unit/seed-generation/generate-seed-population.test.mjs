@@ -375,6 +375,28 @@ describe("generateSeedPopulation", () => {
     });
   });
 
+  it("rejects genomes with null fitness from evaluator", () => {
+    let callCount = 0;
+    const nullFitnessEvaluator = () => {
+      callCount++;
+      if (callCount <= 4) {
+        return { fitness: null, descriptors: null, diagnostics: { simulationError: true } };
+      }
+      return { fitness: 0.5, descriptors: { axis: 0.5 } };
+    };
+    const result = generateSeedPopulation({
+      ...baseOptions,
+      populationSize: 4,
+      maxAttempts: 500,
+      evaluator: nullFitnessEvaluator,
+    });
+    assert.equal(result.genomes.length, 4);
+    assert.ok(
+      (result.report.rejectedByReason["evaluation-error"] ?? 0) >= 4,
+      "should have rejected null-fitness genomes"
+    );
+  });
+
   it("no node:fs import in source files", () => {
     const coveragePolicy = readFileSync(
       new URL(

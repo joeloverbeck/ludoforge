@@ -188,6 +188,28 @@ describe("map-elites", () => {
       });
     });
 
+    it("marks contributionKind for fills, improvements, and non-improvements", () => {
+      const members = [
+        makeMember("g-1", 1.0, { length: 10, randomness: 0.2 }),
+        makeMember("g-2", 2.0, { length: 10, randomness: 0.2 }),
+        makeMember("g-3", 0.5, { length: 10, randomness: 0.2 }),
+      ];
+
+      const result = placePopulationInMapElites(members, config);
+
+      assert.equal(result.placements[0].contributionKind, "filledEmpty");
+      assert.equal(result.placements[1].contributionKind, "improvedElite");
+      assert.equal(result.placements[2].contributionKind, "none");
+    });
+
+    it("does not assign contributionKind to skipped entries", () => {
+      const members = [makeMember("g-skip", 1.0, null)];
+      const result = placePopulationInMapElites(members, config);
+
+      assert.equal(result.skipped.length, 1);
+      assert.ok(!("contributionKind" in result.skipped[0]));
+    });
+
     it("ties keep the first elite by default", () => {
       const members = [
         makeMember("g-1", 1.0, { length: 10, randomness: 0.2 }),

@@ -56,9 +56,21 @@ export const defaultMutationOperators = filterOperatorsByEnabled(
 );
 
 export function mutateGenome(genome, options = {}) {
-  const { operators = defaultMutationOperators, rng } = options;
+  const { operators = defaultMutationOperators, rng, selector } = options;
   if (!Array.isArray(operators) || operators.length === 0) {
-    return structuredClone(genome);
+    const cloned = structuredClone(genome);
+    if (selector) {
+      return { genome: cloned, operatorName: null };
+    }
+    return cloned;
+  }
+  if (selector && typeof selector.pick === "function") {
+    const operatorName = selector.pick(rng);
+    const operator = operators.find((candidate) => candidate.name === operatorName);
+    if (!operator) {
+      return { genome: structuredClone(genome), operatorName };
+    }
+    return { genome: operator.mutate(genome, rng), operatorName };
   }
   const operatorIndex = getRandomIndex(operators.length, rng);
   const operator = operators[Math.max(0, operatorIndex)];
@@ -69,7 +81,23 @@ export function mutateGenome(genome, options = {}) {
 }
 
 export function mutateAndRepairGenome(genome, options = {}) {
-  const { operators = defaultMutationOperators, rng, repairOperators } = options;
-  const mutated = mutateGenome(genome, { operators, rng });
-  return repairGenome(mutated, { operators: repairOperators, rng });
+  const { operators = defaultMutationOperators, rng, repairOperators, selector } = options;
+  const mutated = mutateGenome(genome, { operators, rng, selector });
+  const originalGenome = structuredClone(genome);
+
+  if (selector) {
+    const mutationResult = mutated ?? { genome: null, operatorName: null };
+    const mutatedGenome = mutationResult.genome ?? originalGenome;
+    const repaired = repairGenome(mutatedGenome, { operators: repairOperators, rng });
+    if (!repaired) {
+      return { genome: originalGenome, operatorName: null };
+    }
+    return { genome: repaired, operatorName: mutationResult.operatorName ?? null };
+  }
+
+  const repaired = repairGenome(mutated, { operators: repairOperators, rng });
+  if (!repaired) {
+    return originalGenome;
+  }
+  return repaired;
 }

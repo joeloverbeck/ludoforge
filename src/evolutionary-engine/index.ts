@@ -56,6 +56,9 @@ export {
   zoneRemoveMutation,
 } from "./mutation.js";
 
+export type { OperatorSelector } from "./operator-selector.js";
+export { WeightedSelector } from "./operator-selector.js";
+
 export {
   crossoverGenome,
   defaultCrossoverOperators,

@@ -136,6 +136,25 @@ export function generatePrecondition({ variableId, variableDef }) {
 /**
  * @param {{ variableId: string, variableDef: object }} opts
  */
+export function generateDecPrecondition({ variableId, variableDef }) {
+  return cmpExpr(
+    ">",
+    refExpr(varRef(variableId)),
+    valueExpr(variableDef.type.min)
+  );
+}
+
+/**
+ * @param {object} left
+ * @param {object} right
+ */
+export function andExpr(left, right) {
+  return { kind: "and", left, right };
+}
+
+/**
+ * @param {{ variableId: string, variableDef: object }} opts
+ */
 export function generateTerminationCondition({ variableId, variableDef }) {
   return {
     condition: cmpExpr(

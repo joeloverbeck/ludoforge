@@ -55,6 +55,7 @@ describe("artifact-writer", () => {
         feedback,
         preferenceModelSnapshots,
         determinism: { seed: 123, rng: { module: "runner" } },
+        operatorStats: { operators: { alpha: { attempts: 1 } } },
       });
 
       const populationContents = await readFile(result.populationPath, "utf8");
@@ -85,6 +86,11 @@ describe("artifact-writer", () => {
       const determinism = JSON.parse(determinismContents);
       assert.equal(determinism.seed, 123);
       assert.equal(determinism.generation, 1);
+
+      const operatorStatsContents = await readFile(result.operatorStatsPath, "utf8");
+      assert.deepEqual(JSON.parse(operatorStatsContents), {
+        operators: { alpha: { attempts: 1 } },
+      });
 
       const generationPath = resolveRunPath(
         join(baseDir, "runs", runId),

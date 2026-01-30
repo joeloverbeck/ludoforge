@@ -145,6 +145,69 @@ describe("generateGameDefinition", () => {
     }
   });
 
+  it("dec-only games have preconditions on every action", () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: decOnlyGrammar });
+      for (const action of def.actions) {
+        assert.ok(
+          action.preconditions !== undefined,
+          `seed ${seed}: action ${action.id} missing preconditions despite dec effects`
+        );
+      }
+    }
+  });
+
+  it("dec precondition checks var > min", () => {
+    const grammar = {
+      limits: { minVariables: 1, maxVariables: 1, minActions: 1, maxActions: 1 },
+      weights: { dec: 1 },
+    };
+    const def = generateGameDefinition({ rng: makeRng(0), grammar });
+    const action = def.actions[0];
+    assert.ok(action.preconditions, "action should have preconditions");
+    assert.equal(action.preconditions.kind, "cmp");
+    assert.equal(action.preconditions.op, ">");
+    // right side should be value(min), which is 0 for generated int variables
+    assert.deepStrictEqual(action.preconditions.right, { kind: "value", value: 0 });
+  });
+
+  it("actions with both inc and dec get compound and-preconditions", () => {
+    // Generate many seeds with mixed weights, find one with an action having both inc and dec
+    const grammar = {
+      limits: { minVariables: 3, maxVariables: 3, minActions: 1, maxActions: 1 },
+      weights: { inc: 1, dec: 1 },
+    };
+    let foundCompound = false;
+    for (let seed = 0; seed < 200; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar });
+      for (const action of def.actions) {
+        const hasInc = action.effects.some((e) => e.kind === "inc");
+        const hasDec = action.effects.some((e) => e.kind === "dec");
+        if (hasInc && hasDec && action.preconditions) {
+          assert.equal(
+            action.preconditions.kind,
+            "and",
+            `seed ${seed}: expected 'and' precondition for mixed inc/dec action`
+          );
+          foundCompound = true;
+          break;
+        }
+      }
+      if (foundCompound) break;
+    }
+    assert.ok(foundCompound, "should find at least one action with compound and-preconditions");
+  });
+
+  it("dec-only games pass schema and semantic validation for 100 seeds", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: decOnlyGrammar });
+      const schema = validateGameDefinition(def);
+      assert.ok(schema.valid, `seed ${seed} schema: ${JSON.stringify(schema.errors)}`);
+      const semantic = validateSemanticDefinition(def);
+      assert.ok(semantic.valid, `seed ${seed} semantic: ${JSON.stringify(semantic.issues)}`);
+    }
+  });
+
   it("no node:fs import in source files", () => {
     const primitives = readFileSync(
       new URL("../../../src/seed-generation/primitives.js", import.meta.url),

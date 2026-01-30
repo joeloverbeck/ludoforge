@@ -134,6 +134,48 @@ describe("createEvaluator", () => {
     assert.ok(factoryCalled);
   });
 
+  it("returns degraded result when simulation throws", () => {
+    // Create a game definition that will cause the simulation to throw.
+    // A dec-at-zero action with boundsMode "reject" should cause a bounds error.
+    const decAtZeroGame = {
+      version: "1.0",
+      players: { count: 2 },
+      state: {
+        variables: [
+          { id: "v", scope: "global", type: { kind: "int", min: 0, max: 10 }, initial: 0 },
+        ],
+      },
+      actions: [
+        {
+          id: "dec_v",
+          actor: "player",
+          effects: [{ kind: "dec", target: { kind: "var", id: "v" }, amount: 1 }],
+        },
+      ],
+      turn: { scheduler: "round_robin" },
+      termination: {
+        conditions: [
+          {
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "v" } },
+              right: { kind: "value", value: 10 },
+            },
+            outcome: { type: "win", players: "active" },
+          },
+        ],
+        maxTurns: 50,
+      },
+    };
+    const { evaluator } = createEvaluator({ simulationRuns: 1 });
+    const result = evaluator({ id: "dec-at-zero", definition: decAtZeroGame });
+    assert.equal(result.fitness, null);
+    assert.equal(result.descriptors, null);
+    assert.equal(result.diagnostics.simulationError, true);
+    assert.equal(typeof result.diagnostics.error, "string");
+  });
+
   it("missing descriptor keys default to 0", () => {
     const { evaluator } = createEvaluator({
       simulationRuns: 2,

@@ -129,6 +129,38 @@ describe("schema", () => {
     });
   });
 
+  describe("runner.maxRetainedGenerations", () => {
+    it("accepts maxRetainedGenerations as a positive integer", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxRetainedGenerations = 30;
+      assertValid(candidate);
+    });
+
+    it("rejects maxRetainedGenerations of 0", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxRetainedGenerations = 0;
+      assertInvalid(candidate);
+    });
+
+    it("accepts config without maxRetainedGenerations (backward compat)", () => {
+      const candidate = cloneConfig(baseConfig);
+      assert.equal(candidate.runner.maxRetainedGenerations, undefined);
+      assertValid(candidate);
+    });
+
+    it("rejects non-integer maxRetainedGenerations", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxRetainedGenerations = 2.5;
+      assertInvalid(candidate);
+    });
+
+    it("rejects negative maxRetainedGenerations", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxRetainedGenerations = -1;
+      assertInvalid(candidate);
+    });
+  });
+
   describe("evolution.motifMining", () => {
     const validMotifMining = {
       enabled: true,

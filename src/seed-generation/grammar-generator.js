@@ -5,7 +5,9 @@ import {
   generateIntVariable,
   generateEffect,
   generatePrecondition,
+  generateDecPrecondition,
   generateTerminationCondition,
+  andExpr,
 } from "./primitives.js";
 
 const DEFAULT_LIMITS = {
@@ -82,15 +84,13 @@ function generateActions(rng, variables, actionCount, weights) {
   for (let i = 0; i < actionCount; i++) {
     const assignedVarIds = assignments.get(i);
     const effects = [];
-    let hasInc = false;
+    const effectKinds = [];
 
     for (const varId of assignedVarIds) {
       const kind = pickWeighted(rng, weights);
       const variableDef = variableMap.get(varId);
       effects.push(generateEffect({ rng, kind, variableId: varId, variableDef }));
-      if (kind === "inc") {
-        hasInc = true;
-      }
+      effectKinds.push(kind);
     }
 
     const action = {
@@ -99,16 +99,28 @@ function generateActions(rng, variables, actionCount, weights) {
       effects,
     };
 
-    if (hasInc) {
-      const firstIncVarId = assignedVarIds.find((vid) => {
-        const idx = assignedVarIds.indexOf(vid);
-        return effects[idx].kind === "inc";
-      });
-      const variableDef = variableMap.get(firstIncVarId);
-      action.preconditions = generatePrecondition({
-        variableId: firstIncVarId,
-        variableDef,
-      });
+    const preconditionParts = [];
+    for (let j = 0; j < assignedVarIds.length; j++) {
+      const varId = assignedVarIds[j];
+      const kind = effectKinds[j];
+      const variableDef = variableMap.get(varId);
+      if (kind === "inc") {
+        preconditionParts.push(
+          generatePrecondition({ variableId: varId, variableDef })
+        );
+      } else if (kind === "dec") {
+        preconditionParts.push(
+          generateDecPrecondition({ variableId: varId, variableDef })
+        );
+      }
+    }
+
+    if (preconditionParts.length === 1) {
+      action.preconditions = preconditionParts[0];
+    } else if (preconditionParts.length > 1) {
+      action.preconditions = preconditionParts.reduce((acc, part) =>
+        andExpr(acc, part)
+      );
     }
 
     actions.push(action);

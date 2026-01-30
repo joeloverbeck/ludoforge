@@ -16,6 +16,8 @@ Describe the evolution runner responsibilities, the per-run directory layout, an
 - Initialize deterministic RNG seeds and pass them into core modules.
 - Execute the generation loop via `runGenerationLoop` and related adapters.
 - Persist per-generation artifacts and logs for audit and resume.
+- Track per-operator telemetry (attempts, validity, MAP-Elites contributions) and
+  persist it per generation.
 - Emit structured logging for major phases and generation boundaries.
 
 ## Run Naming and Selection
@@ -34,6 +36,7 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `feedback.jsonl`, `preference-model.jsonl`
   - `determinism.json` (when seeds/RNG metadata are available)
   - `motifs.jsonl` (when motif mining is enabled)
+  - `operator-stats.json` (per-operator telemetry snapshot)
 
 ## Run Isolation Rules
 
@@ -46,11 +49,27 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
 - Load the latest population and preference model snapshot from the selected run directory.
 - Validate that the resumed configuration is compatible with the stored artifacts before continuing (config version + MAP-Elites descriptor set).
 - Write subsequent generations into the same run directory with incremented generation numbers.
+- Load `operator-stats.json` from the latest generation and continue accumulating counters.
 
 ## Determinism
 
 - A single seed should reproduce deterministic paths across runs when inputs are identical.
 - The runner uses seeded RNG helpers (no `Math.random`) and persists seeds in artifacts for audit.
+
+## Operator Telemetry
+
+The runner accumulates per-operator counters and writes a snapshot each generation to:
+`runs/<run-id>/generation-<n>/operator-stats.json`.
+
+Counters per operator:
+
+- `attempts`: number of mutation applications for that operator.
+- `validOffspring`: number of evaluated offspring that produced valid fitness + descriptors.
+- `acceptedOffspring`: number of valid offspring that pass acceptance gates (currently mirrors valid).
+- `gridContributions.filledEmpty`: MAP-Elites placements that filled an empty niche.
+- `gridContributions.improvedElite`: placements that replaced an existing elite.
+
+Snapshots are cumulative within a run and continue when resuming the same `runId`.
 
 ## Motif Mining
 
