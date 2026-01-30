@@ -3,6 +3,7 @@
 **Spec ref:** EQ-02
 **Phase:** 2 — Strengthen selection pressure
 **Depends on:** None
+**Status:** Completed
 
 ## Problem
 
@@ -22,7 +23,7 @@ A penalty of `0.3` reduces a `0.6` base to `0.42`. A penalty of `1.0` forces fit
 
 ## Files to touch
 
-- `src/evaluation-analytics/scoring.js` — change `combineFitnessScores()` (lines ~148-168) to apply multiplicative penalty
+- `src/evaluation-analytics/scoring.js` — change `combineFitnessScores()` (lines ~108-139) to apply multiplicative penalty
 
 ## Out of scope
 
@@ -38,14 +39,19 @@ A penalty of `0.3` reduces a `0.6` base to `0.42`. A penalty of `1.0` forces fit
 1. **Updated unit tests** in `test/unit/evaluation-analytics/`:
    - `combineFitnessScores({ base: 0.6 }, { degeneracyPenalty: 0.3 })` → score ≈ `0.6 * 0.7 = 0.42` (not `0.3`)
    - `combineFitnessScores({ base: 0.6 }, { degeneracyPenalty: 1.0 })` → score = `0`
-   - `combineFitnessScores({ base: 0.6 }, { degeneracyPenalty: 0 })` → score = `0.6` (unchanged)
-   - Penalty values > 1 are clamped to 1
+- `combineFitnessScores({ base: 0.6 }, { degeneracyPenalty: 0 })` → score = `0.6` (unchanged)
+- Penalty values > 1 are clamped to 1
 
 2. All existing tests:
    - `npm run test:unit` passes
 
 ### Invariants
 
-- Score is always ≥ 0 (multiplicative discount with clamped penalty cannot produce negative values)
+- Multiplicative discount only scales the combined score; it does not clamp negatives that come from preference/diversity contributions.
 - When degeneracyPenalty is 0, the formula produces the same result as before
 - The `components` return object from `combineFitnessScores` still includes `degeneracyPenalty` for diagnostics
+
+## Outcome
+
+- Applied multiplicative discount with a [0, 1] clamp for `degeneracyPenalty` in `combineFitnessScores`.
+- Updated unit tests to assert multiplicative behavior and penalty clamping instead of additive subtraction.

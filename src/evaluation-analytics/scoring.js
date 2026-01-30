@@ -154,10 +154,12 @@ function combineFitnessScores(compositeScore, preferenceScore, diversityPressure
     preferenceScore,
     options
   );
-  const degeneracyPenalty = Math.max(0, safeNumber(options.degeneracyPenalty));
+  const degeneracyPenalty = clamp(safeNumber(options.degeneracyPenalty), 0, 1);
+  const combined = base + diversityContribution + preferenceContribution;
+  const penaltyMultiplier = 1 - degeneracyPenalty;
 
   return {
-    score: base + diversityContribution + preferenceContribution - degeneracyPenalty,
+    score: combined * penaltyMultiplier,
     components: {
       base,
       preference: preferenceContribution,

@@ -135,20 +135,29 @@ describe("scoring", () => {
       assert.equal(result.score, 0.9);
     });
 
-    it("subtracts degeneracyPenalty from score", () => {
-      const result = combineFitnessScores(1, null, 0, {
+    it("applies degeneracy penalty as multiplicative discount", () => {
+      const result = combineFitnessScores(0.6, null, 0, {
         degeneracyPenalty: 0.3,
       });
 
       assert.equal(result.components.degeneracyPenalty, 0.3);
-      assert.ok(Math.abs(result.score - 0.7) < 1e-9);
+      assert.ok(Math.abs(result.score - 0.42) < 1e-9);
+    });
+
+    it("clamps degeneracyPenalty to 1", () => {
+      const result = combineFitnessScores(0.6, null, 0, {
+        degeneracyPenalty: 2,
+      });
+
+      assert.equal(result.components.degeneracyPenalty, 1);
+      assert.equal(result.score, 0);
     });
 
     it("defaults degeneracyPenalty to 0", () => {
-      const result = combineFitnessScores(1, null, 0, {});
+      const result = combineFitnessScores(0.6, null, 0, {});
 
       assert.equal(result.components.degeneracyPenalty, 0);
-      assert.equal(result.score, 1);
+      assert.equal(result.score, 0.6);
     });
 
     it("damps preference contribution by (1 - uncertainty)", () => {
