@@ -37,11 +37,11 @@ describe("preference-model-store", () => {
       accuracy: 0.82,
       calibration: 0.74,
     },
-    weights: {
-      agency: 0.6,
-      tension: -0.2,
-    },
-    bias: 0.1,
+    models: [
+      { weights: { agency: 0.6, tension: -0.2 }, bias: 0.1, sampleCount: 6 },
+      { weights: { agency: 0.5, tension: -0.1 }, bias: 0.05, sampleCount: 6 },
+    ],
+    ensemble: { size: 2, method: "online-bagging" },
   };
 
   describe("writePreferenceModelSnapshotJsonl / readPreferenceModelSnapshotJsonl", () => {
@@ -82,12 +82,12 @@ describe("preference-model-store", () => {
           sampleCount: 12,
           start: "2024-12-01T00:00:00Z",
         },
-        weights: {
-          tension: -0.2,
-          agency: 0.6,
-        },
+        models: [
+          { bias: 0.1, sampleCount: 6, weights: { tension: -0.2, agency: 0.6 } },
+          { sampleCount: 6, weights: { tension: -0.1, agency: 0.5 }, bias: 0.05 },
+        ],
+        ensemble: { method: "online-bagging", size: 2 },
         contextTag: "quick",
-        bias: 0.1,
         createdAt: "2025-01-01T00:00:00Z",
         version: "1.0",
         id: "model-1",
@@ -141,27 +141,77 @@ describe("preference-model-store", () => {
         () =>
           serializePreferenceModelSnapshotRecord({
             ...snapshotRecord,
-            weights: [],
-          }),
-        /missing required field: weights/i,
-      );
-
-      assert.throws(
-        () =>
-          serializePreferenceModelSnapshotRecord({
-            ...snapshotRecord,
             contextTag: " ",
           }),
         /contextTag must be a non-empty string/i,
       );
+    });
+
+    it("rejects records missing models array", () => {
+      const { models: _, ...withoutModels } = snapshotRecord;
+
+      assert.throws(
+        () => serializePreferenceModelSnapshotRecord(withoutModels),
+        /missing required field: models/i,
+      );
 
       assert.throws(
         () =>
           serializePreferenceModelSnapshotRecord({
             ...snapshotRecord,
-            bias: "high",
+            models: [],
           }),
-        /bias must be a number/i,
+        /missing required field: models/i,
+      );
+
+      assert.throws(
+        () =>
+          serializePreferenceModelSnapshotRecord({
+            ...snapshotRecord,
+            models: "not-an-array",
+          }),
+        /missing required field: models/i,
+      );
+    });
+
+    it("rejects model entries missing weights or bias", () => {
+      assert.throws(
+        () =>
+          serializePreferenceModelSnapshotRecord({
+            ...snapshotRecord,
+            models: [{ bias: 0.1, sampleCount: 3 }],
+          }),
+        /models\[0\] missing required field: weights/i,
+      );
+
+      assert.throws(
+        () =>
+          serializePreferenceModelSnapshotRecord({
+            ...snapshotRecord,
+            models: [{ weights: { a: 1 }, sampleCount: 3 }],
+          }),
+        /models\[0\] missing required field: bias/i,
+      );
+
+      assert.throws(
+        () =>
+          serializePreferenceModelSnapshotRecord({
+            ...snapshotRecord,
+            models: [
+              { weights: { a: 1 }, bias: 0.1, sampleCount: 3 },
+              { weights: null, bias: 0.2, sampleCount: 3 },
+            ],
+          }),
+        /models\[1\] missing required field: weights/i,
+      );
+    });
+
+    it("rejects records missing ensemble metadata", () => {
+      const { ensemble: _, ...withoutEnsemble } = snapshotRecord;
+
+      assert.throws(
+        () => serializePreferenceModelSnapshotRecord(withoutEnsemble),
+        /missing required field: ensemble/i,
       );
     });
   });

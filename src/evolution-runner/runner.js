@@ -259,7 +259,8 @@ function defaultPreferenceModelSnapshot({ runId, generation, seed }) {
     trainingWindow: { size: 0 },
     hyperparams: {},
     metrics: {},
-    weights: {},
+    models: [{ weights: {}, bias: 0, sampleCount: 0 }],
+    ensemble: { size: 1, method: "online-bagging" },
   };
 }
 

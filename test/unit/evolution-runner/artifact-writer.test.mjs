@@ -39,7 +39,8 @@ describe("artifact-writer", () => {
           trainingWindow: { size: 1 },
           hyperparams: { lr: 0.1 },
           metrics: { loss: 0.5 },
-          weights: { novelty: 0.2 },
+          models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+          ensemble: { size: 1, method: "online-bagging" },
         },
       ];
 
@@ -118,7 +119,8 @@ describe("artifact-writer", () => {
                 trainingWindow: { size: 1 },
                 hyperparams: { lr: 0.1 },
                 metrics: { loss: 0.5 },
-                weights: { novelty: 0.2 },
+                models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+                ensemble: { size: 1, method: "online-bagging" },
               },
             ],
           }),

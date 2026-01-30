@@ -24,6 +24,30 @@ function assertRequiredObject(record, key, label) {
   }
 }
 
+function assertModelsArray(record, label) {
+  if (!Array.isArray(record?.models) || record.models.length === 0) {
+    throw new Error(`${label} missing required field: models`);
+  }
+
+  for (let i = 0; i < record.models.length; i++) {
+    const entry = record.models[i];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`${label} models[${i}] must be an object`);
+    }
+    if (
+      !entry.weights ||
+      typeof entry.weights !== "object" ||
+      Array.isArray(entry.weights) ||
+      entry.weights === null
+    ) {
+      throw new Error(`${label} models[${i}] missing required field: weights`);
+    }
+    if (!Number.isFinite(entry.bias)) {
+      throw new Error(`${label} models[${i}] missing required field: bias`);
+    }
+  }
+}
+
 function assertOptionalString(record, key, label) {
   if (key in record) {
     if (typeof record[key] !== "string") {
@@ -46,9 +70,9 @@ function toPreferenceModelSnapshotEnvelope(record) {
   assertRequiredObject(record, "trainingWindow", "PreferenceModelSnapshotRecord");
   assertRequiredObject(record, "hyperparams", "PreferenceModelSnapshotRecord");
   assertRequiredObject(record, "metrics", "PreferenceModelSnapshotRecord");
-  assertRequiredObject(record, "weights", "PreferenceModelSnapshotRecord");
+  assertModelsArray(record, "PreferenceModelSnapshotRecord");
+  assertRequiredObject(record, "ensemble", "PreferenceModelSnapshotRecord");
   assertOptionalString(record, "contextTag", "PreferenceModelSnapshotRecord");
-  assertOptionalNumber(record, "bias", "PreferenceModelSnapshotRecord");
   return {
     type: "preference-model-snapshot",
     payload: record,
@@ -64,9 +88,9 @@ function parsePreferenceModelSnapshotEnvelope(raw) {
   assertRequiredObject(raw.payload, "trainingWindow", "PreferenceModelSnapshotRecord");
   assertRequiredObject(raw.payload, "hyperparams", "PreferenceModelSnapshotRecord");
   assertRequiredObject(raw.payload, "metrics", "PreferenceModelSnapshotRecord");
-  assertRequiredObject(raw.payload, "weights", "PreferenceModelSnapshotRecord");
+  assertModelsArray(raw.payload, "PreferenceModelSnapshotRecord");
+  assertRequiredObject(raw.payload, "ensemble", "PreferenceModelSnapshotRecord");
   assertOptionalString(raw.payload, "contextTag", "PreferenceModelSnapshotRecord");
-  assertOptionalNumber(raw.payload, "bias", "PreferenceModelSnapshotRecord");
   return raw;
 }
 
