@@ -14,146 +14,33 @@ import { runEvolutionRunner } from "../evolution-runner/runner.js";
 import { validateRunnerConfig } from "../evolution-runner/config.js";
 import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
 import { CLIError } from "./cli-error.js";
+import { parseArgs } from "./parse-args.js";
+import { loadConfig } from "./load-config.js";
+import { createUsage } from "./usage.js";
 import { validateDescriptorKeys } from "./validate-descriptor-keys.js";
 import { createConsoleIO } from "./console-io.js";
 import { createFeedbackProvider } from "../human-interface/create-feedback-provider.js";
 
-const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
-const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h"]);
-const ALL_FLAGS = new Set([...VALUE_FLAGS, ...BOOLEAN_FLAGS]);
-
-function validFlagList() {
-  return [...ALL_FLAGS].sort().join(", ");
-}
-
-function parseArgs(argv) {
-  const args = Array.isArray(argv) ? argv.slice(2) : [];
-  const parsed = {
-    dryRun: false,
-    resume: false,
-    help: false,
-    _hasArgs: args.length > 0,
-  };
-
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i];
-    if (arg === "--dry-run") {
-      parsed.dryRun = true;
-      continue;
-    }
-    if (arg === "--resume") {
-      parsed.resume = true;
-      continue;
-    }
-    if (arg === "--help" || arg === "-h") {
-      parsed.help = true;
-      continue;
-    }
-
-    if (arg.startsWith("--")) {
-      const [flag, inlineValue] = arg.split("=", 2);
-      if (!VALUE_FLAGS.has(flag)) {
-        throw new CLIError(
-          `Unknown flag: ${flag}. Valid flags are: ${validFlagList()}`,
-          { showUsage: true },
-        );
-      }
-      const value = inlineValue ?? args[i + 1];
-      if (!value || value.startsWith("--")) {
-        throw new CLIError(
-          `${flag} requires a value. Example: ${flag} <value>`,
-          { showUsage: true },
-        );
-      }
-      i += inlineValue ? 0 : 1;
-      if (flag === "--seeds") {
-        parsed.seeds = value;
-      } else if (flag === "--config") {
-        parsed.config = value;
-      } else if (flag === "--run-id") {
-        parsed.runId = value;
-      } else if (flag === "--out") {
-        parsed.out = value;
-      }
-      continue;
-    }
-
-    throw new CLIError(
-      `Unexpected argument: ${arg}. Only flags (--flag) are accepted, not positional arguments.`,
-      { showUsage: true },
-    );
-  }
-
-  return parsed;
-}
-
-function formatValidationErrors(errors) {
-  if (!Array.isArray(errors) || errors.length === 0) {
-    return "Unknown validation error";
-  }
-  return errors
-    .map((error) => {
-      const path = error.path || "<root>";
-      return `${path}: ${error.message}`;
-    })
-    .join("\n");
-}
-
-async function loadConfig(configPath, deps) {
-  if (!configPath) {
-    throw new CLIError(
-      "Missing required --config <path>. The config file specifies evolution parameters (generations, MAP-Elites settings, etc.).",
-      {
-        showUsage: true,
-        hint: "See configs/ for example config files.",
-      },
-    );
-  }
-  let raw;
+async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunner) {
+  let consoleIO;
   try {
-    raw = await deps.readFile(configPath, "utf8");
-  } catch {
-    throw new CLIError(
-      `Failed to read config at ${configPath}`,
-      { hint: "Check that the file exists and the path is correct." },
-    );
+    if (config.humanFeedback?.enabled) {
+      consoleIO = createConsoleIO();
+      const provider = createFeedbackProvider({
+        io: consoleIO.io,
+        config: config.humanFeedback,
+        initialModelState: runnerOptions.preferenceModelSnapshots?.[0],
+        seed: config.seed,
+      });
+      runnerOptions.feedback = provider.feedbackProvider;
+      runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
+    }
+    return await runEvolutionRunner(runnerOptions);
+  } finally {
+    if (consoleIO) {
+      consoleIO.close();
+    }
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new CLIError(
-      `Invalid JSON in config at ${configPath}`,
-      { hint: "Validate your JSON with a linter or jsonlint." },
-    );
-  }
-
-  const validation = deps.validateRunnerConfig(parsed);
-  if (!validation.valid) {
-    throw new CLIError(
-      `Runner config validation failed:\n${formatValidationErrors(validation.errors)}`,
-      { hint: "See schemas/config/ for the expected structure." },
-    );
-  }
-
-  return parsed;
-}
-
-function createUsage() {
-  return [
-    "Usage: ludoforge-evolve --config <path> [--seeds <path>] [options]",
-    "",
-    "Required:",
-    "  --config <path>    Path to runner config JSON",
-    "",
-    "Options:",
-    "  --seeds <path>     Path to seed population JSON or JSONL (overrides config seeding)",
-    "  --run-id <id>      Explicit run ID (UUID)",
-    "  --resume           Resume an existing run (requires --run-id)",
-    "  --out <dir>        Base output directory (default: cwd)",
-    "  --dry-run          Validate inputs without executing the runner",
-    "  --help             Show this help",
-  ].join("\n");
 }
 
 function resolveDeps(overrides = {}) {
@@ -254,34 +141,15 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       evaluation,
     };
 
-    let consoleIO;
-    try {
-      if (config.humanFeedback?.enabled) {
-        consoleIO = createConsoleIO();
-        const provider = createFeedbackProvider({
-          io: consoleIO.io,
-          config: config.humanFeedback,
-          initialModelState: resumeState.preferenceModel,
-          seed: config.seed,
-        });
-        runnerOptions.feedback = provider.feedbackProvider;
-        runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
-      }
+    const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
 
-      const result = await deps.runEvolutionRunner(runnerOptions);
-
-      return {
-        runId,
-        baseDir,
-        dryRun: false,
-        resumed: true,
-        result,
-      };
-    } finally {
-      if (consoleIO) {
-        consoleIO.close();
-      }
-    }
+    return {
+      runId,
+      baseDir,
+      dryRun: false,
+      resumed: true,
+      result,
+    };
   }
 
   if (runId) {
@@ -326,33 +194,15 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       evaluation,
     };
 
-    let consoleIO;
-    try {
-      if (config.humanFeedback?.enabled) {
-        consoleIO = createConsoleIO();
-        const provider = createFeedbackProvider({
-          io: consoleIO.io,
-          config: config.humanFeedback,
-          seed: config.seed,
-        });
-        runnerOptions.feedback = provider.feedbackProvider;
-        runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
-      }
+    const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
 
-      const result = await deps.runEvolutionRunner(runnerOptions);
-
-      return {
-        runId,
-        baseDir,
-        dryRun: false,
-        resumed: false,
-        result,
-      };
-    } finally {
-      if (consoleIO) {
-        consoleIO.close();
-      }
-    }
+    return {
+      runId,
+      baseDir,
+      dryRun: false,
+      resumed: false,
+      result,
+    };
   }
 
   if (!config.seeding) {
@@ -386,33 +236,15 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     evaluation,
   };
 
-  let consoleIO;
-  try {
-    if (config.humanFeedback?.enabled) {
-      consoleIO = createConsoleIO();
-      const provider = createFeedbackProvider({
-        io: consoleIO.io,
-        config: config.humanFeedback,
-        seed: config.seed,
-      });
-      runnerOptions.feedback = provider.feedbackProvider;
-      runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
-    }
+  const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
 
-    const result = await deps.runEvolutionRunner(runnerOptions);
-
-    return {
-      runId,
-      baseDir,
-      dryRun: false,
-      resumed: false,
-      result,
-    };
-  } finally {
-    if (consoleIO) {
-      consoleIO.close();
-    }
-  }
+  return {
+    runId,
+    baseDir,
+    dryRun: false,
+    resumed: false,
+    result,
+  };
 }
 
 async function main() {
