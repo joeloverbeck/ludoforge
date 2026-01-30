@@ -95,6 +95,7 @@ export type Effect =
   | { kind: "set_flag"; target: Ref; flag: string; duration?: "action" | "phase" | "turn" | "round" }
   | { kind: "set_turn_order"; order: "by_variable"; variable: string; direction: "asc" | "desc" }
   | { kind: "choose"; options: Effect[][]; count?: number }
+  | { kind: "shuffle"; target: Ref }
 ;
 
 export interface TriggerDef {

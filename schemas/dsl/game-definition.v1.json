@@ -363,6 +363,15 @@
             },
             "count": { "type": "integer", "minimum": 1, "default": 1 }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": { "const": "shuffle" },
+            "target": { "$ref": "#/$defs/Ref" }
+          }
         }
       ]
     },
