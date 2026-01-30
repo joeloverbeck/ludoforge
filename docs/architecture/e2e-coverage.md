@@ -82,6 +82,12 @@ about the seeded simulation and evolution loop.
   - Prioritizes uncertain comparisons while ensuring underrepresented niches
     are surfaced for human review.
 
+- Adaptive human sampling budget
+  - `test/e2e/adaptive-human-budget.e2e.test.mjs`
+  - Adaptive budget increases for high-uncertainty preference states,
+    decreases for low-uncertainty states, and still honors diversity quota
+    when niche ids are available.
+
 - Preference model updates from real feature vectors
   - `test/e2e/preference-model-update.e2e.test.mjs`
   - Builds feature vectors from real simulation logs, including `turn_taking_rate` and
