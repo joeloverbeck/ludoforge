@@ -17,13 +17,3 @@ export function pickDifferentValue(values, current, rng) {
   return candidates[Math.max(0, index)];
 }
 
-export function createUniqueId(existing, baseId) {
-  const safeBase = typeof baseId === "string" && baseId.length > 0 ? baseId : "action";
-  let candidate = `${safeBase}-variant`;
-  let counter = 2;
-  while (existing.has(candidate)) {
-    candidate = `${safeBase}-variant-${counter}`;
-    counter += 1;
-  }
-  return candidate;
-}

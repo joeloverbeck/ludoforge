@@ -1,5 +1,5 @@
-import { createUniqueId } from "../random.js";
 import { collectZoneTargets, collectTokenTypeTargets } from "../targets.js";
+import { generateSemanticId } from "../semantic-naming.js";
 
 const SCOPES = ["global", "per_player"];
 const ORDERS = ["ordered", "unordered"];
@@ -24,16 +24,17 @@ export const zoneAddMutation = {
     const tokenType = tokenTypes[tokenTypeIndex];
 
     const newZone = {
-      id: createUniqueId(existingZoneIds, "zone"),
       tokenType: tokenType.id,
       scope: SCOPES[rng.nextInt(SCOPES.length)],
       order: ORDERS[rng.nextInt(ORDERS.length)],
       visibility: VISIBILITIES[rng.nextInt(VISIBILITIES.length)],
     };
 
+    const newId = generateSemanticId("zone", newZone, existingZoneIds);
+
     definition.state = {
       ...definition.state,
-      zones: [...existingZones, newZone],
+      zones: [...existingZones, { ...newZone, id: newId }],
     };
 
     return { ...genome, definition };

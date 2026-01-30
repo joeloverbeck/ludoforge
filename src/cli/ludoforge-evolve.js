@@ -285,11 +285,6 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
 }
 
 async function main() {
-  const logger = createLogger({
-    level: process.env.LOG_LEVEL ?? "info",
-    pretty: false,
-  });
-
   try {
     const result = await runLudoforgeEvolve({ argv: process.argv });
     if (result?.help) {
@@ -298,7 +293,7 @@ async function main() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const parts = [message];
+    const parts = [`Error: ${message}`];
     if (error instanceof CLIError) {
       if (error.hint) {
         parts.push("", `Hint: ${error.hint}`);
@@ -307,7 +302,6 @@ async function main() {
         parts.push("", createUsage());
       }
     }
-    logger.error({ err: error }, parts[0]);
     process.stderr.write(`${parts.join("\n")}\n`);
     process.exitCode = 1;
   }

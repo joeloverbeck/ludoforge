@@ -156,6 +156,49 @@ export async function runEvolutionRunner(options) {
       mutationSelector.observe(telemetry);
     }
 
+    if (loopResult.nextGeneration.length === 0) {
+      haltedReason = {
+        generation,
+        cause: "population-extinction",
+        evaluated: loopResult.evaluated.length,
+        rejected: loopResult.rejected.length,
+      };
+
+      if (logger) {
+        logger.warn(haltedReason, "evolution halted: no viable genomes survived evaluation");
+      }
+
+      const health = computeHealthMetrics({
+        evaluated: loopResult.evaluated,
+        rejected: loopResult.rejected,
+        mapElites: loopResult.mapElites,
+        telemetry,
+      });
+
+      const preferenceModelSnapshots = snapshotProvider
+        ? snapshotProvider({ generation, runId, baseDir, loopResult, population: currentPopulation })
+        : [defaultPreferenceModelSnapshot({ runId, generation, seed })];
+
+      await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation,
+        population: currentPopulation.map((genome) => ({
+          id: genome.id,
+          definition: genome.definition,
+        })),
+        evaluated: loopResult.evaluated,
+        rejected: loopResult.rejected,
+        mapElites: serializeMapElites(loopResult.mapElites),
+        shortlist: loopResult.shortlist,
+        preferenceModelSnapshots,
+        operatorStats: serializeTelemetry(telemetry),
+        health,
+      });
+
+      break;
+    }
+
     const evolutionResult = applyEvolution(loopResult.nextGeneration, {
       rng: rng ?? undefined,
       mutationRate,

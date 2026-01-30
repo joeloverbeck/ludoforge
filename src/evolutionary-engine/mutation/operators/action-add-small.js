@@ -1,6 +1,7 @@
-import { createUniqueId, getRandomIndex } from "../random.js";
+import { getRandomIndex } from "../random.js";
 import { collectActionTargets } from "../targets.js";
 import { buildRandomEffect } from "../effect-helpers.js";
+import { generateSemanticId } from "../semantic-naming.js";
 
 export const actionAddSmallMutation = {
   name: "action-add-small",
@@ -17,8 +18,6 @@ export const actionAddSmallMutation = {
         .filter(Boolean),
     );
 
-    const newId = createUniqueId(existingIds, "action");
-
     const effect1 = buildRandomEffect(definition, rng);
     const effectCount = rng ? rng.nextInt(2) : Math.floor(Math.random() * 2);
     const effects = [effect1];
@@ -27,12 +26,13 @@ export const actionAddSmallMutation = {
     }
 
     const newAction = {
-      id: newId,
       actor: "player",
       effects,
     };
 
-    definition.actions = [...definition.actions, newAction];
+    const newId = generateSemanticId("action", newAction, existingIds);
+
+    definition.actions = [...definition.actions, { ...newAction, id: newId }];
 
     return { ...genome, definition };
   },

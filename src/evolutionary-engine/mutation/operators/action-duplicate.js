@@ -1,5 +1,6 @@
-import { createUniqueId, getRandomIndex } from "../random.js";
+import { getRandomIndex } from "../random.js";
 import { collectActionTargets } from "../targets.js";
+import { generateSemanticId } from "../semantic-naming.js";
 
 export const actionDuplicateMutation = {
   name: "action-duplicate",
@@ -20,7 +21,7 @@ export const actionDuplicateMutation = {
     );
     const target = targets[targetIndex];
     const cloned = structuredClone(target.action);
-    const nextId = createUniqueId(existingIds, cloned?.id);
+    const nextId = generateSemanticId("action", cloned, existingIds);
 
     definition.actions.splice(target.index + 1, 0, {
       ...cloned,

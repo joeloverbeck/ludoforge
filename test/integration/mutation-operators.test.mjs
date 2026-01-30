@@ -88,7 +88,7 @@ describe("mutation-operators", () => {
 
       assert.equal(afterActions.length, beforeActions.length + 1);
       assert.equal(afterActions[0].id, beforeActions[0].id);
-      assert.ok(afterActions[1].id.startsWith(`${beforeActions[0].id}-variant`));
+      assert.notEqual(afterActions[1].id, beforeActions[0].id);
       assert.equal(new Set(afterActions.map((action) => action.id)).size, afterActions.length);
     });
   });

@@ -1,5 +1,5 @@
-import { createUniqueId } from "../random.js";
 import { collectTokenTypeTargets, collectZoneTargets } from "../targets.js";
+import { generateSemanticId } from "../semantic-naming.js";
 
 const SCOPES = ["global", "per_player"];
 const ORDERS = ["ordered", "unordered"];
@@ -19,11 +19,9 @@ export const tokenTypeAddMutation = {
       existingZones.map((z) => z.id).filter((id) => typeof id === "string")
     );
 
-    const tokenTypeId = createUniqueId(existingTokenIds, "token");
     const attrMax = 2 + rng.nextInt(9);
 
     const newTokenType = {
-      id: tokenTypeId,
       attributes: [
         {
           id: "value",
@@ -34,18 +32,21 @@ export const tokenTypeAddMutation = {
       ],
     };
 
+    const tokenTypeId = generateSemanticId("token", newTokenType, existingTokenIds);
+
     const companionZone = {
-      id: createUniqueId(existingZoneIds, `${tokenTypeId}_zone`),
       tokenType: tokenTypeId,
       scope: SCOPES[rng.nextInt(SCOPES.length)],
       order: ORDERS[rng.nextInt(ORDERS.length)],
       visibility: VISIBILITIES[rng.nextInt(VISIBILITIES.length)],
     };
 
+    const companionZoneId = generateSemanticId("zone", companionZone, existingZoneIds);
+
     definition.state = {
       ...definition.state,
-      tokenTypes: [...existingTokenTypes, newTokenType],
-      zones: [...existingZones, companionZone],
+      tokenTypes: [...existingTokenTypes, { ...newTokenType, id: tokenTypeId }],
+      zones: [...existingZones, { ...companionZone, id: companionZoneId }],
     };
 
     return { ...genome, definition };

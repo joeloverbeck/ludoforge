@@ -1,5 +1,6 @@
-import { createUniqueId, getRandomIndex } from "../random.js";
+import { getRandomIndex } from "../random.js";
 import { collectTokenTypeTargets, collectZoneTargets } from "../targets.js";
+import { generateSemanticId } from "../semantic-naming.js";
 
 export const tokenTypeZoneTargetAddMutation = {
   name: "token-zone-target-add",
@@ -35,9 +36,19 @@ export const tokenTypeZoneTargetAddMutation = {
 
     const clonedTokenType = structuredClone(tokenTypes[tokenTypeIndex]);
     const clonedZone = structuredClone(zones[zoneIndex]);
-    const nextTokenTypeId = createUniqueId(existingTokenTypeIds, clonedTokenType?.id ?? "token");
-    const nextZoneId = createUniqueId(existingZoneIds, clonedZone?.id ?? "zone");
-    const nextTargetId = createUniqueId(existingTargetIds, "target");
+
+    const nextTokenTypeId = generateSemanticId("token", clonedTokenType, existingTokenTypeIds);
+    const nextZoneId = generateSemanticId("zone", clonedZone, existingZoneIds);
+
+    const newTarget = {
+      kind: "token",
+      selector: {
+        zone: nextZoneId,
+        tokenType: nextTokenTypeId,
+        count: 1,
+      },
+    };
+    const nextTargetId = generateSemanticId("target", newTarget, existingTargetIds);
 
     definition.state = {
       ...definition.state,
@@ -55,13 +66,8 @@ export const tokenTypeZoneTargetAddMutation = {
     const action = actions[actionIndex];
     const targets = Array.isArray(action?.targets) ? [...action.targets] : [];
     targets.push({
+      ...newTarget,
       id: nextTargetId,
-      kind: "token",
-      selector: {
-        zone: nextZoneId,
-        tokenType: nextTokenTypeId,
-        count: 1,
-      },
     });
     definition.actions[actionIndex] = {
       ...action,
