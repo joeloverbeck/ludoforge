@@ -26,6 +26,9 @@ import { triggerAddMutation } from "./mutation/operators/trigger-add.js";
 import { schedulerSwapMutation } from "./mutation/operators/scheduler-swap.js";
 import { schedulerParamTweakMutation } from "./mutation/operators/scheduler-param-tweak.js";
 import { conditionalEffectInsertMutation } from "./mutation/operators/conditional-effect-insert.js";
+import { turnOrderEffectInsertMutation } from "./mutation/operators/turn-order-effect-insert.js";
+import { chooseEffectInsertMutation } from "./mutation/operators/choose-effect-insert.js";
+import { workerCountTweakMutation } from "./mutation/operators/worker-count-tweak.js";
 
 export {
   defaultMutationOperators,
@@ -63,6 +66,9 @@ export {
   schedulerSwapMutation,
   schedulerParamTweakMutation,
   conditionalEffectInsertMutation,
+  turnOrderEffectInsertMutation,
+  chooseEffectInsertMutation,
+  workerCountTweakMutation,
 };
 
 export { WeightedSelector } from "./operator-selector.js";

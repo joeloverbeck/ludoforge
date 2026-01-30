@@ -32,6 +32,9 @@ import { triggerAddMutation } from "./operators/trigger-add.js";
 import { schedulerSwapMutation } from "./operators/scheduler-swap.js";
 import { schedulerParamTweakMutation } from "./operators/scheduler-param-tweak.js";
 import { conditionalEffectInsertMutation } from "./operators/conditional-effect-insert.js";
+import { turnOrderEffectInsertMutation } from "./operators/turn-order-effect-insert.js";
+import { chooseEffectInsertMutation } from "./operators/choose-effect-insert.js";
+import { workerCountTweakMutation } from "./operators/worker-count-tweak.js";
 
 const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
@@ -62,6 +65,9 @@ const ALL_MUTATION_OPERATORS = [
   schedulerSwapMutation,
   schedulerParamTweakMutation,
   conditionalEffectInsertMutation,
+  turnOrderEffectInsertMutation,
+  chooseEffectInsertMutation,
+  workerCountTweakMutation,
 ];
 
 export const defaultMutationOperators = filterOperatorsByEnabled(

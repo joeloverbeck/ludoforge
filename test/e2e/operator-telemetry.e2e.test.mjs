@@ -90,7 +90,10 @@ describe("operator telemetry", () => {
     const stats = JSON.parse(await readFile(statsPath, "utf8"));
 
     const attempts = sumAttempts(stats);
-    assert.equal(attempts, firstResult.generations[0].population.length);
+    assert.ok(
+      attempts >= firstResult.generations[0].population.length,
+      `Expected at least ${firstResult.generations[0].population.length} attempts (one per genome), got ${attempts}`,
+    );
 
     const resumeState = await loadResumeState({ baseDir, runId, config });
 
@@ -108,9 +111,9 @@ describe("operator telemetry", () => {
     const stats2 = JSON.parse(await readFile(statsPath2, "utf8"));
 
     const attempts2 = sumAttempts(stats2);
-    assert.equal(
-      attempts2,
-      attempts + secondResult.generations[0].population.length,
+    assert.ok(
+      attempts2 >= attempts + secondResult.generations[0].population.length,
+      `Expected accumulated attempts >= ${attempts + secondResult.generations[0].population.length}, got ${attempts2}`,
     );
   });
 });

@@ -17,6 +17,9 @@ import {
   tokenTypeRemoveMutation,
   zoneRemoveMutation,
   schedulerSwapMutation,
+  turnOrderEffectInsertMutation,
+  chooseEffectInsertMutation,
+  workerCountTweakMutation,
 } from "../../../src/evolutionary-engine/mutation.js";
 import { repairGenome } from "../../../src/evolutionary-engine/repair.js";
 import { createSeededRng } from "../../../src/simulation-engine/index.js";
@@ -585,6 +588,272 @@ describe("mutation", () => {
       assert.ok(repaired);
       assert.equal(repaired.definition.state.variables[0].initial, 10);
       assert.equal(repaired.definition.state.tokenTypes[0].attributes[1].initial, "red");
+    });
+  });
+
+  describe("turnOrderEffectInsertMutation", () => {
+    function makePerPlayerDefinition() {
+      const definition = cloneDefinition(baseDefinition);
+      definition.state.variables.push({
+        id: "bid",
+        scope: "per_player",
+        type: { kind: "int", min: 0, max: 100 },
+        initial: 0,
+      });
+      return definition;
+    }
+
+    it("creates an end_round trigger with set_turn_order effect", () => {
+      const definition = makePerPlayerDefinition();
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = turnOrderEffectInsertMutation.mutate(genome, rng);
+
+      const triggers = mutated.definition.triggers;
+      assert.ok(Array.isArray(triggers));
+      const endRound = triggers.find((t) => t.event === "end_round");
+      assert.ok(endRound, "should have an end_round trigger");
+      const sto = endRound.effects.find((e) => e.kind === "set_turn_order");
+      assert.ok(sto, "should have a set_turn_order effect");
+      assert.equal(sto.variable, "bid");
+      assert.ok(["asc", "desc"].includes(sto.direction));
+    });
+
+    it("appends to existing end_round trigger instead of creating a duplicate", () => {
+      const definition = makePerPlayerDefinition();
+      definition.triggers = [
+        { event: "end_round", effects: [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }] },
+      ];
+      const genome = { definition };
+      const rng = createSeededRng(2);
+
+      const mutated = turnOrderEffectInsertMutation.mutate(genome, rng);
+
+      const endRoundTriggers = mutated.definition.triggers.filter((t) => t.event === "end_round");
+      assert.equal(endRoundTriggers.length, 1, "should not duplicate end_round triggers");
+      assert.equal(endRoundTriggers[0].effects.length, 2, "should have original + new effect");
+      assert.equal(endRoundTriggers[0].effects[1].kind, "set_turn_order");
+    });
+
+    it("returns unchanged genome when no per-player int variables exist", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = turnOrderEffectInsertMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
+    it("is deterministic with seeded RNG", () => {
+      const definition = makePerPlayerDefinition();
+      const result1 = turnOrderEffectInsertMutation.mutate({ definition }, createSeededRng(42));
+      const result2 = turnOrderEffectInsertMutation.mutate(
+        { definition: cloneDefinition(definition) },
+        createSeededRng(42),
+      );
+
+      assert.deepStrictEqual(result1.definition.triggers, result2.definition.triggers);
+    });
+
+    it("does not mutate the input genome", () => {
+      const definition = makePerPlayerDefinition();
+      const genome = { definition };
+      const originalTriggers = structuredClone(definition.triggers);
+      turnOrderEffectInsertMutation.mutate(genome, createSeededRng(1));
+
+      assert.deepStrictEqual(genome.definition.triggers, originalTriggers);
+    });
+  });
+
+  describe("chooseEffectInsertMutation", () => {
+    it("wraps an effect in a choose block with two options", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = chooseEffectInsertMutation.mutate(genome, rng);
+
+      const effects = mutated.definition.actions[0].effects;
+      const chooseEffect = effects.find((e) => e.kind === "choose");
+      assert.ok(chooseEffect, "should have a choose effect");
+      assert.equal(chooseEffect.count, 1);
+      assert.ok(Array.isArray(chooseEffect.options));
+      assert.equal(chooseEffect.options.length, 2, "should have two options");
+      // First option should contain the original effect
+      assert.ok(Array.isArray(chooseEffect.options[0]));
+      assert.equal(chooseEffect.options[0].length, 1);
+      assert.equal(chooseEffect.options[0][0].kind, "inc");
+      // Second option should be a generated alternative
+      assert.ok(Array.isArray(chooseEffect.options[1]));
+      assert.equal(chooseEffect.options[1].length, 1);
+    });
+
+    it("returns unchanged genome when no action effects exist", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.actions[0].effects = [];
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = chooseEffectInsertMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition.actions[0].effects, []);
+    });
+
+    it("is deterministic with seeded RNG", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const result1 = chooseEffectInsertMutation.mutate({ definition }, createSeededRng(7));
+      const result2 = chooseEffectInsertMutation.mutate(
+        { definition: cloneDefinition(definition) },
+        createSeededRng(7),
+      );
+
+      assert.deepStrictEqual(result1.definition.actions, result2.definition.actions);
+    });
+
+    it("does not mutate the input genome", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const originalEffects = structuredClone(definition.actions[0].effects);
+      chooseEffectInsertMutation.mutate(genome, createSeededRng(1));
+
+      assert.deepStrictEqual(genome.definition.actions[0].effects, originalEffects);
+    });
+  });
+
+  describe("workerCountTweakMutation", () => {
+    function makeSpawnTriggerDefinition() {
+      const definition = cloneDefinition(baseDefinition);
+      definition.triggers = [
+        {
+          event: "start_round",
+          effects: [
+            {
+              kind: "spawn",
+              target: { kind: "token", id: "pawn" },
+              toZone: "board",
+              count: 3,
+            },
+          ],
+        },
+      ];
+      return definition;
+    }
+
+    function makeSpawnActionDefinition() {
+      const definition = cloneDefinition(baseDefinition);
+      definition.actions[0].effects = [
+        {
+          kind: "spawn",
+          target: { kind: "token", id: "pawn" },
+          toZone: "board",
+          count: 2,
+        },
+      ];
+      return definition;
+    }
+
+    it("adjusts spawn count in a trigger by ±1", () => {
+      const definition = makeSpawnTriggerDefinition();
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = workerCountTweakMutation.mutate(genome, rng);
+
+      const newCount = mutated.definition.triggers[0].effects[0].count;
+      assert.ok(newCount === 2 || newCount === 4, `expected 2 or 4, got ${newCount}`);
+    });
+
+    it("adjusts spawn count in an action effect by ±1", () => {
+      const definition = makeSpawnActionDefinition();
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = workerCountTweakMutation.mutate(genome, rng);
+
+      const newCount = mutated.definition.actions[0].effects[0].count;
+      assert.ok(newCount === 1 || newCount === 3, `expected 1 or 3, got ${newCount}`);
+    });
+
+    it("clamps spawn count to minimum of 1", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.triggers = [
+        {
+          event: "start_round",
+          effects: [
+            {
+              kind: "spawn",
+              target: { kind: "token", id: "pawn" },
+              toZone: "board",
+              count: 1,
+            },
+          ],
+        },
+      ];
+      const genome = { definition };
+      // Try multiple seeds — at least one should attempt -1 on count 1
+      let foundClamped = false;
+      for (let seed = 0; seed < 20; seed++) {
+        const mutated = workerCountTweakMutation.mutate(genome, createSeededRng(seed));
+        const count = mutated.definition.triggers[0].effects[0].count;
+        assert.ok(count >= 1, `count must be >= 1, got ${count}`);
+        if (count === 1) {
+          foundClamped = true;
+        }
+      }
+      assert.ok(foundClamped, "should clamp to 1 when delta is -1 on count 1");
+    });
+
+    it("returns unchanged genome when no spawn effects exist", () => {
+      const definition = cloneDefinition(baseDefinition);
+      // default baseDefinition has inc effects, not spawn
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = workerCountTweakMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
+    it("defaults count to 1 when spawn effect has no count field", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.actions[0].effects = [
+        {
+          kind: "spawn",
+          target: { kind: "token", id: "pawn" },
+          toZone: "board",
+          // no count field — defaults to 1
+        },
+      ];
+      const genome = { definition };
+      const rng = createSeededRng(1);
+
+      const mutated = workerCountTweakMutation.mutate(genome, rng);
+
+      const newCount = mutated.definition.actions[0].effects[0].count;
+      assert.ok(newCount >= 1, `expected >= 1, got ${newCount}`);
+      assert.ok(newCount <= 2, `expected <= 2, got ${newCount}`);
+    });
+
+    it("is deterministic with seeded RNG", () => {
+      const definition = makeSpawnTriggerDefinition();
+      const result1 = workerCountTweakMutation.mutate({ definition }, createSeededRng(5));
+      const result2 = workerCountTweakMutation.mutate(
+        { definition: cloneDefinition(definition) },
+        createSeededRng(5),
+      );
+
+      assert.deepStrictEqual(result1.definition.triggers, result2.definition.triggers);
+    });
+
+    it("does not mutate the input genome", () => {
+      const definition = makeSpawnTriggerDefinition();
+      const genome = { definition };
+      const originalCount = definition.triggers[0].effects[0].count;
+      workerCountTweakMutation.mutate(genome, createSeededRng(1));
+
+      assert.equal(genome.definition.triggers[0].effects[0].count, originalCount);
     });
   });
 

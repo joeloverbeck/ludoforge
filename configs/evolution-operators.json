@@ -30,7 +30,10 @@
       "trigger-add",
       "scheduler-swap",
       "scheduler-param-tweak",
-      "conditional-effect-insert"
+      "conditional-effect-insert",
+      "turn-order-effect-insert",
+      "choose-effect-insert",
+      "worker-count-tweak"
     ],
     "weights": {
       "numeric-tweak": 3,
@@ -60,7 +63,10 @@
       "trigger-add": 3,
       "scheduler-swap": 1,
       "scheduler-param-tweak": 1.5,
-      "conditional-effect-insert": 1.5
+      "conditional-effect-insert": 1.5,
+      "turn-order-effect-insert": 1.5,
+      "choose-effect-insert": 1.5,
+      "worker-count-tweak": 2
     }
   },
   "crossover": {

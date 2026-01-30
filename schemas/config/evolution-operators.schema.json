@@ -43,7 +43,10 @@
         "trigger-add",
         "scheduler-swap",
         "scheduler-param-tweak",
-        "conditional-effect-insert"
+        "conditional-effect-insert",
+        "turn-order-effect-insert",
+        "choose-effect-insert",
+        "worker-count-tweak"
       ]
     },
     "CrossoverOperatorKind": {

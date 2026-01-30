@@ -6,6 +6,7 @@ import {
   buildVariableIndex,
   evaluateExpr,
 } from "../../src/game-kernel/effects.js";
+import { createSeededRng } from "./helpers/seeded-rng.mjs";
 
 // ---------------------------------------------------------------------------
 // Shared fixture helpers
@@ -434,6 +435,220 @@ describe("game-kernel effects integration", () => {
 
       // Guard should now fail (score != 10)
       assert.equal(evaluateExpr(guard, ctx), false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Suite 6 — Compound effects with cross-module interaction
+  // ---------------------------------------------------------------------------
+
+  describe("compound effects with cross-module interaction", () => {
+    it("conditional + variable mutation: then-branch increments hp when score > 5", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const ctx = makeContext(state, def, 1);
+
+      const result = applyEffect(
+        state,
+        {
+          kind: "conditional",
+          condition: {
+            kind: "cmp",
+            left: { kind: "ref", ref: { kind: "var", id: "score" } },
+            right: { kind: "value", value: 5 },
+            op: ">",
+          },
+          then: [{ kind: "inc", target: { kind: "var", id: "hp" }, amount: 2 }],
+          else: [],
+        },
+        ctx
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.appliedEffect.conditionMet, true);
+      assert.equal(state.variables.perPlayer[1].hp, 17); // 15 + 2
+    });
+
+    it("conditional else branch + token spawn: condition false spawns token", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const ctx = makeContext(state, def, 1);
+
+      const result = applyEffect(
+        state,
+        {
+          kind: "conditional",
+          condition: {
+            kind: "cmp",
+            left: { kind: "ref", ref: { kind: "var", id: "score" } },
+            right: { kind: "value", value: 999 },
+            op: ">",
+          },
+          then: [{ kind: "inc", target: { kind: "var", id: "hp" }, amount: 100 }],
+          else: [
+            { kind: "spawn", target: { kind: "token", id: "pawn" }, toZone: "board" },
+          ],
+        },
+        ctx
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.appliedEffect.conditionMet, false);
+      // Token was spawned in else branch
+      const tokenIds = Object.keys(state.tokens);
+      assert.equal(tokenIds.length, 1);
+      assert.equal(state.zones.board.tokens.length, 1);
+      // hp unchanged — then-branch was not taken
+      assert.equal(state.variables.perPlayer[1].hp, 15);
+    });
+
+    it("choose + seeded RNG + variable effects: deterministic selection", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const rng = createSeededRng(42);
+      const ctx = { ...makeContext(state, def, 1), rng };
+
+      const result = applyEffect(
+        state,
+        {
+          kind: "choose",
+          count: 1,
+          options: [
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 10 }],
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 20 }],
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 30 }],
+          ],
+        },
+        ctx
+      );
+      assert.equal(result.ok, true);
+      // One option was selected, score changed from 10 by one of 10/20/30
+      const score = state.variables.global.score;
+      assert.ok(
+        score === 20 || score === 30 || score === 40,
+        `Expected score in {20,30,40}, got ${score}`
+      );
+
+      // Run same seed again to verify determinism
+      const state2 = createInitialState(def);
+      const rng2 = createSeededRng(42);
+      const ctx2 = { ...makeContext(state2, def, 1), rng: rng2 };
+      applyEffect(
+        state2,
+        {
+          kind: "choose",
+          count: 1,
+          options: [
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 10 }],
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 20 }],
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 30 }],
+          ],
+        },
+        ctx2
+      );
+      assert.equal(state2.variables.global.score, score); // same result
+    });
+
+    it("choose nested inside repeat: cumulative state changes", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const rng = createSeededRng(7);
+      const ctx = { ...makeContext(state, def, 1), rng };
+
+      const result = applyEffect(
+        state,
+        {
+          kind: "repeat",
+          count: 2,
+          effects: [
+            {
+              kind: "choose",
+              count: 1,
+              options: [
+                [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 5 }],
+                [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 10 }],
+              ],
+            },
+          ],
+        },
+        ctx
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.appliedEffect.kind, "repeat");
+      // Score started at 10, two choose iterations each adding 5 or 10
+      const score = state.variables.global.score;
+      assert.ok(score >= 20 && score <= 30, `Expected score in [20,30], got ${score}`);
+    });
+
+    it("shuffle after token spawns: all tokens preserved", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const rng = createSeededRng(99);
+      const ctx = { ...makeContext(state, def, 1), rng };
+
+      // Spawn 3 tokens into board zone
+      for (let i = 0; i < 3; i += 1) {
+        applyEffect(
+          state,
+          { kind: "spawn", target: { kind: "token", id: "pawn" }, toZone: "board" },
+          ctx
+        );
+      }
+      const tokensBefore = [...state.zones.board.tokens];
+      assert.equal(tokensBefore.length, 3);
+
+      // Shuffle
+      const result = applyEffect(
+        state,
+        { kind: "shuffle", target: { kind: "zone", id: "board" } },
+        ctx
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.appliedEffect.kind, "shuffle");
+
+      // All tokens still present (order may or may not differ)
+      const tokensAfter = state.zones.board.tokens;
+      assert.equal(tokensAfter.length, 3);
+      for (const tid of tokensBefore) {
+        assert.ok(tokensAfter.includes(tid), `Token ${tid} missing after shuffle`);
+      }
+    });
+
+    it("set_turn_order after variable mutations: order reflects variable values", () => {
+      const def = definitionWithVarsAndZones();
+      const state = createInitialState(def);
+      const ctx1 = makeContext(state, def, 1);
+      const ctx2 = makeContext(state, def, 2);
+
+      // Set player 1 hp to 5, player 2 hp to 18
+      applyEffect(
+        state,
+        { kind: "set", target: { kind: "var", id: "hp" }, value: 5 },
+        ctx1
+      );
+      applyEffect(
+        state,
+        { kind: "set", target: { kind: "var", id: "hp" }, value: 18 },
+        ctx2
+      );
+      assert.equal(state.variables.perPlayer[1].hp, 5);
+      assert.equal(state.variables.perPlayer[2].hp, 18);
+
+      // set_turn_order descending by hp → player 2 first (18 > 5)
+      const result = applyEffect(
+        state,
+        { kind: "set_turn_order", variable: "hp", direction: "desc" },
+        ctx1
+      );
+      assert.equal(result.ok, true);
+      assert.deepEqual(state.turn.turnOrder, [2, 1]);
+
+      // set_turn_order ascending by hp → player 1 first (5 < 18)
+      const result2 = applyEffect(
+        state,
+        { kind: "set_turn_order", variable: "hp", direction: "asc" },
+        ctx1
+      );
+      assert.equal(result2.ok, true);
+      assert.deepEqual(state.turn.turnOrder, [1, 2]);
     });
   });
 });
