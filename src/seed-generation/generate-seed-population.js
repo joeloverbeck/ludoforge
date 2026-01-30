@@ -7,6 +7,8 @@
 import { createSeededRng } from "../simulation-engine/rng.js";
 import { generateGameDefinition } from "./grammar-generator.js";
 import { createGenomeId } from "../evolutionary-engine/serialization.js";
+import { validateGameDefinition } from "../dsl/validate.js";
+import { validateSemanticDefinition } from "../dsl/semantic.js";
 import {
   getDescriptorCoordinates,
   getNicheId,
@@ -83,10 +85,27 @@ export function generateSeedPopulation({
       continue;
     }
 
+    // Schema validation
+    const schemaResult = validateGameDefinition(definition);
+    if (!schemaResult.valid) {
+      rejectedByReason["invalid-definition"] =
+        (rejectedByReason["invalid-definition"] ?? 0) + 1;
+      continue;
+    }
+
+    // Semantic validation — errors reject, warnings tolerated
+    const semanticResult = validateSemanticDefinition(definition);
+    if (!semanticResult.valid) {
+      rejectedByReason["semantic-invalid"] =
+        (rejectedByReason["semantic-invalid"] ?? 0) + 1;
+      continue;
+    }
+
     let id;
     try {
       id = createGenomeId(definition);
     } catch {
+      // Safety net: should not trigger since we pre-validated
       rejectedByReason["invalid-definition"] =
         (rejectedByReason["invalid-definition"] ?? 0) + 1;
       continue;

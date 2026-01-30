@@ -119,6 +119,20 @@ export function createEvaluator(options = {}) {
     // Step 10: Assemble feature vector
     const { vector: featureVector, nonFiniteKeys } = assembleFeatureVector(allMetrics, degeneracyReport);
 
+    // Step 10b: Inject structural complexity descriptor
+    const tokenTypeCount = Array.isArray(definition.state?.tokenTypes) ? definition.state.tokenTypes.length : 0;
+    const zoneCount = Array.isArray(definition.state?.zones) ? definition.state.zones.length : 0;
+    const triggerCount = Array.isArray(definition.triggers) ? definition.triggers.length : 0;
+    const effectKinds = new Set();
+    for (const action of definition.actions ?? []) {
+      for (const effect of action.effects ?? []) {
+        if (typeof effect.kind === "string") {
+          effectKinds.add(effect.kind);
+        }
+      }
+    }
+    featureVector.structural_complexity = tokenTypeCount + zoneCount + triggerCount + effectKinds.size;
+
     // Step 11: Compute fitness
     const fitnessResult = computePreferenceAwareFitness(featureVector, {
       ...fitnessOptions,

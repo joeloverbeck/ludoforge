@@ -39,7 +39,8 @@
             "variety",
             "pacing_tension",
             "turn_taking_rate",
-            "interaction_rate"
+            "interaction_rate",
+            "structural_complexity"
           ]
         },
         "min": {

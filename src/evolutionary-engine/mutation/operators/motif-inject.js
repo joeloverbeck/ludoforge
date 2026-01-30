@@ -45,4 +45,19 @@ export function createMotifInjectMutation(motifEffects) {
   };
 }
 
-export const motifInjectMutation = createMotifInjectMutation([]);
+const DEFAULT_MOTIFS = [
+  [
+    { kind: "dec", target: { kind: "var", id: "var_0" }, amount: 1 },
+    { kind: "inc", target: { kind: "var", id: "var_0" }, amount: 2 },
+  ],
+  [
+    { kind: "set", target: { kind: "var", id: "var_0" }, value: 0 },
+    { kind: "inc", target: { kind: "var", id: "var_0" }, amount: 3 },
+  ],
+  [
+    { kind: "inc", target: { kind: "var", id: "var_0" }, amount: 1 },
+    { kind: "dec", target: { kind: "var", id: "var_0" }, amount: 1 },
+  ],
+];
+
+export const motifInjectMutation = createMotifInjectMutation(DEFAULT_MOTIFS);

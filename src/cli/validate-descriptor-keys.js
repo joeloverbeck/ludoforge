@@ -1,4 +1,4 @@
-import { DEFAULT_FEATURE_ORDER } from "../evaluation-analytics/feature-vector.js";
+import { METRIC_IDS } from "../evaluation-analytics/metric-ids.js";
 
 /**
  * Validates that all descriptor IDs from the MAP-Elites config are
@@ -10,7 +10,7 @@ import { DEFAULT_FEATURE_ORDER } from "../evaluation-analytics/feature-vector.js
  */
 export function validateDescriptorKeys(
   descriptorIds,
-  availableMetrics = DEFAULT_FEATURE_ORDER,
+  availableMetrics = METRIC_IDS,
 ) {
   const known = new Set(availableMetrics);
   const unknownIds = descriptorIds.filter((id) => !known.has(id));

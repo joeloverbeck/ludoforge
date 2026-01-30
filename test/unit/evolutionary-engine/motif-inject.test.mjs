@@ -9,14 +9,15 @@ function cloneDefinition(definition) {
 }
 
 describe("motifInjectMutation", () => {
-  it("is a no-op with default empty motifs", () => {
+  it("injects default motifs into an action", () => {
     const definition = cloneDefinition(baseDefinition);
     const genome = { definition };
     const rng = createSeededRng(1);
 
     const mutated = motifInjectMutation.mutate(genome, rng);
 
-    assert.equal(mutated.definition.actions[0].effects.length, 1);
+    // Default motifs are now populated, so effects should grow
+    assert.ok(mutated.definition.actions[0].effects.length > 1);
   });
 
   it("has the correct operator name", () => {

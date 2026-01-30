@@ -36,7 +36,10 @@
         "effect-kind-swap",
         "effect-reorder",
         "action-add-small",
-        "motif-inject"
+        "motif-inject",
+        "zone-add",
+        "token-type-add",
+        "trigger-add"
       ]
     },
     "CrossoverOperatorKind": {

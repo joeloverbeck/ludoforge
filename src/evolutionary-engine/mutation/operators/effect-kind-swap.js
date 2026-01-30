@@ -1,6 +1,6 @@
 import { getRandomIndex, pickDifferentValue } from "../random.js";
 import { collectActionEffectTargets } from "../targets.js";
-import { EFFECT_KINDS, buildEffectProps } from "../effect-helpers.js";
+import { EFFECT_KINDS, buildRefForKind, buildEffectProps } from "../effect-helpers.js";
 
 export const effectKindSwapMutation = {
   name: "effect-kind-swap",
@@ -29,12 +29,16 @@ export const effectKindSwapMutation = {
       return { ...genome, definition };
     }
 
-    const existingTarget = target.effect.target;
+    const newTarget = buildRefForKind(newKind, definition, rng);
+    if (newTarget === null) {
+      return { ...genome, definition };
+    }
+
     const props = buildEffectProps(newKind, definition, rng);
 
     effects[target.effectIndex] = {
       kind: newKind,
-      target: existingTarget,
+      target: newTarget,
       ...props,
     };
 

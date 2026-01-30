@@ -152,6 +152,55 @@ export function andExpr(left, right) {
   return { kind: "and", left, right };
 }
 
+// --- Token/Zone/Trigger builders ---
+
+/**
+ * @param {{ rng: { next(): number, nextInt(n: number): number }, id: string }} opts
+ */
+export function generateTokenType({ rng, id }) {
+  const attrMax = pickInt(rng, 2, 10);
+  return {
+    id,
+    attributes: [
+      {
+        id: "value",
+        scope: "global",
+        type: { kind: "int", min: 0, max: attrMax },
+        initial: 0,
+      },
+    ],
+  };
+}
+
+const ZONE_SCOPES = ["global", "per_player"];
+const ZONE_ORDERS = ["ordered", "unordered"];
+const ZONE_VISIBILITIES = ["public", "private"];
+
+/**
+ * @param {{ rng: { next(): number, nextInt(n: number): number }, id: string, tokenTypeId: string }} opts
+ */
+export function generateZone({ rng, id, tokenTypeId }) {
+  return {
+    id,
+    tokenType: tokenTypeId,
+    scope: pickFrom(rng, ZONE_SCOPES),
+    order: pickFrom(rng, ZONE_ORDERS),
+    visibility: pickFrom(rng, ZONE_VISIBILITIES),
+  };
+}
+
+const TRIGGER_EVENTS = ["start_turn", "end_turn", "after_action"];
+
+/**
+ * @param {{ rng: { next(): number, nextInt(n: number): number }, variables: Array<{ id: string }> }} opts
+ */
+export function generateTrigger({ rng, variables }) {
+  const event = pickFrom(rng, TRIGGER_EVENTS);
+  const targetVar = pickFrom(rng, variables);
+  const effect = incEffect(targetVar.id, pickInt(rng, 1, 2));
+  return { event, effects: [effect] };
+}
+
 /**
  * @param {{ variableId: string, variableDef: object }} opts
  */

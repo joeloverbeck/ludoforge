@@ -1,12 +1,18 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-28T00:00:00Z",
+  "updatedAt": "2026-01-30T00:00:00Z",
   "descriptors": [
     {
       "id": "agency",
       "min": 0,
       "max": 1,
       "bins": 2
+    },
+    {
+      "id": "structural_complexity",
+      "min": 0,
+      "max": 15,
+      "bins": 3
     }
   ],
   "fitnessKey": null,

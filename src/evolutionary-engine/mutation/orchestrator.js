@@ -25,6 +25,9 @@ import { effectKindSwapMutation } from "./operators/effect-kind-swap.js";
 import { effectReorderMutation } from "./operators/effect-reorder.js";
 import { actionAddSmallMutation } from "./operators/action-add-small.js";
 import { motifInjectMutation } from "./operators/motif-inject.js";
+import { zoneAddMutation } from "./operators/zone-add.js";
+import { tokenTypeAddMutation } from "./operators/token-type-add.js";
+import { triggerAddMutation } from "./operators/trigger-add.js";
 
 const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
@@ -48,6 +51,9 @@ const ALL_MUTATION_OPERATORS = [
   effectReorderMutation,
   actionAddSmallMutation,
   motifInjectMutation,
+  zoneAddMutation,
+  tokenTypeAddMutation,
+  triggerAddMutation,
 ];
 
 export const defaultMutationOperators = filterOperatorsByEnabled(

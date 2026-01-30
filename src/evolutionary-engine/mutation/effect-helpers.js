@@ -54,17 +54,7 @@ export function buildRefForKind(kind, definition, rng) {
     return { kind: "player", id: "self" };
   }
 
-  if (variables.length > 0) {
-    return { kind: "var", id: variables[0].id };
-  }
-  if (tokenTypes.length > 0) {
-    return { kind: "token", id: tokenTypes[0].id };
-  }
-  if (zones.length > 0) {
-    return { kind: "zone", id: zones[0].id };
-  }
-
-  return { kind: "var", id: "unknown" };
+  return null;
 }
 
 export function buildEffectProps(kind, definition, rng) {
@@ -120,18 +110,26 @@ export function buildEffectProps(kind, definition, rng) {
   }
 }
 
+/**
+ * Kinds that can fall back to when the preferred kind has no valid target.
+ */
+const VARIABLE_KINDS = ["set", "inc", "dec"];
+
 export function buildRandomEffect(definition, rng) {
   const kindIndex = getRandomIndex(EFFECT_KINDS.length, rng);
-  const kind = EFFECT_KINDS[Math.max(0, kindIndex)];
+  let kind = EFFECT_KINDS[Math.max(0, kindIndex)];
   if (kind === "repeat") {
-    const target = buildRefForKind("move", definition, rng);
     const props = buildEffectProps(kind, definition, rng);
     return { kind, ...props };
   }
-  const target = buildRefForKind(kind, definition, rng);
-  const props = buildEffectProps(kind, definition, rng);
-  if (kind === "move_spatial") {
-    return { kind, target, ...props };
+  let target = buildRefForKind(kind, definition, rng);
+  if (target === null) {
+    kind = VARIABLE_KINDS[getRandomIndex(VARIABLE_KINDS.length, rng)] ?? "inc";
+    target = buildRefForKind(kind, definition, rng);
+    if (target === null) {
+      return { kind: "inc", target: { kind: "var", id: "unknown" }, amount: 1 };
+    }
   }
+  const props = buildEffectProps(kind, definition, rng);
   return { kind, target, ...props };
 }

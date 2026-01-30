@@ -60,8 +60,15 @@ otherwise it falls back to `configs/simulation.json`.
    handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
    (`move_spatial`), repeat wrappers (`repeat`), and scoped flags (`set_flag`).
+   Failed effects are **skipped** rather than throwing — `applyAction` collects
+   skipped effects with their reason and source (`"cost"` or `"effect"`) and
+   returns them alongside applied effects. This allows structurally complex
+   genomes to survive evaluation even when some effects target non-existent
+   structures.
 10. Clear action-scoped flags (`clearFlags(state, "action")`).
-11. Apply after-action triggers (`applyTriggers`).
+11. Apply after-action triggers (`applyAfterActionTriggers`). If a trigger
+    fails, it is recorded as a `skippedTrigger` rather than throwing, and
+    successfully applied trigger effects are still returned.
 12. Record state update in the event stream.
 13. Persist the step snapshot (turn, phase, player, action, legalActionCount).
 

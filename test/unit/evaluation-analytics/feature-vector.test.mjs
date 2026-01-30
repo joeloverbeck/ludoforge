@@ -7,6 +7,7 @@ import {
   DEFAULT_FEATURE_ORDER,
   assembleFeatureVector,
 } from "../../../src/evaluation-analytics/feature-vector.js";
+import { METRIC_IDS } from "../../../src/evaluation-analytics/metric-ids.js";
 
 async function readJson(relativePath) {
   const fileUrl = new URL(relativePath, import.meta.url);
@@ -21,16 +22,8 @@ describe("feature-vector", () => {
       assert.deepEqual(DEFAULT_FEATURE_ORDER, config.featureOrder);
     });
 
-    it("matches the expected metric ordering", () => {
-      assert.deepEqual(DEFAULT_FEATURE_ORDER, [
-        "agency",
-        "strategic_depth",
-        "seat_imbalance",
-        "variety",
-        "pacing_tension",
-        "turn_taking_rate",
-        "interaction_rate",
-      ]);
+    it("matches the canonical metric-ids list", () => {
+      assert.deepEqual(DEFAULT_FEATURE_ORDER, [...METRIC_IDS]);
     });
   });
 

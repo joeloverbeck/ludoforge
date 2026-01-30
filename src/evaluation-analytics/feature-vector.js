@@ -1,4 +1,5 @@
 import { loadConfigFile } from "../config/loader.js";
+import { METRIC_IDS } from "./metric-ids.js";
 
 function formatValidationErrors(errors) {
   if (!Array.isArray(errors) || errors.length === 0) {
@@ -36,15 +37,7 @@ async function loadDefaultDegeneracyConfig() {
 const DEFAULT_METRICS_CORE_CONFIG = await loadDefaultMetricsCoreConfig();
 const DEFAULT_DEGENERACY_CONFIG = await loadDefaultDegeneracyConfig();
 
-const FALLBACK_FEATURE_ORDER = [
-  "agency",
-  "strategic_depth",
-  "seat_imbalance",
-  "variety",
-  "pacing_tension",
-  "turn_taking_rate",
-  "interaction_rate",
-];
+const FALLBACK_FEATURE_ORDER = [...METRIC_IDS];
 
 const FALLBACK_DEGENERACY_ORDER = [
   "loop",

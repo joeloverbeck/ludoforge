@@ -6,6 +6,14 @@
     "shortlistSize": 8,
     "saveEvery": 5
   },
+  "evolution": {
+    "mutation": {
+      "rate": 1.0
+    },
+    "crossover": {
+      "rate": 0.15
+    }
+  },
   "mapElites": {
     "descriptors": [
       {
@@ -31,6 +39,12 @@
         "min": 0,
         "max": 50,
         "bins": 5
+      },
+      {
+        "id": "structural_complexity",
+        "min": 0,
+        "max": 15,
+        "bins": 3
       }
     ],
     "tieBreak": "replace"

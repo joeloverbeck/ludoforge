@@ -31,10 +31,12 @@ export function applyAction(definition, state, action, context) {
   });
   const effectContext = { state, ...context, variableIndex, bindings, definition };
   const appliedEffects = [];
+  const skippedEffects = [];
   for (const effect of action.costs ?? []) {
     const result = applyEffect(state, effect, effectContext);
     if (!result.ok) {
-      throw new Error(`Action cost failed: ${result.reason ?? "unknown"}`);
+      skippedEffects.push({ effect, reason: result.reason ?? "unknown", source: "cost" });
+      continue;
     }
     if (result.appliedEffect) {
       appliedEffects.push({ ...result.appliedEffect, source: "cost" });
@@ -43,14 +45,15 @@ export function applyAction(definition, state, action, context) {
   for (const effect of action.effects ?? []) {
     const result = applyEffect(state, effect, effectContext);
     if (!result.ok) {
-      throw new Error(`Action effect failed: ${result.reason ?? "unknown"}`);
+      skippedEffects.push({ effect, reason: result.reason ?? "unknown", source: "effect" });
+      continue;
     }
     if (result.appliedEffect) {
       appliedEffects.push({ ...result.appliedEffect, source: "effect" });
     }
   }
   clearFlags(state, "action");
-  return { appliedEffects };
+  return { appliedEffects, skippedEffects };
 }
 
 /**
@@ -62,7 +65,10 @@ export function applyAction(definition, state, action, context) {
 export function applyAfterActionTriggers(definition, state, context) {
   const result = applyTriggers(definition, state, "after_action", context);
   if (!result.ok) {
-    throw new Error(`After-action triggers failed: ${result.reason ?? "unknown"}`);
+    return {
+      appliedEffects: result.appliedEffects ?? [],
+      skippedTrigger: { reason: result.reason ?? "unknown" },
+    };
   }
   return { appliedEffects: result.appliedEffects ?? [] };
 }

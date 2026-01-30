@@ -241,6 +241,7 @@ passes it to the runner as `options.evaluation`.
 8. **Concatenate metrics** — `[...coreMetrics, ...extendedMetrics]`.
 9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
 10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.
+10b. **Inject structural complexity** — computes `structural_complexity = tokenTypeCount + zoneCount + triggerCount + distinctEffectKinds` from the game definition and injects it into the feature vector. This provides a structural diversity axis for MAP-Elites that is independent of behavioral simulation metrics.
 11. **Compute fitness** — `computePreferenceAwareFitness(vector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
 12. **Extract descriptors** — for each `descriptorKey`, if the key is in `nonFiniteKeys` the descriptor value is `null` (maps to `"unknown"` bin token); otherwise use the numeric value from `vector`.
 13. **Return** — `{ fitness, descriptors, diagnostics }`.

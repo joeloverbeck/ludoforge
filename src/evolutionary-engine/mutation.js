@@ -19,6 +19,9 @@ import { effectKindSwapMutation } from "./mutation/operators/effect-kind-swap.js
 import { effectReorderMutation } from "./mutation/operators/effect-reorder.js";
 import { actionAddSmallMutation } from "./mutation/operators/action-add-small.js";
 import { motifInjectMutation, createMotifInjectMutation } from "./mutation/operators/motif-inject.js";
+import { zoneAddMutation } from "./mutation/operators/zone-add.js";
+import { tokenTypeAddMutation } from "./mutation/operators/token-type-add.js";
+import { triggerAddMutation } from "./mutation/operators/trigger-add.js";
 
 export {
   defaultMutationOperators,
@@ -49,6 +52,9 @@ export {
   actionAddSmallMutation,
   motifInjectMutation,
   createMotifInjectMutation,
+  zoneAddMutation,
+  tokenTypeAddMutation,
+  triggerAddMutation,
 };
 
 export { WeightedSelector } from "./operator-selector.js";

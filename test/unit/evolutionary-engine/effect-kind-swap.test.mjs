@@ -23,15 +23,17 @@ describe("effectKindSwapMutation", () => {
     assert.notEqual(newKind, originalKind);
   });
 
-  it("preserves the existing target ref", () => {
+  it("builds a target ref appropriate for the new kind", () => {
     const definition = cloneDefinition(baseDefinition);
     const genome = { definition };
     const rng = createSeededRng(2);
-    const originalTarget = structuredClone(definition.actions[0].effects[0].target);
 
     const mutated = effectKindSwapMutation.mutate(genome, rng);
+    const effect = mutated.definition.actions[0].effects[0];
 
-    assert.deepStrictEqual(mutated.definition.actions[0].effects[0].target, originalTarget);
+    // The target should exist and be an object with a kind property
+    assert.ok(effect.target);
+    assert.equal(typeof effect.target.kind, "string");
   });
 
   it("does not mutate the input genome", () => {

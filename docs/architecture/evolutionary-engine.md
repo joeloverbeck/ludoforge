@@ -25,7 +25,7 @@ Implemented in `src/evolutionary-engine/map-elites.js`.
 
 Descriptor `id` values must be one of the known metric names:
 `agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
-`turn_taking_rate`, `interaction_rate`. This is enforced at two levels:
+`turn_taking_rate`, `interaction_rate`, `structural_complexity`. This is enforced at two levels:
 
 1. **Schema**: `MapElitesDescriptorConfig.id` is an `enum` in both
    `schemas/evolution-runner/runner-config.schema.json` and
@@ -112,10 +112,13 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `effect-insert`: appends a random atomic effect to a random action's effects list.
 - `effect-delete`: removes one effect from a random action with >=2 effects.
 - `effect-param-tweak`: nudges a numeric effect parameter (`amount` or `value`) by +/-1.
-- `effect-kind-swap`: replaces an effect's kind with a different valid kind and rebuilds its properties.
+- `effect-kind-swap`: replaces an effect's kind with a different valid kind, builds a new target appropriate for the new kind via `buildRefForKind`, and rebuilds its properties. Returns the genome unchanged if no valid target exists for the new kind.
 - `effect-reorder`: swaps two effects within a random action's effects list.
 - `action-add-small`: creates a new action with 1-2 random effects and a unique id.
-- `motif-inject`: inserts a mined motif effect sequence into a random action (requires motif mining enabled).
+- `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns); can also use mined motifs when motif mining is enabled.
+- `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
+- `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
+- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
 
 ### Operator Selection
 
@@ -138,7 +141,9 @@ Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
   target and properties drawn from the game definition.
 - `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
   the given effect kind (variable for set/inc/dec, token for move/spawn/destroy/
-  move_spatial/set_flag, zone for reveal/hide).
+  move_spatial/set_flag, zone for reveal/hide). Returns `null` when the required
+  structures are absent (e.g., no token types for a `move` kind), allowing callers
+  to re-roll or skip the mutation.
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
   `{ amount: 1 }` for inc/dec, `{ toZone }` for move/spawn, `{ zone, toNode }` for
   move_spatial, `{ flag, duration }` for set_flag, `{ count, effects }` for repeat).

@@ -23,10 +23,13 @@
       "effect-kind-swap",
       "effect-reorder",
       "action-add-small",
-      "motif-inject"
+      "motif-inject",
+      "zone-add",
+      "token-type-add",
+      "trigger-add"
     ],
     "weights": {
-      "numeric-tweak": 5,
+      "numeric-tweak": 3,
       "boolean-toggle": 3,
       "enum-cycle": 3,
       "action-duplicate": 2,
@@ -42,11 +45,14 @@
       "zone-remove": 0.5,
       "effect-insert": 2,
       "effect-delete": 1,
-      "effect-param-tweak": 4,
+      "effect-param-tweak": 3,
       "effect-kind-swap": 2,
       "effect-reorder": 2,
       "action-add-small": 2,
-      "motif-inject": 2
+      "motif-inject": 2,
+      "zone-add": 3,
+      "token-type-add": 3,
+      "trigger-add": 3
     }
   },
   "crossover": {

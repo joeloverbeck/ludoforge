@@ -122,7 +122,7 @@ Seeding mode is configured via the `seeding` block in the runner config
 
 | Mode | Description |
 |------|-------------|
-| `generate` | Grammar-based generation with descriptor-aware coverage targeting. The core `src/seed-generation/` module produces schema-valid definitions and bins them against MAP-Elites descriptors to fill niches. |
+| `generate` | Grammar-based generation with descriptor-aware coverage targeting. The core `src/seed-generation/` module produces schema-valid definitions and bins them against MAP-Elites descriptors to fill niches. Generated seeds include variables, actions with effects, and optionally token types (with companion zones) and triggers — controlled by `grammar.limits` (`minTokenTypes`, `maxTokenTypes`, `minTriggers`, `maxTriggers`). |
 | `folder` | Load user-provided game definitions from a directory on disk. Each JSON file contains a single DSL game definition (not a Genome wrapper). The runner assigns deterministic genome IDs via content hashing. |
 | `mixed` | Load folder seeds first (up to `mix.folderFraction` of `populationSize`), then fill the remainder with the generator. |
 

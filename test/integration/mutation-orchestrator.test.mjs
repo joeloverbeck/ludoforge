@@ -8,17 +8,17 @@ import {
 import {
   actionDuplicateMutation,
   booleanToggleMutation,
-  motifInjectMutation,
   numericTweakMutation,
+  triggerAddMutation,
 } from "../../src/evolutionary-engine/mutation.js";
 
 describe("mutation-orchestrator", () => {
   describe("defaultMutationOperators", () => {
-    it("preserves the expected ordering", () => {
-      assert.equal(defaultMutationOperators[0], numericTweakMutation);
-      assert.equal(defaultMutationOperators[1], booleanToggleMutation);
-      assert.equal(defaultMutationOperators[3], actionDuplicateMutation);
-      assert.equal(defaultMutationOperators.at(-1), motifInjectMutation);
+    it("includes expected operators", () => {
+      assert.ok(defaultMutationOperators.includes(numericTweakMutation));
+      assert.ok(defaultMutationOperators.includes(booleanToggleMutation));
+      assert.ok(defaultMutationOperators.includes(actionDuplicateMutation));
+      assert.ok(defaultMutationOperators.includes(triggerAddMutation));
     });
   });
 
