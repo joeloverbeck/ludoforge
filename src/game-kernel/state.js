@@ -82,6 +82,7 @@ export function createInitialState(definition) {
       currentPlayer: 1,
       phase,
       turn: 1,
+      round: 1,
     },
     nextTokenId: 1,
   };

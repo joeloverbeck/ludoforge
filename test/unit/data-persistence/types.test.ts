@@ -63,7 +63,7 @@ const state: GameState = {
     { id: 1, variables: {} },
     { id: 2, variables: {} },
   ],
-  turn: { currentPlayer: 1, phase: null, turn: 1 },
+  turn: { currentPlayer: 1, phase: null, turn: 1, round: 1 },
   nextTokenId: 1,
 };
 

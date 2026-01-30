@@ -8,8 +8,6 @@
     "version",
     "weights",
     "weightNormalization",
-    "diversityPressure",
-    "diversityWeight",
     "preferenceWeight",
     "preferenceCap",
     "preferenceBootstrapSamples",
@@ -23,8 +21,6 @@
       "additionalProperties": { "type": "number" }
     },
     "weightNormalization": { "type": "boolean" },
-    "diversityPressure": { "type": "number", "minimum": 0 },
-    "diversityWeight": { "type": "number", "minimum": 0 },
     "preferenceWeight": { "type": "number", "minimum": 0 },
     "preferenceCap": { "type": "number", "minimum": 0 },
     "preferenceBootstrapSamples": { "type": "integer", "minimum": 0 },

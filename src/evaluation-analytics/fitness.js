@@ -66,14 +66,12 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
   const preferenceModelState = options.preferenceModelState;
   const preferenceSampleCount = resolvePreferenceSampleCount(preferenceModelState, options);
   const fitnessDefaults = DEFAULT_FITNESS_CONFIG ?? {};
-  const diversityPressure = options.diversityPressure ?? fitnessDefaults.diversityPressure;
   const preferenceWeight = options.preferenceWeight ?? fitnessDefaults.preferenceWeight;
   const preferenceCap = options.preferenceCap ?? fitnessDefaults.preferenceCap;
   const preferenceBootstrapSamples =
     options.preferenceBootstrapSamples ?? fitnessDefaults.preferenceBootstrapSamples;
   const preferenceBootstrapCap =
     options.preferenceBootstrapCap ?? fitnessDefaults.preferenceBootstrapCap;
-  const diversityWeight = options.diversityWeight ?? fitnessDefaults.diversityWeight;
 
   let preferenceScore;
   if (preferenceModelState && allowPreference !== false) {
@@ -86,22 +84,16 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
 
   const preferenceUncertainty = preferenceScore?.uncertainty;
 
-  const blend = combineFitnessScores(
-    compositeScore.score,
-    preferenceScore?.score,
-    diversityPressure,
-    {
-      allowPreference,
-      preferenceSampleCount,
-      preferenceWeight,
-      preferenceCap,
-      preferenceBootstrapSamples,
-      preferenceBootstrapCap,
-      preferenceUncertainty,
-      diversityWeight,
-      degeneracyPenalty: degeneracyPenaltyValue,
-    }
-  );
+  const blend = combineFitnessScores(compositeScore.score, preferenceScore?.score, {
+    allowPreference,
+    preferenceSampleCount,
+    preferenceWeight,
+    preferenceCap,
+    preferenceBootstrapSamples,
+    preferenceBootstrapCap,
+    preferenceUncertainty,
+    degeneracyPenalty: degeneracyPenaltyValue,
+  });
 
   return {
     score: blend.score,

@@ -93,6 +93,28 @@ describe("fitness", () => {
       assert.ok(Number.isFinite(result.diagnostics.blend.preference));
       assert.ok(Number.isFinite(result.diagnostics.blend.preferenceCap));
     });
+
+    it("omits diversity blend component by default", () => {
+      const result = computePreferenceAwareFitness({ agency: 0.5 }, {});
+
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(result.diagnostics.blend, "diversity"),
+        false
+      );
+    });
+
+    it("ignores legacy diversity options", () => {
+      const result = computePreferenceAwareFitness({ agency: 0.5 }, {
+        compositeScore: { score: 1, components: {} },
+        diversityPressure: 0.2,
+        diversityWeight: 2,
+      });
+
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(result.diagnostics.blend, "diversity"),
+        false
+      );
+    });
   });
 
   describe("uncertainty-damped fitness blending", () => {

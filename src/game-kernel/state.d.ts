@@ -43,6 +43,7 @@ export interface TurnState {
   currentPlayer: number;
   phase: string | null;
   turn: number;
+  round: number;
 }
 
 export interface GameState {

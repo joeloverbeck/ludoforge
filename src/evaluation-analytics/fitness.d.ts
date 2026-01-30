@@ -30,7 +30,6 @@ export interface PreferenceFitnessOptions extends FitnessBlendOptions {
   compositeScore?: CompositeScore;
   compositeScoreOptions?: CompositeScoreOptions;
   preferenceModelState?: PreferenceModelState;
-  diversityPressure?: number;
   degeneracyReport?: DegeneracyReport;
   degeneracyPenaltyConfig?: DegeneracyPenaltyConfig;
 }

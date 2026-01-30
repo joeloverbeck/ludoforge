@@ -29,8 +29,6 @@
     "degeneracy.non-terminating": 0
   },
   "weightNormalization": true,
-  "diversityPressure": 0,
-  "diversityWeight": 1,
   "preferenceWeight": 1,
   "preferenceCap": 0.25,
   "preferenceBootstrapSamples": 20,

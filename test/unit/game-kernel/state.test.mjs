@@ -57,6 +57,13 @@ describe("state", () => {
       assert.deepEqual(state.zones.hand.tokensByPlayer[1], []);
       assert.deepEqual(state.zones.hand.tokensByPlayer[2], []);
     });
+
+    it("initialises round to 1", () => {
+      const state = createInitialState(baseDefinition);
+
+      assert.equal(state.turn.round, 1);
+      assert.equal(typeof state.turn.round, "number");
+    });
   });
 
   describe("allocateTokenId", () => {

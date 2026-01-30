@@ -24,16 +24,20 @@ function advanceRoundRobin(definition, state) {
   let nextPhase = phases[phaseIndex];
   let nextPlayer = state.turn.currentPlayer;
   let nextTurn = state.turn.turn;
+  let nextRound = state.turn.round;
 
   if (phaseIndex >= phases.length - 1) {
     nextPhase = phases[0];
     nextPlayer = (state.turn.currentPlayer % definition.players.count) + 1;
     nextTurn = state.turn.turn + 1;
+    if (nextPlayer === 1) {
+      nextRound = state.turn.round + 1;
+    }
   } else {
     nextPhase = phases[phaseIndex + 1];
   }
 
-  return { nextPhase, nextPlayer, nextTurn };
+  return { nextPhase, nextPlayer, nextTurn, nextRound };
 }
 
 function resolveMaxTurns(definition, options) {
@@ -75,6 +79,7 @@ function snapshotLoopState(state) {
     turn: {
       currentPlayer: state.turn.currentPlayer,
       phase: state.turn.phase ?? null,
+      round: state.turn.round,
     },
   });
 }
@@ -142,7 +147,7 @@ export function advanceTurnPhase(definition, state, options = {}) {
 
   clearFlags(state, "phase");
 
-  const { nextPhase, nextPlayer, nextTurn } = advanceRoundRobin(definition, state);
+  const { nextPhase, nextPlayer, nextTurn, nextRound } = advanceRoundRobin(definition, state);
   const maxTurns = resolveMaxTurns(definition, options);
   if (typeof maxTurns === "number" && nextTurn > maxTurns) {
     return { ok: false, reason: "max-turns" };
@@ -153,6 +158,7 @@ export function advanceTurnPhase(definition, state, options = {}) {
     currentPlayer: nextPlayer,
     phase: nextPhase,
     turn: nextTurn,
+    round: nextRound,
   };
 
   if (turnAdvanced) {

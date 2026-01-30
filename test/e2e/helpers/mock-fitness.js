@@ -86,8 +86,6 @@ export function createMockFitness(options = {}) {
       compositeScore: overrides.compositeScore ?? options.compositeScore,
       compositeScoreOptions:
         overrides.compositeScoreOptions ?? options.compositeScoreOptions ?? undefined,
-      diversityPressure:
-        overrides.diversityPressure ?? options.diversityPressure ?? artifacts.diversityPressure,
       allowPreference,
       degeneracyReport,
       degeneracyPenaltyConfig,
