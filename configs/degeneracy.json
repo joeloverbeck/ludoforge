@@ -32,7 +32,7 @@
     "loop": "reject",
     "non-terminating": "reject",
     "forced-move": "penalize",
-    "no-choices": "penalize",
+    "no-choices": "reject",
     "dominant-action": "penalize",
     "trivial-win": "penalize",
     "stalemate": "penalize"

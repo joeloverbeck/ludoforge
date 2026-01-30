@@ -198,8 +198,8 @@ describe("fitness", () => {
     it("subtracts degeneracy penalty when report provided", () => {
       const featureVector = Object.freeze({ agency: 1 });
       const degeneracyReport = {
-        flags: ["no-choices"],
-        ratios: {},
+        flags: ["forced-move"],
+        ratios: { "forced-move": 0.9 },
       };
 
       const result = computePreferenceAwareFitness(featureVector, {

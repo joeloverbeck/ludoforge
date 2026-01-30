@@ -259,12 +259,12 @@ describe("degeneracy", () => {
   describe("applyDegeneracyFilters", () => {
     it("rejects reports with reject-policy flags", () => {
       const decision = applyDegeneracyFilters({
-        flags: ["loop", "non-terminating"],
+        flags: ["loop", "non-terminating", "no-choices"],
         details: {},
       });
 
       assert.equal(decision.allow, false);
-      assert.deepEqual(decision.rejectedFlags.sort(), ["loop", "non-terminating"]);
+      assert.deepEqual(decision.rejectedFlags.sort(), ["loop", "no-choices", "non-terminating"]);
     });
 
     it("allows penalize-policy flags through", () => {
@@ -286,6 +286,16 @@ describe("degeneracy", () => {
       const decision = applyDegeneracyFilters({ flags: ["loop"], details: {} });
       assert.equal(decision.allow, false);
       assert.deepEqual(decision.rejectedFlags, ["loop"]);
+    });
+
+    it("rejects no-choices under default policyByFlag", () => {
+      const decision = applyDegeneracyFilters({
+        flags: ["no-choices"],
+        details: {},
+      });
+
+      assert.equal(decision.allow, false);
+      assert.deepEqual(decision.rejectedFlags, ["no-choices"]);
     });
   });
 
@@ -336,14 +346,20 @@ describe("degeneracy", () => {
     });
 
     it("returns 0 for reject-only flags", () => {
-      const report = { flags: ["loop", "non-terminating"] };
+      const report = { flags: ["loop", "non-terminating", "no-choices"] };
       assert.equal(computeDegeneracyPenalty(report), 0);
     });
 
-    it("applies binary weight for no-choices", () => {
+    it("applies binary weight for dominant-action", () => {
+      const report = { flags: ["dominant-action"] };
+      const penalty = computeDegeneracyPenalty(report);
+      assert.equal(penalty, 0.2);
+    });
+
+    it("returns 0 for no-choices under default policyByFlag", () => {
       const report = { flags: ["no-choices"] };
       const penalty = computeDegeneracyPenalty(report);
-      assert.equal(penalty, 0.5);
+      assert.equal(penalty, 0);
     });
 
     it("applies forced-move formula with freeRatio", () => {
@@ -360,11 +376,11 @@ describe("degeneracy", () => {
 
     it("sums multiple penalize flags", () => {
       const report = {
-        flags: ["forced-move", "no-choices", "dominant-action"],
+        flags: ["forced-move", "dominant-action", "trivial-win"],
         ratios: { "forced-move": 1.0 },
       };
       const penalty = computeDegeneracyPenalty(report);
-      assert.ok(Math.abs(penalty - 0.94) < 1e-9);
+      assert.ok(Math.abs(penalty - 0.74) < 1e-9);
     });
 
     it("ignores 'ignore' policy flags", () => {

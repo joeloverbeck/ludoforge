@@ -189,7 +189,7 @@ describe("mock-fitness", () => {
       assert.ok(penalty > 0, "forced-move must produce a positive degeneracy penalty");
     });
 
-    it("penalize semantics: no-choices does NOT reject; fitness is penalized", () => {
+    it("reject semantics: no-choices rejects and skips penalty", () => {
       const helper = createMockFitness({
         preferenceModelState,
         fitnessOptions: { preferenceCap: 1, preferenceWeight: 1 },
@@ -211,12 +211,12 @@ describe("mock-fitness", () => {
         }
       );
 
-      assert.equal(result.diagnostics.degeneracyDecision.allow, true,
-        "no-choices must NOT be rejected under default policyByFlag");
-      assert.deepEqual(result.diagnostics.degeneracyDecision.rejectedFlags, []);
+      assert.equal(result.diagnostics.degeneracyDecision.allow, false,
+        "no-choices must be rejected under default policyByFlag");
+      assert.deepEqual(result.diagnostics.degeneracyDecision.rejectedFlags, ["no-choices"]);
 
       const penalty = result.diagnostics.preferenceFitness.diagnostics.degeneracyPenalty;
-      assert.ok(penalty > 0, "no-choices must produce a positive degeneracy penalty");
+      assert.equal(penalty, 0, "no-choices must not produce a degeneracy penalty when rejected");
     });
   });
 });
