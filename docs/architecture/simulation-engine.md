@@ -78,7 +78,16 @@ after-action triggers because no action occurred.
 
 ## Turn Advancement and Cutoffs
 
-- `advanceTurnPhase` controls phase and player rotation.
+- `advanceTurnPhase` controls phase cycling and player selection.
+- Supported schedulers (`definition.turn.scheduler`):
+  - `round_robin`: cycles players 1 → 2 → … → N → 1. Round increments when
+    player wraps back to player 1.
+  - `priority_queue`: selects the player with the min (or max) value of a
+    per-player variable specified by `definition.turn.orderBy`. Tie-breaking:
+    lowest player ID wins. Round increments when every player has completed at
+    least one turn (tracked via an internal `_actedThisRound` Set).
+- Phase cycling is shared: within a multi-phase turn, phases advance sequentially
+  before the scheduler picks the next player.
 - If `maxTurns` is exceeded, termination reason is `"max-turns"` and the outcome is computed
   via `evaluateTermination` with `maxTurnsReached: true`.
   `maxTurns` defaults to `configs/simulation.json` if not provided per run.
@@ -237,7 +246,10 @@ target selectors resolve to concrete instance IDs.
 - `applyTokenSpawn`: allocates a new token ID, creates the instance with attributes
   from the token type definition, and places it in the target zone.
 - `applyTokenMove`: removes token from its current zone (found via `findTokenZone`)
-  and adds it to the destination zone.
+  and adds it to the destination zone. Supports an optional `toPlayer` field
+  (`"self"`, `"opponent"`, `"next"`, `"previous"`) that resolves to a target player
+  ID for per-player zones, enabling inter-player token transfer. When `toPlayer` is
+  absent or the destination zone is global, the acting player is used.
 - `applyTokenDestroy`: removes token from its zone and deletes it from `state.tokens`.
 - `applyTokenReveal`/`applyTokenHide`: sets `token.revealed` to true/false.
 

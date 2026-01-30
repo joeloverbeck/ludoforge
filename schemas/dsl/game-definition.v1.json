@@ -243,7 +243,8 @@
           "properties": {
             "kind": { "const": "move" },
             "target": { "$ref": "#/$defs/Ref" },
-            "toZone": { "type": "string" }
+            "toZone": { "type": "string" },
+            "toPlayer": { "type": "string", "enum": ["self", "opponent", "next", "previous"] }
           }
         },
         {
@@ -369,7 +370,16 @@
       "additionalProperties": false,
       "required": ["scheduler"],
       "properties": {
-        "scheduler": { "type": "string", "enum": ["round_robin", "custom"] },
+        "scheduler": { "type": "string", "enum": ["round_robin", "priority_queue", "custom"] },
+        "orderBy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["variable", "direction"],
+          "properties": {
+            "variable": { "type": "string" },
+            "direction": { "type": "string", "enum": ["asc", "desc"] }
+          }
+        },
         "phases": {
           "type": "array",
           "items": { "type": "string" }

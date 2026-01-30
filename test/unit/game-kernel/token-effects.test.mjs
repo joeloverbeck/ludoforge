@@ -321,4 +321,161 @@ describe("token-effects", () => {
       assert.deepEqual(tokens, []);
     });
   });
+
+  describe("applyTokenMove with toPlayer", () => {
+    const threePlayerDef = {
+      ...baseDefinition,
+      players: { count: 3 },
+    };
+
+    function makeCtx(state, playerId = 1, def = baseDefinition) {
+      return { state, playerId, definition: def };
+    }
+
+    function spawnToBoard(state, ctx) {
+      const effect = { kind: "spawn", target: { kind: "token", id: "card" }, toZone: "board" };
+      return applyTokenSpawn(state, effect, ctx);
+    }
+
+    it("moves token to self (same as acting player)", () => {
+      const state = createInitialState(baseDefinition);
+      const ctx = makeCtx(state, 1);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "self" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.hand.tokensByPlayer[1].includes(tokenId));
+      assert.ok(!state.zones.hand.tokensByPlayer[2].includes(tokenId));
+    });
+
+    it("moves token to opponent in a 2-player game", () => {
+      const state = createInitialState(baseDefinition);
+      const ctx = makeCtx(state, 1);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "opponent" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.hand.tokensByPlayer[2].includes(tokenId));
+      assert.ok(!state.zones.hand.tokensByPlayer[1].includes(tokenId));
+    });
+
+    it("moves token to next player with wrapping", () => {
+      const state = createInitialState(threePlayerDef);
+      const ctx = makeCtx(state, 3, threePlayerDef);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "next" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.hand.tokensByPlayer[1].includes(tokenId));
+    });
+
+    it("moves token to previous player with wrapping", () => {
+      const state = createInitialState(threePlayerDef);
+      const ctx = makeCtx(state, 1, threePlayerDef);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "previous" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.hand.tokensByPlayer[3].includes(tokenId));
+    });
+
+    it("without toPlayer works exactly as before (backward-compatible)", () => {
+      const state = createInitialState(baseDefinition);
+      const ctx = makeCtx(state, 1);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.hand.tokensByPlayer[1].includes(tokenId));
+    });
+
+    it("ignores toPlayer when targeting a global zone", () => {
+      const state = createInitialState(baseDefinition);
+      const ctx = makeCtx(state, 1);
+      const effect = { kind: "spawn", target: { kind: "token", id: "card" }, toZone: "hand" };
+      const tokenId = applyTokenSpawn(state, effect, ctx).appliedEffect.tokenId;
+
+      const result = applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "board", toPlayer: "opponent" },
+        ctx
+      );
+
+      assert.equal(result.ok, true);
+      assert.ok(state.zones.board.tokens.includes(tokenId));
+    });
+
+    it("conserves token count across inter-player move", () => {
+      const state = createInitialState(baseDefinition);
+      const ctx = makeCtx(state, 1);
+      const effect = { kind: "spawn", target: { kind: "token", id: "card" }, toZone: "hand" };
+      const tokenId = applyTokenSpawn(state, effect, ctx).appliedEffect.tokenId;
+
+      const totalBefore = Object.keys(state.tokens).length;
+
+      applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "opponent" },
+        ctx
+      );
+
+      const totalAfter = Object.keys(state.tokens).length;
+      assert.equal(totalBefore, totalAfter);
+      assert.ok(state.zones.hand.tokensByPlayer[2].includes(tokenId));
+      assert.ok(!state.zones.hand.tokensByPlayer[1].includes(tokenId));
+    });
+
+    it("next player wraps correctly for player 2 of 3", () => {
+      const state = createInitialState(threePlayerDef);
+      const ctx = makeCtx(state, 2, threePlayerDef);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "next" },
+        ctx
+      );
+
+      assert.ok(state.zones.hand.tokensByPlayer[3].includes(tokenId));
+    });
+
+    it("previous player wraps correctly for player 2 of 3", () => {
+      const state = createInitialState(threePlayerDef);
+      const ctx = makeCtx(state, 2, threePlayerDef);
+      const tokenId = spawnToBoard(state, ctx).appliedEffect.tokenId;
+
+      applyTokenMove(
+        state,
+        { kind: "move", target: { kind: "token", id: tokenId }, toZone: "hand", toPlayer: "previous" },
+        ctx
+      );
+
+      assert.ok(state.zones.hand.tokensByPlayer[1].includes(tokenId));
+    });
+  });
 });

@@ -15,6 +15,58 @@ function resolvePhases(definition) {
   return phases;
 }
 
+function advancePriorityQueue(definition, state) {
+  const phases = resolvePhases(definition);
+  const currentPhase = state.turn.phase ?? null;
+  const currentIndex = phases.indexOf(currentPhase);
+  const phaseIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  if (phaseIndex < phases.length - 1) {
+    return {
+      nextPhase: phases[phaseIndex + 1],
+      nextPlayer: state.turn.currentPlayer,
+      nextTurn: state.turn.turn,
+      nextRound: state.turn.round,
+      _actedThisRound: state.turn._actedThisRound,
+    };
+  }
+
+  const orderBy = definition.turn.orderBy;
+  const playerCount = definition.players.count;
+  const players = [];
+  for (let pid = 1; pid <= playerCount; pid++) {
+    const value = state.variables.perPlayer[pid]?.[orderBy.variable] ?? 0;
+    players.push({ id: pid, value });
+  }
+
+  const ascending = orderBy.direction === "asc";
+  players.sort((a, b) => {
+    const cmp = ascending ? a.value - b.value : b.value - a.value;
+    return cmp !== 0 ? cmp : a.id - b.id;
+  });
+
+  const nextPlayer = players[0].id;
+  const nextTurn = state.turn.turn + 1;
+
+  const acted = state.turn._actedThisRound ?? new Set();
+  acted.add(state.turn.currentPlayer);
+
+  let nextRound = state.turn.round;
+  let nextActed = acted;
+  if (acted.size >= playerCount) {
+    nextRound = state.turn.round + 1;
+    nextActed = new Set();
+  }
+
+  return {
+    nextPhase: phases[0],
+    nextPlayer,
+    nextTurn,
+    nextRound,
+    _actedThisRound: nextActed,
+  };
+}
+
 function advanceRoundRobin(definition, state) {
   const phases = resolvePhases(definition);
   const currentPhase = state.turn.phase ?? null;
@@ -79,6 +131,7 @@ function snapshotLoopState(state) {
     turn: {
       currentPlayer: state.turn.currentPlayer,
       phase: state.turn.phase ?? null,
+      turn: state.turn.turn,
       round: state.turn.round,
     },
   });
@@ -123,7 +176,8 @@ function recordLoopState(state, limit) {
 }
 
 export function advanceTurnPhase(definition, state, options = {}) {
-  if (definition.turn.scheduler !== "round_robin") {
+  const scheduler = definition.turn.scheduler;
+  if (scheduler !== "round_robin" && scheduler !== "priority_queue") {
     return { ok: false, reason: "unsupported-scheduler" };
   }
 
@@ -147,7 +201,10 @@ export function advanceTurnPhase(definition, state, options = {}) {
 
   clearFlags(state, "phase");
 
-  const { nextPhase, nextPlayer, nextTurn, nextRound } = advanceRoundRobin(definition, state);
+  const advanceResult = scheduler === "priority_queue"
+    ? advancePriorityQueue(definition, state)
+    : advanceRoundRobin(definition, state);
+  const { nextPhase, nextPlayer, nextTurn, nextRound } = advanceResult;
   const maxTurns = resolveMaxTurns(definition, options);
   if (typeof maxTurns === "number" && nextTurn > maxTurns) {
     return { ok: false, reason: "max-turns" };
@@ -168,12 +225,16 @@ export function advanceTurnPhase(definition, state, options = {}) {
     clearFlags(state, "round");
   }
 
-  state.turn = {
+  const newTurn = {
     currentPlayer: nextPlayer,
     phase: nextPhase,
     turn: nextTurn,
     round: nextRound,
   };
+  if (advanceResult._actedThisRound !== undefined) {
+    newTurn._actedThisRound = advanceResult._actedThisRound;
+  }
+  state.turn = newTurn;
 
   if (turnAdvanced) {
     clearFlags(state, "turn");

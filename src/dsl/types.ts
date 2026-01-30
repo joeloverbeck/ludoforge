@@ -84,7 +84,7 @@ export type Effect =
   | { kind: "set"; target: Ref; value?: ScalarValue }
   | { kind: "inc"; target: Ref; amount?: number }
   | { kind: "dec"; target: Ref; amount?: number }
-  | { kind: "move"; target: Ref; toZone?: string }
+  | { kind: "move"; target: Ref; toZone?: string; toPlayer?: "self" | "opponent" | "next" | "previous" }
   | { kind: "spawn"; target: Ref; toZone?: string }
   | { kind: "destroy"; target: Ref }
   | { kind: "reveal"; target: Ref }
@@ -108,7 +108,8 @@ export interface TriggerDef {
 }
 
 export interface TurnDef {
-  scheduler: "round_robin" | "custom";
+  scheduler: "round_robin" | "priority_queue" | "custom";
+  orderBy?: { variable: string; direction: "asc" | "desc" };
   phases?: string[];
   stepEffects?: TriggerDef[];
   noLegalActions?: NoLegalActionsDef;

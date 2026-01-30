@@ -97,6 +97,22 @@ function findTokenZone(state, tokenId, playerId) {
   return null;
 }
 
+function resolveToPlayer(toPlayer, playerId, playerCount) {
+  if (toPlayer == null || toPlayer === "self") {
+    return playerId;
+  }
+  if (toPlayer === "opponent") {
+    return playerId === 1 ? 2 : 1;
+  }
+  if (toPlayer === "next") {
+    return (playerId % playerCount) + 1;
+  }
+  if (toPlayer === "previous") {
+    return ((playerId - 2 + playerCount) % playerCount) + 1;
+  }
+  return playerId;
+}
+
 export function applyTokenMove(state, effect, context) {
   const tokenId = effect.target?.id;
   const toZoneId = effect.toZone;
@@ -123,9 +139,15 @@ export function applyTokenMove(state, effect, context) {
     recordTokenImpact(context, location.zone, location.playerId);
   }
   const playerId = context.playerId;
-  const toTokens = getZoneTokens(toZone, playerId);
-  setZoneTokens(toZone, playerId, [...toTokens, resolvedId]);
-  recordTokenImpact(context, toZone, playerId);
+  const definition = context.definition;
+  const playerCount = definition?.players?.count ?? 2;
+  const targetPlayerId =
+    toZone.scope === "per_player" && effect.toPlayer != null
+      ? resolveToPlayer(effect.toPlayer, playerId, playerCount)
+      : playerId;
+  const toTokens = getZoneTokens(toZone, targetPlayerId);
+  setZoneTokens(toZone, targetPlayerId, [...toTokens, resolvedId]);
+  recordTokenImpact(context, toZone, targetPlayerId);
   return {
     ok: true,
     appliedEffect: {

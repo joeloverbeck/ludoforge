@@ -1,5 +1,7 @@
 # ACTSELTURSTRPRI-05: Add `priority_queue` scheduler
 
+**Status: COMPLETED**
+
 ## What
 
 Add a `priority_queue` scheduler type. Instead of cycling players round-robin, the next player is the one with the minimum (or maximum) value of a specified per-player variable. Schema additions to `TurnDef`: `orderBy: { variable: string, direction: "asc" | "desc" }`. Implement `advancePriorityQueue` in the scheduler. The scheduler reads all per-player variable values, sorts, and picks the next player. Tie-breaking: lowest player ID wins.
@@ -37,3 +39,30 @@ Add a `priority_queue` scheduler type. Instead of cycling players round-robin, t
 ## Dependencies
 
 - ACTSELTURSTRPRI-01 (round tracking)
+
+## Outcome
+
+### What changed vs originally planned
+
+All planned changes were implemented as specified. No ticket corrections were needed — assumptions matched the codebase.
+
+**Files modified:**
+- `schemas/dsl/game-definition.v1.json` — added `"priority_queue"` to scheduler enum, added `orderBy` object property
+- `src/dsl/types.ts` — added `"priority_queue"` to scheduler union, added `orderBy?` field to `TurnDef`
+- `src/game-kernel/scheduler.js` — added `advancePriorityQueue` function, updated dispatch in `advanceTurnPhase`, added `_actedThisRound` Set persistence for round boundary tracking, added `turn` counter to `snapshotLoopState` to prevent false state-loop detection
+
+**Files not modified (no changes needed):**
+- `src/game-kernel/scheduler.d.ts` — public API signature of `advanceTurnPhase` is unchanged
+- `src/simulation-engine/turn-advance.js` — already handles the return shape correctly
+
+**New test file:**
+- `test/unit/game-kernel/scheduler-priority-queue.test.mjs` — 14 tests covering all acceptance criteria plus edge cases
+
+**Unplanned fixes:**
+- `snapshotLoopState` in `scheduler.js` needed the `turn` counter added to prevent false state-loop detection when the same player acts in consecutive turns with identical variable/phase/round state (valid in priority_queue but not distinguishable without the turn counter).
+
+### Test results
+- 14/14 new priority_queue tests pass
+- 21/21 existing scheduler tests pass (no regressions)
+- 1098/1098 full unit test suite passes
+- `tsc -p tsconfig.json` passes cleanly

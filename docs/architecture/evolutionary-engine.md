@@ -206,8 +206,9 @@ Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
   structures are absent (e.g., no token types for a `move` kind), allowing callers
   to re-roll or skip the mutation.
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
-  `{ amount: 1 }` for inc/dec, `{ toZone }` for move/spawn, `{ zone, toNode }` for
-  move_spatial, `{ flag, duration }` for set_flag, `{ count, effects }` for repeat).
+  `{ amount: 1 }` for inc/dec, `{ toZone, toPlayer? }` for move, `{ toZone }` for
+  spawn, `{ zone, toNode }` for move_spatial, `{ flag, duration }` for set_flag,
+  `{ count, effects }` for repeat).
 
 ## Crossover Operators
 
