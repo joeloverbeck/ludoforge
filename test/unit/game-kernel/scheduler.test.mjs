@@ -174,6 +174,56 @@ describe("scheduler", () => {
     });
   });
 
+  describe("simultaneous scheduler", () => {
+    it("cycles phases and increments round each turn", () => {
+      const definition = {
+        ...baseDefinition,
+        turn: { scheduler: "simultaneous", phases: ["plan", "resolve"] },
+      };
+      const state = createInitialState(definition);
+
+      const first = advanceTurnPhase(definition, state);
+      assert.equal(first.ok, true);
+      assert.equal(state.turn.phase, "resolve");
+      assert.equal(state.turn.currentPlayer, 1);
+      assert.equal(state.turn.turn, 1);
+      assert.equal(state.turn.round, 1);
+
+      const second = advanceTurnPhase(definition, state);
+      assert.equal(second.ok, true);
+      assert.equal(state.turn.phase, "plan");
+      assert.equal(state.turn.currentPlayer, 1);
+      assert.equal(state.turn.turn, 2);
+      assert.equal(state.turn.round, 2);
+    });
+
+    it("fires start_round and end_round triggers on each turn boundary", () => {
+      const definition = {
+        ...baseDefinition,
+        state: {
+          variables: [{ id: "counter", scope: "global", type: { kind: "int" }, initial: 0 }],
+        },
+        turn: { scheduler: "simultaneous", phases: ["main"] },
+        triggers: [
+          {
+            event: "end_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+          {
+            event: "start_round",
+            effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+          },
+        ],
+      };
+      const state = createInitialState(definition);
+
+      const result = advanceTurnPhase(definition, state);
+      assert.equal(result.ok, true);
+      assert.equal(state.turn.round, 2);
+      assert.equal(state.variables.global.counter, 2);
+    });
+  });
+
   describe("round tracking", () => {
     it("increments round after all players complete one turn cycle (2 players)", () => {
       const definition = {

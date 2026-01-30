@@ -2,7 +2,7 @@ import { crossoverGenome } from "../evolutionary-engine/crossover.js";
 import { mutateAndRepairGenome } from "../evolutionary-engine/mutation.js";
 import { cloneGenome, clonePopulation, selectMateIndex } from "./population-utils.js";
 import { shouldApply } from "./evolution-rates.js";
-import { recordAttempt } from "./operator-telemetry.js";
+import { recordAttempt, recordNoOp, recordRepairFailed } from "./operator-telemetry.js";
 
 export function applyEvolution(population, options) {
   const parents = clonePopulation(population);
@@ -36,14 +36,22 @@ export function applyEvolution(population, options) {
       });
       if (options.mutationSelector && mutated && typeof mutated === "object") {
         operatorName = mutated.operatorName ?? null;
-        if (mutated.genome) {
+        if (operatorName && options.telemetry) {
+          recordAttempt(options.telemetry, operatorName);
+        }
+        if (mutated.outcome === "noOp") {
+          if (operatorName && options.telemetry) {
+            recordNoOp(options.telemetry, operatorName);
+          }
+        } else if (mutated.outcome === "repairFailed") {
+          if (operatorName && options.telemetry) {
+            recordRepairFailed(options.telemetry, operatorName);
+          }
+        } else if (mutated.genome) {
           child = mutated.genome;
         }
       } else if (mutated) {
         child = mutated;
-      }
-      if (operatorName && options.telemetry) {
-        recordAttempt(options.telemetry, operatorName);
       }
     }
 

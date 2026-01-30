@@ -358,6 +358,30 @@ describe("semantic", () => {
         );
         assert.deepEqual(schedulerIssues, []);
       });
+
+      it("allows simultaneous scheduler with resolution order", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "simultaneous",
+          resolution: { order: "by_player_id" },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.equal(findRule(issues, "turn-resolution-order"), false);
+      });
+
+      it("reports simultaneous scheduler with invalid resolution order", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "simultaneous",
+          resolution: { order: "clockwise" },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "turn-resolution-order"));
+      });
     });
 
     describe("conditional effect validation", () => {

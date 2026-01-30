@@ -89,6 +89,15 @@ describe("schema", () => {
       };
       assertValid(candidate);
     });
+
+    it("accepts simultaneous scheduler with resolution order", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn = {
+        scheduler: "simultaneous",
+        resolution: { order: "by_player_id" },
+      };
+      assertValid(candidate);
+    });
   });
 
   describe("rejected definitions", () => {
@@ -219,6 +228,15 @@ describe("schema", () => {
       candidate.turn = {
         scheduler: "token_holder",
         tokenType: "pawn",
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects simultaneous scheduler with invalid resolution order", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn = {
+        scheduler: "simultaneous",
+        resolution: { order: "clockwise" },
       };
       assertInvalid(candidate);
     });

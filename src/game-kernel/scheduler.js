@@ -157,6 +157,27 @@ function advanceRoundRobin(definition, state) {
   return { nextPhase, nextPlayer, nextTurn, nextRound };
 }
 
+function advanceSimultaneous(definition, state) {
+  const phases = resolvePhases(definition);
+  const currentPhase = state.turn.phase ?? null;
+  const currentIndex = phases.indexOf(currentPhase);
+  const phaseIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  let nextPhase = phases[phaseIndex];
+  let nextTurn = state.turn.turn;
+  let nextRound = state.turn.round;
+
+  if (phaseIndex >= phases.length - 1) {
+    nextPhase = phases[0];
+    nextTurn = state.turn.turn + 1;
+    nextRound = state.turn.round + 1;
+  } else {
+    nextPhase = phases[phaseIndex + 1];
+  }
+
+  return { nextPhase, nextPlayer: 1, nextTurn, nextRound };
+}
+
 function resolveMaxTurns(definition, options) {
   if (typeof options.maxTurns === "number") {
     return options.maxTurns;
@@ -242,7 +263,12 @@ function recordLoopState(state, limit) {
 
 export function advanceTurnPhase(definition, state, options = {}) {
   const scheduler = definition.turn.scheduler;
-  if (scheduler !== "round_robin" && scheduler !== "priority_queue" && scheduler !== "token_holder") {
+  if (
+    scheduler !== "round_robin" &&
+    scheduler !== "priority_queue" &&
+    scheduler !== "token_holder" &&
+    scheduler !== "simultaneous"
+  ) {
     return { ok: false, reason: "unsupported-scheduler" };
   }
 
@@ -270,7 +296,9 @@ export function advanceTurnPhase(definition, state, options = {}) {
     ? advancePriorityQueue(definition, state)
     : scheduler === "token_holder"
       ? advanceTokenHolder(definition, state)
-      : advanceRoundRobin(definition, state);
+      : scheduler === "simultaneous"
+        ? advanceSimultaneous(definition, state)
+        : advanceRoundRobin(definition, state);
   if (advanceResult.ok === false) {
     return advanceResult;
   }

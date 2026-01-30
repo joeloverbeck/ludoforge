@@ -182,6 +182,11 @@ const flagEffect: Effect = {
   duration: "turn",
 };
 
+const simultaneousDefinition: GameDefinition = {
+  ...definition,
+  turn: { scheduler: "simultaneous", resolution: { order: "random" } },
+};
+
 // @ts-expect-error - random effect kind was removed
 const randomEffect: Effect = { kind: "random", target: { kind: "zone", id: "board" } };
 
@@ -196,6 +201,7 @@ void effect;
 void spatialEffect;
 void repeatEffect;
 void flagEffect;
+void simultaneousDefinition;
 void randomEffect;
 void foreachEffect;
 
@@ -220,7 +226,19 @@ const invalidNoLegalActions: NoLegalActionsDef = {
   defaultOutcome: { type: "draw", players: "all" },
 };
 
+const invalidResolution: GameDefinition = {
+  ...definition,
+  turn: {
+    scheduler: "simultaneous",
+    resolution: {
+      // @ts-expect-error - invalid resolution order
+      order: "clockwise",
+    },
+  },
+};
+
 void missingVersion;
 void invalidRef;
 void invalidEffect;
 void invalidNoLegalActions;
+void invalidResolution;

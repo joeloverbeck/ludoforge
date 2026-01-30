@@ -251,6 +251,16 @@ export function collectSemanticIssues(definition) {
       );
     }
   }
+  if (scheduler === "simultaneous") {
+    const order = definition.turn?.resolution?.order;
+    if (order != null && order !== "by_player_id" && order !== "random") {
+      pushIssue(
+        "/turn/resolution/order",
+        `simultaneous resolution order is invalid: ${order}`,
+        "turn-resolution-order"
+      );
+    }
+  }
 
   terminationConditions.forEach((termination, index) => {
     if (termination?.condition) {

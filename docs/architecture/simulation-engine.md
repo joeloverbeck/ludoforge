@@ -82,6 +82,17 @@ otherwise it falls back to `configs/simulation.json`.
 No-legal-actions handling never prompts the agent. The pass policy does not run
 after-action triggers because no action occurred.
 
+### Simultaneous Scheduler Flow
+
+When `definition.turn.scheduler === "simultaneous"` the loop changes:
+
+- All players select actions during the same phase before any effects resolve.
+- Resolution order comes from `turn.resolution.order`:
+  - `by_player_id` (default): 1 → 2 → … → N
+  - `random`: shuffled per turn using the simulation RNG (seeded when provided)
+- Each resolved action still records its own step snapshot, triggers, and
+  termination checks.
+
 ## Turn Advancement and Cutoffs
 
 - `advanceTurnPhase` controls phase cycling and player selection.
@@ -97,6 +108,9 @@ after-action triggers because no action occurred.
     Tie-breaking: lowest player ID wins if multiple players hold matching
     tokens. Round increments when every player has completed at least one turn
     (tracked via `_actedThisRound`).
+  - `simultaneous`: all players act each turn; phases advance in order, and
+    rounds increment every time phases wrap. Resolution order is controlled by
+    `turn.resolution.order`.
 - Phase cycling is shared: within a multi-phase turn, phases advance sequentially
   before the scheduler picks the next player.
 - If `maxTurns` is exceeded, termination reason is `"max-turns"` and the outcome is computed
