@@ -112,5 +112,51 @@ describe("feature-vector", () => {
       assert.equal(vector.u, 0);
       assert.deepEqual(nonFiniteKeys, ["u"]);
     });
+
+    it("includes advantage_reversal_rate and policy_sensitivity in default feature order", () => {
+      assert.ok(
+        DEFAULT_FEATURE_ORDER.includes("advantage_reversal_rate"),
+        "DEFAULT_FEATURE_ORDER must include advantage_reversal_rate",
+      );
+      assert.ok(
+        DEFAULT_FEATURE_ORDER.includes("policy_sensitivity"),
+        "DEFAULT_FEATURE_ORDER must include policy_sensitivity",
+      );
+    });
+
+    it("assembles vector with new metrics at correct positions", () => {
+      const metrics = [
+        { id: "advantage_reversal_rate", value: 0.35 },
+        { id: "policy_sensitivity", value: 0.72 },
+        { id: "agency", value: 0.5 },
+      ];
+      const { vector, nonFiniteKeys } = assembleFeatureVector(metrics, { flags: [] }, { includeDegeneracy: false });
+
+      assert.equal(vector.advantage_reversal_rate, 0.35);
+      assert.equal(vector.policy_sensitivity, 0.72);
+      assert.equal(vector.agency, 0.5);
+      assert.deepEqual(nonFiniteKeys, []);
+
+      const keys = Object.keys(vector);
+      const arrIdx = keys.indexOf("advantage_reversal_rate");
+      const psIdx = keys.indexOf("policy_sensitivity");
+      assert.ok(arrIdx < psIdx, "advantage_reversal_rate must precede policy_sensitivity");
+      assert.ok(arrIdx > keys.indexOf("structural_complexity"), "new metrics follow structural_complexity");
+    });
+
+    it("new metrics default to zero when absent from input", () => {
+      const metrics = [{ id: "agency", value: 0.9 }];
+      const { vector } = assembleFeatureVector(metrics, { flags: [] }, { includeDegeneracy: false });
+
+      assert.equal(vector.advantage_reversal_rate, 0);
+      assert.equal(vector.policy_sensitivity, 0);
+    });
+
+    it("zero-weight fitness entries do not contribute to weighted sum", async () => {
+      const fitnessConfig = await readJson("../../../configs/fitness.json");
+
+      assert.equal(fitnessConfig.weights.advantage_reversal_rate, 0);
+      assert.equal(fitnessConfig.weights.policy_sensitivity, 0);
+    });
   });
 });

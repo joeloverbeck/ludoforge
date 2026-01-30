@@ -18,6 +18,8 @@
     "choice_value_spread": 1,
     "comeback_potential": 1,
     "skill_expression": 1,
+    "advantage_reversal_rate": 0,
+    "policy_sensitivity": 0,
     "degeneracy.loop": 0,
     "degeneracy.stalemate": 0,
     "degeneracy.forced-move": 0,

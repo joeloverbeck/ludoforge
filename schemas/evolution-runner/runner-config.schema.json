@@ -108,7 +108,9 @@
             "pacing_tension",
             "turn_taking_rate",
             "interaction_rate",
-            "structural_complexity"
+            "structural_complexity",
+            "advantage_reversal_rate",
+            "policy_sensitivity"
           ]
         },
         "min": { "type": "number" },

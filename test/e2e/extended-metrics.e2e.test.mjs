@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createEvaluator } from "../../src/evaluation-analytics/create-evaluator.js";
+import { DEFAULT_FEATURE_ORDER } from "../../src/evaluation-analytics/feature-vector.js";
 
 async function loadFixture(name) {
   const fileUrl = new URL(`./fixtures/${name}`, import.meta.url);
@@ -216,7 +217,7 @@ describe("extended-metrics E2E", () => {
   });
 
   describe("extended metrics disabled baseline", () => {
-    it("extendedMetrics is null when includeExtendedMetrics is false", async () => {
+    it("extendedMetrics is null and conditional feature vector keys default to 0 when includeExtendedMetrics is false", async () => {
       const definition = await loadFixture("per-player-vars-game.json");
       const genome = { id: "ext-disabled", definition };
 
@@ -236,10 +237,15 @@ describe("extended-metrics E2E", () => {
 
       const fv = result.diagnostics.featureVector;
       for (const key of CONDITIONAL_METRIC_IDS) {
-        assert.ok(
-          !(key in fv),
-          `feature vector should NOT contain ${key} when extended metrics disabled`
-        );
+        if (DEFAULT_FEATURE_ORDER.includes(key)) {
+          assert.ok(key in fv, `feature vector should contain ${key} when present in default feature order`);
+          assert.strictEqual(fv[key], 0, `${key} should default to 0 when extended metrics disabled`);
+        } else {
+          assert.ok(
+            !(key in fv),
+            `feature vector should NOT contain ${key} when extended metrics disabled`
+          );
+        }
       }
     });
   });
