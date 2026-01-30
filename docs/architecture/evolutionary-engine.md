@@ -7,10 +7,13 @@ Implemented in `src/evolutionary-engine/evaluation-adapter.js`.
 Steps per genome:
 
 1. Optionally apply repair operators (defaults to none). If repair fails, the genome is rejected.
-   Note: upstream in the mutation pipeline, `mutateAndRepairGenome` falls back to the
-   original (pre-mutation) genome when repair returns `null`, so genomes are never
-   silently dropped by the mutation-repair cycle. The evaluation adapter's rejection
-   path applies only when the *adapter itself* runs repair and the result is `null`.
+   Note: upstream in the mutation pipeline, `mutateAndRepairGenome` returns a structured
+   outcome (`{ genome, operatorName, outcome }`) where `outcome` is one of `"ok"`,
+   `"noOp"`, or `"repairFailed"`. When repair returns `null`, the outcome is
+   `"repairFailed"` and the genome field is `null` — the runner retries with a
+   different operator rather than evaluating the original genome. The evaluation
+   adapter's rejection path applies only when the *adapter itself* runs repair and
+   the result is `null`.
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
 3. Run safety gates if provided.
 4. Invoke `options.evaluator(genome)` with the repaired genome if repair ran.
@@ -193,15 +196,33 @@ These guards are inline within each operator, not in a separate validation pass.
 The `WeightedSelector` adjusts operator weights at runtime based on telemetry:
 
 1. After each generation, the runner calls `mutationSelector.observe(telemetry)`.
-2. For each operator, the failure rate is `(attempts - validOffspring) / attempts`.
-3. If failure rate > 0.30, the weight is halved (clamped to a floor of 0.1).
-4. If failure rate < 0.10, the weight is restored toward the base weight by 50%.
+2. For each operator, the inefficiency rate is
+   `(attempts - validEvaluated) / attempts`, where `validEvaluated` counts only
+   mutated genomes that produced valid fitness + descriptors (not fallback/no-op
+   genomes). Falls back to `validOffspring` when `validEvaluated` is absent (backward
+   compatibility with pre-existing operator stats).
+3. If inefficiency rate > 0.30, the weight is halved (clamped to a floor of 0.1).
+4. If inefficiency rate < 0.10, the weight is restored toward the base weight by 50%.
 5. Weights between the thresholds remain unchanged.
 
 Constants: `FAILURE_RATE_PENALIZE = 0.30`, `FAILURE_RATE_RESTORE = 0.10`,
 `MIN_WEIGHT = 0.1`, `RESTORE_FACTOR = 0.5`.
 
 Implemented in `src/evolutionary-engine/operator-selector.js`.
+
+### Structured Mutation Outcomes
+
+`mutateAndRepairGenome()` (in `src/evolutionary-engine/mutation/orchestrator.js`)
+returns a structured outcome when an `OperatorSelector` is provided:
+
+| Outcome | `genome` field | Meaning |
+|---------|---------------|---------|
+| `"ok"` | mutated genome | Mutation + repair succeeded |
+| `"noOp"` | original genome | Operator made no change (structural guard, missing prerequisites) |
+| `"repairFailed"` | `null` | Mutation applied but repair returned `null` |
+
+When no selector is provided (e.g., direct unit-test calls), the function returns
+the repaired genome directly for backward compatibility.
 
 ### Effect Helpers
 

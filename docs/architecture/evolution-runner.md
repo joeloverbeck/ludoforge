@@ -69,10 +69,27 @@ The runner accumulates per-operator counters and writes a snapshot each generati
 Counters per operator:
 
 - `attempts`: number of mutation applications for that operator.
-- `validOffspring`: number of evaluated offspring that produced valid fitness + descriptors.
-- `acceptedOffspring`: number of valid offspring that pass acceptance gates (currently mirrors valid).
+- `noOp`: operator was invoked but made no change (structural guard, missing prerequisites).
+- `repairFailed`: operator produced a mutated genome but repair returned `null`.
+- `rejected`: breakdown of evaluation rejections by reason:
+  - `validationFailure`, `safetyFailure`, `evaluationError`, `evaluationNull`.
+- `evaluated`: number of mutated genomes actually sent to evaluation (post-repair).
+- `validEvaluated`: number of evaluated mutated genomes that produced valid `{ fitness, descriptors }`.
+- `validOffspring`: legacy counter (evaluated offspring with valid fitness); retained for backward compatibility.
+- `acceptedOffspring`: legacy counter (mirrors `validOffspring`).
 - `gridContributions.filledEmpty`: MAP-Elites placements that filled an empty niche.
 - `gridContributions.improvedElite`: placements that replaced an existing elite.
+
+**Accounting invariant** (per operator):
+
+```
+attempts === noOp + repairFailed + rejectedTotal + validEvaluated
+```
+
+where `rejectedTotal = rejected.validationFailure + rejected.safetyFailure + rejected.evaluationError + rejected.evaluationNull`.
+
+Additionally: `evaluated === rejectedTotal + validEvaluated` and
+`validEvaluated <= evaluated <= attempts`.
 
 Snapshots are cumulative within a run and continue when resuming the same `runId`.
 
@@ -106,7 +123,9 @@ persists them as `health.json`.
 | `rejectionReasons` | object | Frequency map of rejection reason categories |
 | `degeneracyFlags` | object | Frequency map of degeneracy flags across evaluated genomes |
 | `nicheOccupancy` | number | Number of occupied MAP-Elites niches |
-| `repairFailureRate` | number | `(attempts - validOffspring) / attempts` across all operators |
+| `operatorInefficiencyRate` | number | `(attempts - validEvaluated) / attempts` across all operators |
+| `repairFailureRate` | number | `repairFailed / attempts` across all operators (truthful: counts only actual repair failures) |
+| `noOpRate` | number | `noOp / attempts` across all operators |
 
 Health metrics support observability dashboards and early-stopping decisions.
 
@@ -118,6 +137,26 @@ per-operator failure rates. See
 [evolutionary-engine.md](evolutionary-engine.md) § Adaptive Weighting for the
 algorithm details. The updated weights take effect for the next generation's
 mutation selection.
+
+## Mutation Retry Loop
+
+The runner's evolution applicator (`src/evolution-runner/evolution-applicator.js`)
+retries unproductive mutation attempts per offspring slot:
+
+1. For each offspring slot, pick an operator and invoke `mutateAndRepairGenome()`.
+2. If the outcome is `"noOp"` or `"repairFailed"`, record the telemetry counter
+   and retry with a fresh operator pick.
+3. On `"ok"`, use the mutated genome and stop retrying.
+4. If all retries are exhausted without a productive mutation, the slot keeps the
+   unmutated parent genome (this fallback is **not** counted as `validEvaluated`).
+
+**Configuration**: `maxMutationRetries` (default `3`, configurable via
+`config.evolution.mutation.maxMutationRetries`). Total attempts per slot =
+`maxMutationRetries + 1`.
+
+The applicator returns `{ population, operatorNames, outcomes }` where `outcomes`
+is an array with one entry per offspring slot: `"ok"`, `"noOp"`, `"repairFailed"`,
+or `"exhausted"`.
 
 ## Motif Mining
 

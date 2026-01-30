@@ -1,5 +1,7 @@
 # ADAOPEWEIISS-08: Update architecture documentation
 
+**Status: COMPLETED**
+
 ## What
 
 Update the architecture documentation to reflect all changes from ADAOPEWEIISS-01 through ADAOPEWEIISS-07. The docs must accurately describe the structured outcome flow, retry loop, corrected health metrics, and the accounting invariant.
@@ -43,3 +45,23 @@ Specific updates:
 ## Dependencies
 
 - ADAOPEWEIISS-01 through ADAOPEWEIISS-07 (all implementation and tests complete)
+
+## Outcome
+
+All documentation updated as planned. No deviations from the ticket scope.
+
+**Changes made:**
+
+1. **`docs/architecture/evolutionary-engine.md`**:
+   - Updated evaluation adapter note: replaced fallback-to-original description with structured outcome description (`ok`/`noOp`/`repairFailed`), clarified that `repairFailed` returns `null` genome and the runner retries.
+   - Updated adaptive weighting section: formula now reads `(attempts - validEvaluated) / attempts` with fallback to `validOffspring` for backward compatibility.
+   - Added new "Structured Mutation Outcomes" subsection documenting the three outcome types and their `genome` field semantics.
+
+2. **`docs/architecture/evolution-runner.md`**:
+   - Expanded operator telemetry counters to include `noOp`, `repairFailed`, `rejected` (with sub-keys), `evaluated`, `validEvaluated`; marked `validOffspring`/`acceptedOffspring` as legacy.
+   - Added accounting invariant formula: `attempts === noOp + repairFailed + rejectedTotal + validEvaluated`.
+   - Updated health metrics table: replaced stale `repairFailureRate` formula with three metrics (`operatorInefficiencyRate`, `repairFailureRate`, `noOpRate`) using correct formulas.
+   - Added new "Mutation Retry Loop" section documenting per-slot retry behavior, `maxMutationRetries` config, and `outcomes` array.
+
+3. **`CLAUDE.md`**:
+   - Updated mutation pipeline summary to mention structured outcomes, retry loop, `null` genome on repair failure, and `validEvaluated`-based adaptive weighting.

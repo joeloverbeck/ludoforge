@@ -224,6 +224,39 @@ function applySetTurnOrder(state, effect, context) {
   };
 }
 
+function applyChoose(state, effect, context, options) {
+  const allOptions = Array.isArray(effect.options) ? effect.options : [];
+  if (allOptions.length === 0) {
+    return { ok: true, appliedEffect: { kind: "choose", selected: [], applied: [] } };
+  }
+  const count = typeof effect.count === "number" ? effect.count : 1;
+  const available = allOptions.slice();
+  const selected = [];
+  const rng = context.rng;
+
+  for (let i = 0; i < count && available.length > 0; i += 1) {
+    const idx = rng?.nextInt
+      ? rng.nextInt(available.length)
+      : Math.floor(Math.random() * available.length);
+    selected.push(available[idx]);
+    available.splice(idx, 1);
+  }
+
+  const applied = [];
+  for (const optionEffects of selected) {
+    for (const subEffect of optionEffects) {
+      const result = applyEffect(state, subEffect, context, options);
+      if (!result.ok) {
+        return { ok: false, reason: result.reason };
+      }
+      if (result.appliedEffect) {
+        applied.push(result.appliedEffect);
+      }
+    }
+  }
+  return { ok: true, appliedEffect: { kind: "choose", selected: selected.length, applied } };
+}
+
 function applySetFlag(state, effect, context) {
   const targetRef = effect.target;
   const flag = effect.flag;
@@ -280,6 +313,10 @@ export function applyEffect(state, effect, context, options) {
 
   if (effect.kind === "set_turn_order") {
     return applySetTurnOrder(state, effect, context);
+  }
+
+  if (effect.kind === "choose") {
+    return applyChoose(state, effect, context, options);
   }
 
   if (!effect.target) {

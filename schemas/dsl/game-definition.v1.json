@@ -347,6 +347,22 @@
             "variable": { "type": "string" },
             "direction": { "type": "string", "enum": ["asc", "desc"] }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "options"],
+          "properties": {
+            "kind": { "const": "choose" },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/Effect" }
+              }
+            },
+            "count": { "type": "integer", "minimum": 1, "default": 1 }
+          }
         }
       ]
     },

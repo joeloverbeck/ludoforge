@@ -234,7 +234,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 ```
 
 Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
-`move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`.
+`move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`, `choose`.
 
 ### Pass-Step Rules
 
@@ -272,6 +272,10 @@ When `actionId === null` (pass step):
 - **Turn order** (`set_turn_order`): sorts players by a per-player variable value
   (ascending or descending, tie-break by lower player ID) and writes the resulting
   order into `state.turn.turnOrder` for the `round_robin` scheduler to consult.
+- **Player choice** (`choose`): presents `options` (array of effect arrays) and
+  selects `count` of them (default 1) via `context.rng` for deterministic
+  simulation. Selected option effects are applied recursively. Empty options is
+  a no-op.
 
 Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`
 (attribute access and existence), `zone_query` (count, has_token), and

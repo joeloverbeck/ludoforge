@@ -146,7 +146,7 @@ function runSimulationLoop(config) {
     const action = selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
 
     const impact = createStepImpact();
-    const effectContext = { ...context, impact };
+    const effectContext = { ...context, impact, rng };
     const actionResult = applyAction(definition, state, action, effectContext);
     const triggerResult = applyAfterActionTriggers(definition, state, effectContext);
     recordStateUpdate(events, state, { actionId: action.id, playerId: context.playerId });
@@ -322,7 +322,7 @@ function runSimultaneousLoop({
       };
 
       const impact = createStepImpact();
-      const effectContext = { ...context, impact };
+      const effectContext = { ...context, impact, rng };
       const actionResult = applyAction(definition, state, action, effectContext);
       const triggerResult = applyAfterActionTriggers(definition, state, effectContext);
       recordStateUpdate(events, state, { actionId: action.id, playerId });

@@ -90,6 +90,34 @@ describe("schema", () => {
       assertValid(candidate);
     });
 
+    it("accepts choose effects", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "choose",
+          options: [
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
+            [{ kind: "dec", target: { kind: "var", id: "score" }, amount: 1 }],
+          ],
+          count: 1,
+        },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts choose effects without count (defaults to 1)", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "choose",
+          options: [
+            [{ kind: "set", target: { kind: "var", id: "score" }, value: 5 }],
+          ],
+        },
+      ];
+      assertValid(candidate);
+    });
+
     it("accepts random_draw scheduler", () => {
       const candidate = structuredClone(baseDefinition);
       candidate.turn = { scheduler: "random_draw" };
