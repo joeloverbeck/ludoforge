@@ -175,6 +175,17 @@ describe("mutation", () => {
   });
 
   describe("actionRemoveMutation", () => {
+    it("is a no-op when only one action exists", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = actionRemoveMutation.mutate(genome, rng);
+
+      assert.equal(definition.actions.length, 1);
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
     it("removes an action when multiple exist", () => {
       const definition = makeTwoActionDefinition();
       const genome = { definition };
@@ -298,6 +309,17 @@ describe("mutation", () => {
   });
 
   describe("phaseRemoveMutation", () => {
+    it("is a no-op when only one phase exists", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.turn = { ...definition.turn, phases: ["main"] };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = phaseRemoveMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
     it("removes a phase when multiple exist", () => {
       const definition = cloneDefinition(baseDefinition);
       definition.turn.phases = ["setup", "main"];
@@ -327,6 +349,16 @@ describe("mutation", () => {
   });
 
   describe("tokenTypeRemoveMutation", () => {
+    it("is a no-op when only one token type exists", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = tokenTypeRemoveMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
     it("rewrites token references to remaining token types", () => {
       const definition = makeTokenTypeRemovalDefinition();
       const genome = { definition };
@@ -346,6 +378,16 @@ describe("mutation", () => {
   });
 
   describe("zoneRemoveMutation", () => {
+    it("is a no-op when only one zone exists", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = zoneRemoveMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
     it("rewrites zone references to remaining zones", () => {
       const definition = makeZoneRemovalDefinition();
       const genome = { definition };

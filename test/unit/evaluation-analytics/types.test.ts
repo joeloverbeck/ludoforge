@@ -134,6 +134,10 @@ const preferenceModelUpdate: PreferenceModelUpdate = {
 const preferenceScore: PreferenceScore = {
   score: 0.7,
   confidence: 0.4,
+  pMean: 0.7,
+  pVar: 0.01,
+  uncertainty: 0.2,
+  bald: 0.05,
 };
 
 const preferenceCalibrationBucket: PreferenceCalibrationBucket = {

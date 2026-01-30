@@ -48,6 +48,7 @@ describe("effectDeleteMutation", () => {
     const mutated = effectDeleteMutation.mutate(genome, rng);
 
     assert.equal(mutated.definition.actions[0].effects.length, 1);
+    assert.deepStrictEqual(mutated.definition, definition);
   });
 
   it("is a no-op when no actions exist", () => {

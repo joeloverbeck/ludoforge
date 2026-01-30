@@ -118,6 +118,10 @@ export interface CompositeScore {
 export interface PreferenceScore {
   score: number;
   confidence: number;
+  pMean: number;
+  pVar: number;
+  uncertainty: number;
+  bald: number;
 }
 
 export interface PreferenceCalibrationBucket {
