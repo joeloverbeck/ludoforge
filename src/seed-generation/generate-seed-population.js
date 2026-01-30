@@ -121,10 +121,10 @@ export function generateSeedPopulation({
     );
     const nicheId = getNicheId(mapElitesConfig, coordinates);
 
-    // Special-bin niches are always accepted and tracked separately.
+    // Special-bin niches are rejected but tracked separately.
     if (hasSpecialBin(nicheId)) {
-      seenIds.add(id);
-      genomes.push(genome);
+      rejectedByReason["special-bin"] =
+        (rejectedByReason["special-bin"] ?? 0) + 1;
       specialBinCounts.set(nicheId, (specialBinCounts.get(nicheId) ?? 0) + 1);
       continue;
     }

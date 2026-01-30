@@ -232,26 +232,42 @@ describe("generateSeedPopulation", () => {
   });
 
   describe("special bin exclusion from coverage", () => {
-    it("special-bin genome is always accepted regardless of strategy", () => {
-      const unknownEvaluator = () => ({ descriptors: { axis: null } });
+    it("rejects special-bin genomes and counts them as special-bin", () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 3) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.2 } };
+      };
       const result = generateSeedPopulation({
         ...baseOptions,
-        populationSize: 3,
-        maxAttempts: 200,
-        evaluator: unknownEvaluator,
-        coverageStrategy: "uniform-bins",
+        populationSize: 2,
+        maxAttempts: 100,
+        evaluator,
+        coverageStrategy: "random",
       });
-      assert.equal(result.genomes.length, 3);
+      assert.equal(result.genomes.length, 2);
+      assert.equal(result.report.rejectedByReason["special-bin"], 3);
+      assert.deepStrictEqual(result.report.specialBinCounts, { "axis:unknown": 3 });
     });
 
     it("special-bin genomes appear in specialBinCounts, not binCounts", () => {
-      const unknownEvaluator = () => ({ descriptors: { axis: null } });
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 2) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.8 } };
+      };
       const result = generateSeedPopulation({
         ...baseOptions,
         populationSize: 3,
         maxAttempts: 200,
-        evaluator: unknownEvaluator,
-        coverageStrategy: "uniform-bins",
+        evaluator,
+        coverageStrategy: "random",
       });
       const specialKeys = Object.keys(result.report.specialBinCounts);
       assert.ok(specialKeys.length > 0, "should have special bin entries");
@@ -259,11 +275,12 @@ describe("generateSeedPopulation", () => {
         specialKeys.every((k) => k.includes("unknown")),
         "special bin keys contain 'unknown'"
       );
-      // binCounts should be empty since all genomes are special-bin
-      assert.equal(Object.keys(result.report.binCounts).length, 0);
+      const binValues = Object.values(result.report.binCounts);
+      const binTotal = binValues.reduce((sum, count) => sum + count, 0);
+      assert.equal(binTotal, result.report.accepted);
     });
 
-    it("in-range bin counting is unaffected by special-bin acceptances", () => {
+    it("in-range bin counting is unaffected by special-bin rejections", () => {
       let callCount = 0;
       // Alternate: 1 in-range, then 1 special (null), repeat
       const mixedEvaluator = () => {
@@ -288,7 +305,7 @@ describe("generateSeedPopulation", () => {
       assert.ok(specialKeys.length > 0, "should have special bin entries");
     });
 
-    it("uniform-bins still rejects full in-range bins despite special-bin acceptances", () => {
+    it("uniform-bins still rejects full in-range bins despite special-bin rejections", () => {
       let callCount = 0;
       // Produce: 2 in-range bin 0, then specials, then more in-range bin 0
       // With 4 bins and pop=3, targetPerBin = ceil(3/4)=1
@@ -326,20 +343,19 @@ describe("generateSeedPopulation", () => {
     });
 
     it("totalBinCount equals product of d.bins (in-range only)", () => {
-      const unknownEvaluator = () => ({ descriptors: { axis: null } });
       const result = generateSeedPopulation({
         ...baseOptions,
         populationSize: 3,
         maxAttempts: 200,
-        evaluator: unknownEvaluator,
-        coverageStrategy: "uniform-bins",
+        evaluator: () => ({ descriptors: { axis: 0.4 } }),
+        coverageStrategy: "random",
       });
       // 2 bins for axis
       assert.equal(result.report.coverageTargetSummary.totalBinCount, 2);
     });
 
-    it("special-bin acceptance does not reset coverageRejectStreak", () => {
-      // This test verifies that accepting a special-bin genome does NOT reset
+    it("special-bin rejection does not reset coverageRejectStreak", () => {
+      // This test verifies that rejecting a special-bin genome does NOT reset
       // the coverageRejectStreak counter, so fallback still triggers correctly.
       let callCount = 0;
       const fourBinConfig = {

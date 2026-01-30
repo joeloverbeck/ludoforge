@@ -17,6 +17,7 @@
     "test:integration": "node --test --test-reporter=spec test/integration/**/*.test.mjs",
     "test:e2e": "node --experimental-test-module-mocks --test --test-reporter=spec test/e2e/**/*.test.mjs",
     "test:performance": "node --test --test-reporter=spec test/performance/**/*.test.mjs",
-    "test:memory": "node --test --test-reporter=spec test/memory/**/*.test.mjs"
+    "test:memory": "node --test --test-reporter=spec test/memory/**/*.test.mjs",
+    "evolve:default": "node ./src/cli/ludoforge-evolve.js --config experiments/default.json"
   }
 }

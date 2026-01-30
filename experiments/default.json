@@ -1,23 +1,43 @@
 {
   "seed": 42,
   "runner": {
-    "generations": 10000,
+    "generations": 1000,
     "maxRetainedGenerations": 30,
     "shortlistSize": 8,
     "saveEvery": 5
   },
   "mapElites": {
     "descriptors": [
-      { "id": "agency", "min": 0, "max": 1, "bins": 5 },
-      { "id": "variety", "min": 0, "max": 1, "bins": 5 },
-      { "id": "strategic_depth", "min": 0, "max": 50, "bins": 5 },
-      { "id": "interaction_rate", "min": 0, "max": 1, "bins": 5 }
+      {
+        "id": "agency",
+        "min": 0,
+        "max": 1,
+        "bins": 5
+      },
+      {
+        "id": "seat_imbalance",
+        "min": 0,
+        "max": 1,
+        "bins": 5
+      },
+      {
+        "id": "interaction_rate",
+        "min": 0,
+        "max": 1,
+        "bins": 5
+      },
+      {
+        "id": "strategic_depth",
+        "min": 0,
+        "max": 50,
+        "bins": 5
+      }
     ],
     "tieBreak": "replace"
   },
   "seeding": {
     "mode": "generate",
-    "populationSize": 16,
+    "populationSize": 24,
     "generate": {
       "coverage": {
         "strategy": "uniform-bins",
@@ -27,6 +47,15 @@
         }
       },
       "grammar": {}
+    }
+  },
+  "humanFeedback": {
+    "enabled": true,
+    "mode": "comparison",
+    "maxSamplesPerGen": 5,
+    "activeLearning": {
+      "uncertaintyThreshold": 0.15,
+      "diversityQuota": 1
     }
   }
 }
