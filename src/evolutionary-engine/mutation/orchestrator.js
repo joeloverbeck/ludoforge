@@ -28,6 +28,7 @@ import { motifInjectMutation } from "./operators/motif-inject.js";
 import { zoneAddMutation } from "./operators/zone-add.js";
 import { tokenTypeAddMutation } from "./operators/token-type-add.js";
 import { triggerAddMutation } from "./operators/trigger-add.js";
+import { schedulerSwapMutation } from "./operators/scheduler-swap.js";
 
 const ALL_MUTATION_OPERATORS = [
   numericTweakMutation,
@@ -54,6 +55,7 @@ const ALL_MUTATION_OPERATORS = [
   zoneAddMutation,
   tokenTypeAddMutation,
   triggerAddMutation,
+  schedulerSwapMutation,
 ];
 
 export const defaultMutationOperators = filterOperatorsByEnabled(

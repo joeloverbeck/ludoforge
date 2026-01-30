@@ -22,6 +22,7 @@ import { motifInjectMutation, createMotifInjectMutation } from "./mutation/opera
 import { zoneAddMutation } from "./mutation/operators/zone-add.js";
 import { tokenTypeAddMutation } from "./mutation/operators/token-type-add.js";
 import { triggerAddMutation } from "./mutation/operators/trigger-add.js";
+import { schedulerSwapMutation } from "./mutation/operators/scheduler-swap.js";
 
 export {
   defaultMutationOperators,
@@ -55,6 +56,7 @@ export {
   zoneAddMutation,
   tokenTypeAddMutation,
   triggerAddMutation,
+  schedulerSwapMutation,
 };
 
 export { WeightedSelector } from "./operator-selector.js";

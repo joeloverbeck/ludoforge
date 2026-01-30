@@ -39,7 +39,8 @@
         "motif-inject",
         "zone-add",
         "token-type-add",
-        "trigger-add"
+        "trigger-add",
+        "scheduler-swap"
       ]
     },
     "CrossoverOperatorKind": {

@@ -26,7 +26,8 @@
       "motif-inject",
       "zone-add",
       "token-type-add",
-      "trigger-add"
+      "trigger-add",
+      "scheduler-swap"
     ],
     "weights": {
       "numeric-tweak": 3,
@@ -52,7 +53,8 @@
       "motif-inject": 2,
       "zone-add": 3,
       "token-type-add": 3,
-      "trigger-add": 3
+      "trigger-add": 3,
+      "scheduler-swap": 1
     }
   },
   "crossover": {

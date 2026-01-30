@@ -143,6 +143,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
 - `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
 - `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
+- `scheduler-swap`: changes `turn.scheduler` to a different type (`round_robin`, `priority_queue`, `token_holder`). Generates required auxiliary fields (`orderBy` for priority_queue; `tokenType` + `zone` for token_holder) from existing definition state, and strips fields that are no longer relevant. No-op when no valid swap target exists (e.g., no per-player integer variables for priority_queue, no per-player zones with matching token types for token_holder).
 
 ### Operator Selection
 
@@ -165,6 +166,7 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 | Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove` |
 
 `effect-delete` is weighted at 1 (between destructive and moderate).
+`scheduler-swap` is weighted at 1 (structural change with validation guards).
 The tiering ensures destructive removal mutations fire less frequently than
 conservative value tweaks, reducing invalid-offspring rates.
 

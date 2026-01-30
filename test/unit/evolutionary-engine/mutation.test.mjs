@@ -16,6 +16,7 @@ import {
   tokenTypeZoneTargetAddMutation,
   tokenTypeRemoveMutation,
   zoneRemoveMutation,
+  schedulerSwapMutation,
 } from "../../../src/evolutionary-engine/mutation.js";
 import { repairGenome } from "../../../src/evolutionary-engine/repair.js";
 import { createSeededRng } from "../../../src/simulation-engine/index.js";
@@ -401,6 +402,174 @@ describe("mutation", () => {
       assert.equal(mutated.definition.actions[0].targets[0].selector.zone, "board2");
       assert.equal(mutated.definition.actions[0].preconditions.ref.id, "board2");
       assert.equal(mutated.definition.actions[0].effects[1].toZone, "board2");
+    });
+  });
+
+  describe("schedulerSwapMutation", () => {
+    function makePriorityQueueDefinition() {
+      const definition = cloneDefinition(baseDefinition);
+      definition.state.variables.push({
+        id: "time_pos",
+        scope: "per_player",
+        type: { kind: "int", min: 0, max: 100 },
+        initial: 0,
+      });
+      definition.turn = {
+        scheduler: "priority_queue",
+        orderBy: { variable: "time_pos", direction: "asc" },
+      };
+      return definition;
+    }
+
+    function makeTokenHolderDefinition() {
+      const definition = cloneDefinition(baseDefinition);
+      definition.state.zones.push({
+        id: "holder_zone",
+        tokenType: "pawn",
+        scope: "per_player",
+        order: "ordered",
+        visibility: "public",
+      });
+      definition.turn = {
+        scheduler: "token_holder",
+        tokenType: "pawn",
+        zone: "holder_zone",
+      };
+      return definition;
+    }
+
+    it("swaps from round_robin to priority_queue and produces valid orderBy", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.state.variables.push({
+        id: "time_pos",
+        scope: "per_player",
+        type: { kind: "int", min: 0, max: 100 },
+        initial: 0,
+      });
+      const genome = { definition };
+      // Use a seed that picks priority_queue (need per_player int var available)
+      const rng = createSeededRng(42);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      // Should have swapped away from round_robin
+      assert.notEqual(mutated.definition.turn.scheduler, "round_robin");
+      if (mutated.definition.turn.scheduler === "priority_queue") {
+        assert.ok(mutated.definition.turn.orderBy);
+        assert.equal(mutated.definition.turn.orderBy.variable, "time_pos");
+        assert.ok(["asc", "desc"].includes(mutated.definition.turn.orderBy.direction));
+      }
+    });
+
+    it("swaps from priority_queue to another scheduler and produces valid fields", () => {
+      const definition = makePriorityQueueDefinition();
+      definition.state.zones.push({
+        id: "holder_zone",
+        tokenType: "pawn",
+        scope: "per_player",
+        order: "ordered",
+        visibility: "public",
+      });
+      const genome = { definition };
+      const rng = createSeededRng(7);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      assert.notEqual(mutated.definition.turn.scheduler, "priority_queue");
+      if (mutated.definition.turn.scheduler === "round_robin") {
+        assert.equal(mutated.definition.turn.orderBy, undefined);
+        assert.equal(mutated.definition.turn.tokenType, undefined);
+        assert.equal(mutated.definition.turn.zone, undefined);
+      } else if (mutated.definition.turn.scheduler === "token_holder") {
+        assert.ok(mutated.definition.turn.tokenType);
+        assert.ok(mutated.definition.turn.zone);
+        assert.equal(mutated.definition.turn.orderBy, undefined);
+      }
+    });
+
+    it("swapping to round_robin removes orderBy, tokenType, and zone fields", () => {
+      const definition = makePriorityQueueDefinition();
+      const genome = { definition };
+      // No per_player zones with matching token types → only round_robin is a valid target
+      const rng = createSeededRng(1);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "round_robin");
+      assert.equal(mutated.definition.turn.orderBy, undefined);
+      assert.equal(mutated.definition.turn.tokenType, undefined);
+      assert.equal(mutated.definition.turn.zone, undefined);
+    });
+
+    it("returns unchanged genome when no valid swap target exists", () => {
+      // round_robin with no per_player int vars and no per_player zones
+      // → only round_robin itself is valid, which is excluded → no candidates
+      const definition = cloneDefinition(baseDefinition);
+      const genome = { definition };
+      const rng = createSeededRng(1);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      assert.deepStrictEqual(mutated.definition, definition);
+    });
+
+    it("is deterministic with seeded RNG", () => {
+      const definition = makePriorityQueueDefinition();
+      definition.state.zones.push({
+        id: "holder_zone",
+        tokenType: "pawn",
+        scope: "per_player",
+        order: "ordered",
+        visibility: "public",
+      });
+      const genome = { definition };
+      const result1 = schedulerSwapMutation.mutate(genome, createSeededRng(99));
+      const result2 = schedulerSwapMutation.mutate(genome, createSeededRng(99));
+
+      assert.deepStrictEqual(result1.definition.turn, result2.definition.turn);
+    });
+
+    it("output genome passes DSL schema validation when swapping to priority_queue", () => {
+      const definition = cloneDefinition(baseDefinition);
+      definition.state.variables.push({
+        id: "time_pos",
+        scope: "per_player",
+        type: { kind: "int", min: 0, max: 100 },
+        initial: 0,
+      });
+      // Force priority_queue by removing per_player zones (so token_holder is not valid)
+      // Only candidates: priority_queue
+      definition.turn = { scheduler: "round_robin" };
+      const genome = { definition };
+      const rng = createSeededRng(1);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "priority_queue");
+      const validation = validateGenomeDefinition(mutated.definition);
+      assert.ok(validation.valid, `Schema validation failed: ${JSON.stringify(validation.errors)}`);
+    });
+
+    it("output genome passes DSL schema validation when swapping to token_holder", () => {
+      const definition = makeTokenHolderDefinition();
+      // Currently token_holder, swap to something else then swap back
+      // First make it round_robin with per_player zone available
+      definition.turn = { scheduler: "round_robin" };
+      // Ensure no per_player int vars so only token_holder is a swap candidate
+      definition.state.variables = definition.state.variables.filter(
+        (v) => !(v.scope === "per_player" && v.type?.kind === "int"),
+      );
+      const genome = { definition };
+      const rng = createSeededRng(1);
+      const mutated = schedulerSwapMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "token_holder");
+      const validation = validateGenomeDefinition(mutated.definition);
+      assert.ok(validation.valid, `Schema validation failed: ${JSON.stringify(validation.errors)}`);
+    });
+
+    it("does not mutate the input genome", () => {
+      const definition = makePriorityQueueDefinition();
+      const genome = { definition };
+      const originalTurn = structuredClone(definition.turn);
+      schedulerSwapMutation.mutate(genome, createSeededRng(1));
+
+      assert.deepStrictEqual(genome.definition.turn, originalTurn);
     });
   });
 
