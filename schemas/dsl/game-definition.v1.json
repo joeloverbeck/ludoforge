@@ -231,7 +231,7 @@
           "properties": {
             "kind": { "const": "inc" },
             "target": { "$ref": "#/$defs/Ref" },
-            "amount": { "type": "number" }
+            "amount": { "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/Expr" }] }
           }
         },
         {
@@ -241,7 +241,7 @@
           "properties": {
             "kind": { "const": "dec" },
             "target": { "$ref": "#/$defs/Ref" },
-            "amount": { "type": "number" }
+            "amount": { "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/Expr" }] }
           }
         },
         {
@@ -600,6 +600,17 @@
           "properties": {
             "kind": { "const": "cmp" },
             "op": { "type": "string", "enum": ["==", "!=", "<", "<=", ">", ">="] },
+            "left": { "$ref": "#/$defs/Expr" },
+            "right": { "$ref": "#/$defs/Expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "arith" },
+            "op": { "type": "string", "enum": ["+", "-", "*", "/", "%"] },
             "left": { "$ref": "#/$defs/Expr" },
             "right": { "$ref": "#/$defs/Expr" }
           }

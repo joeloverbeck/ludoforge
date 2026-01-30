@@ -1,4 +1,5 @@
 import { resolveVarValue, writeVarValue } from "./ref-resolution.js";
+import { evaluateValue } from "./expression-eval.js";
 
 function clampValue(value, min, max) {
   let next = value;
@@ -45,6 +46,19 @@ function resolveTargetPlayerId(playerRef, context) {
   return context.playerId;
 }
 
+function resolveAmount(raw, context) {
+  if (raw == null) {
+    return 0;
+  }
+  if (typeof raw === "number") {
+    return raw;
+  }
+  if (typeof raw === "object" && raw.kind) {
+    return evaluateValue(raw, context);
+  }
+  return undefined;
+}
+
 function applyVariableEffect(state, variable, effect, context, options, targetPlayerId) {
   const pid = targetPlayerId ?? context.playerId;
   const current = resolveVarValue(state, variable, pid);
@@ -56,7 +70,7 @@ function applyVariableEffect(state, variable, effect, context, options, targetPl
       next = effect.value ?? current;
       break;
     case "inc": {
-      const amount = effect.amount ?? 0;
+      const amount = resolveAmount(effect.amount, context);
       if (typeof current !== "number" || typeof amount !== "number") {
         return { ok: false, reason: "non-numeric-target" };
       }
@@ -64,7 +78,7 @@ function applyVariableEffect(state, variable, effect, context, options, targetPl
       break;
     }
     case "dec": {
-      const amount = effect.amount ?? 0;
+      const amount = resolveAmount(effect.amount, context);
       if (typeof current !== "number" || typeof amount !== "number") {
         return { ok: false, reason: "non-numeric-target" };
       }
@@ -115,7 +129,7 @@ export function applyVariableDispatch(state, effect, context, options) {
   if (effect.kind === "set") {
     appliedEffect.value = effect.value;
   } else if (effect.kind === "inc" || effect.kind === "dec") {
-    appliedEffect.amount = effect.amount ?? 0;
+    appliedEffect.amount = resolveAmount(effect.amount, context);
   }
   return { ...result, appliedEffect };
 }

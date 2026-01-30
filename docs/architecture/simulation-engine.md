@@ -266,6 +266,9 @@ When `actionId === null` (pass step):
 
 - **Variable effects** (`set`/`inc`/`dec`): target `{ kind: "var" }`. Reads/writes
   via `resolveVarValue`/`writeVarValue`, respects bounds mode (reject or clamp).
+  The `amount` field on `inc`/`dec` accepts a literal number or an `Expr` object
+  (value, ref, arith). Expression amounts are resolved at runtime via
+  `evaluateValue()` from `expression-eval.js`.
 - **Token lifecycle** (`spawn`/`move`/`destroy`/`reveal`/`hide`): target
   `{ kind: "token" }`. Delegated to `token-effects.js`.
 - **Spatial movement** (`move_spatial`): moves a token along a zone's spatial graph.
@@ -299,7 +302,12 @@ When `actionId === null` (pass step):
 
 Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`
 (attribute access and existence), `zone_query` (count, has_token), and
-`flag_query` (checks if an entity has a flag).
+`flag_query` (checks if an entity has a flag). Expressions also support
+arithmetic via `{ kind: "arith", op, left, right }` with operators `+`, `-`,
+`*`, `/` (integer division, truncated toward zero), and `%` (modulo).
+Division and modulo by zero return `undefined` (falsy). Arithmetic
+expressions can be nested inside `cmp` comparisons to enable patterns like
+`impulse_counter % speed == 0`.
 
 ### Token Effects (`token-effects.js`)
 

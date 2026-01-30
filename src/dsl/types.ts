@@ -88,8 +88,8 @@ export interface SelectorDef {
 
 export type Effect =
   | { kind: "set"; target: Ref; value?: ScalarValue }
-  | { kind: "inc"; target: Ref; amount?: number }
-  | { kind: "dec"; target: Ref; amount?: number }
+  | { kind: "inc"; target: Ref; amount?: number | Expr }
+  | { kind: "dec"; target: Ref; amount?: number | Expr }
   | { kind: "move"; target: Ref; toZone?: string; toPlayer?: "self" | "opponent" | "next" | "previous" }
   | { kind: "spawn"; target: Ref; toZone?: string }
   | { kind: "destroy"; target: Ref }
@@ -162,6 +162,7 @@ export type Expr =
   | { kind: "or"; left?: Expr; right?: Expr }
   | { kind: "not"; value?: Expr }
   | { kind: "cmp"; op?: "==" | "!=" | "<" | "<=" | ">" | ">="; left?: Expr; right?: Expr }
+  | { kind: "arith"; op?: "+" | "-" | "*" | "/" | "%"; left?: Expr; right?: Expr }
   | { kind: "value"; value?: ScalarValue }
   | { kind: "ref"; ref?: ExprRef };
 

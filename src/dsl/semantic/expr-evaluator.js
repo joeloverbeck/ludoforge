@@ -113,6 +113,8 @@ export function evaluateExpr(expr, context) {
       const right = evaluateExpr(expr.right, context);
       return { possible: left.possible || right.possible, alwaysTrue: left.alwaysTrue || right.alwaysTrue };
     }
+    case "arith":
+      return { possible: true, alwaysTrue: false };
     case "cmp": {
       const left = expr.left;
       const right = expr.right;
