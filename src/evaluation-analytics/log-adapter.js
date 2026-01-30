@@ -125,6 +125,8 @@ function buildTrajectorySummary(result, index) {
   const actionCounts = {};
   const stateHashes = new Set();
   let turnCount = 0;
+  let totalSkippedEffects = 0;
+  let totalAppliedEffects = 0;
 
   for (const step of steps) {
     if (!isRecord(step) || !isRecord(step.state)) {
@@ -142,6 +144,12 @@ function buildTrajectorySummary(result, index) {
       actionCounts[step.actionId] = (actionCounts[step.actionId] ?? 0) + 1;
     }
     stateHashes.add(defaultStateHasher(step.state));
+    if (Array.isArray(step.skippedEffects)) {
+      totalSkippedEffects += step.skippedEffects.length;
+    }
+    if (Array.isArray(step.appliedEffects)) {
+      totalAppliedEffects += step.appliedEffects.length;
+    }
   }
 
   const summary = {
@@ -152,6 +160,8 @@ function buildTrajectorySummary(result, index) {
     terminated: result.terminated,
     actionCounts: Object.keys(actionCounts).length > 0 ? actionCounts : undefined,
     uniqueStateCount: stateHashes.size,
+    totalSkippedEffects,
+    totalAppliedEffects,
     keySteps: steps.map((step) => ({
       turn: step.turn,
       phase: step.phase ?? null,

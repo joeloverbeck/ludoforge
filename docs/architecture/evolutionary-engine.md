@@ -29,7 +29,9 @@ Implemented in `src/evolutionary-engine/map-elites.js`.
 
 Descriptor `id` values must be one of the known metric names:
 `agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
-`turn_taking_rate`, `interaction_rate`, `structural_complexity`. This is enforced at two levels:
+`turn_taking_rate`, `interaction_rate`, `structural_complexity`,
+`advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`.
+This is enforced at two levels:
 
 1. **Schema**: `MapElitesDescriptorConfig.id` is an `enum` in both
    `schemas/evolution-runner/runner-config.schema.json` and
@@ -124,7 +126,10 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `termination-threshold`: nudges numeric termination thresholds within variable bounds.
 - `termination-outcome`: swaps termination outcome types (`win`/`lose`/`draw`).
 - `phase-add`: appends a unique phase label to `turn.phases`.
-- `phase-remove`: removes a random phase when more than one exists.
+- `phase-remove`: removes a random phase when more than one exists. After
+  removal, rebinds any actions whose `metadata.phase` matched the removed
+  phase to a random remaining phase (or removes the phase metadata entirely
+  if no phases remain).
 - `token-zone-target-add`: clones a token type + zone and adds a matching action target.
 - `token-type-remove`: removes a token type and rewrites references to a remaining token type.
 - `zone-remove`: removes a zone and rewrites references to a remaining zone.
@@ -225,6 +230,8 @@ Implemented in `src/evolutionary-engine/repair.js`.
 - Rejects genomes when variable or token type repair cannot be applied.
 - Repair is limited to DSL safety (static fixes). Runtime degeneracy and playability
   issues are handled by simulation + degeneracy filters rather than repair.
+- The repair orchestrator (`orchestrator.js`) also repairs `definition.turn.stepEffects`
+  by running `repairEffects()` on each step-effect entry.
 
 ### Structural Minimums
 
@@ -254,6 +261,9 @@ crossover:
   first remaining zone.
 - **Precondition refs**: action preconditions referencing missing variables are
   removed (delete the precondition rather than the action).
+- **Trigger condition refs**: trigger conditions referencing missing variables
+  (checked via `exprReferencesMissingVariable`) are stripped, making the
+  trigger unconditional rather than removing it entirely.
 - **Spatial node refs**: `move_spatial` effects targeting missing zones or nodes
   are redirected to the first valid spatial zone/node.
 

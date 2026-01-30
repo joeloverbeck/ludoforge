@@ -17,6 +17,10 @@
       "winRate": 0.9,
       "maxAvgSteps": 3,
       "minSamples": 3
+    },
+    "highSkippedEffects": {
+      "rate": 0.10,
+      "minAttempts": 50
     }
   },
   "enabledFlags": [
@@ -26,7 +30,8 @@
     "dominant-action",
     "trivial-win",
     "no-choices",
-    "non-terminating"
+    "non-terminating",
+    "high-skipped-effects"
   ],
   "policyByFlag": {
     "loop": "reject",
@@ -35,14 +40,16 @@
     "no-choices": "reject",
     "dominant-action": "penalize",
     "trivial-win": "penalize",
-    "stalemate": "penalize"
+    "stalemate": "penalize",
+    "high-skipped-effects": "penalize"
   },
   "penalties": {
     "forced-move": { "weight": 0.3, "freeRatio": 0.2 },
     "no-choices": { "weight": 0.5 },
     "dominant-action": { "weight": 0.2 },
     "trivial-win": { "weight": 0.3 },
-    "stalemate": { "weight": 0.1 }
+    "stalemate": { "weight": 0.1 },
+    "high-skipped-effects": { "weight": 0.2 }
   },
   "minStepsForNoChoices": 10,
   "compoundRejection": {

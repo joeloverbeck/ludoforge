@@ -108,8 +108,10 @@ export interface TriggerDef {
 }
 
 export interface TurnDef {
-  scheduler: "round_robin" | "priority_queue" | "custom";
+  scheduler: "round_robin" | "priority_queue" | "token_holder" | "custom";
   orderBy?: { variable: string; direction: "asc" | "desc" };
+  tokenType?: string;
+  zone?: string;
   phases?: string[];
   stepEffects?: TriggerDef[];
   noLegalActions?: NoLegalActionsDef;

@@ -30,12 +30,18 @@ export function repairActions(definition) {
  * @returns {Array}
  */
 export function repairTriggers(definition) {
+  const variableIds = collectVariableIds(definition);
   const triggers = normalizeArray(definition.triggers);
   return triggers.map((trigger) => {
     if (!trigger || typeof trigger !== "object") {
       return trigger;
     }
     const effects = repairEffects(trigger.effects, definition);
-    return { ...trigger, effects };
+    const nextTrigger = { ...trigger, effects };
+    if (trigger.condition && exprReferencesMissingVariable(trigger.condition, variableIds)) {
+      const { condition: _, ...rest } = nextTrigger;
+      return rest;
+    }
+    return nextTrigger;
   });
 }

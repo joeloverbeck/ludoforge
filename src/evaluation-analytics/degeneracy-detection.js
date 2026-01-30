@@ -36,6 +36,9 @@ function accumulateStatistics(summaries) {
   const actionTotals = new Map();
   let totalActions = 0;
 
+  let skippedEffectsTotal = 0;
+  let appliedEffectsTotal = 0;
+
   const winCounts = new Map();
   let winSamples = 0;
   let winStepTotal = 0;
@@ -98,6 +101,13 @@ function accumulateStatistics(summaries) {
       }
     }
 
+    if (typeof summary?.totalSkippedEffects === "number") {
+      skippedEffectsTotal += summary.totalSkippedEffects;
+    }
+    if (typeof summary?.totalAppliedEffects === "number") {
+      appliedEffectsTotal += summary.totalAppliedEffects;
+    }
+
     const outcomes = summary?.terminalOutcome?.outcomes;
     if (outcomes && typeof outcomes === "object") {
       const winners = Object.entries(outcomes).filter(([, outcome]) => outcome === "win");
@@ -127,6 +137,8 @@ function accumulateStatistics(summaries) {
     forcedSteps,
     actionTotals,
     totalActions,
+    skippedEffectsTotal,
+    appliedEffectsTotal,
     winCounts,
     winSamples,
     winStepTotal,
@@ -153,6 +165,8 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
     forcedSteps,
     actionTotals,
     totalActions,
+    skippedEffectsTotal,
+    appliedEffectsTotal,
     winCounts,
     winSamples,
     winStepTotal,
@@ -169,6 +183,8 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
     trivialWinMaxAverageSteps,
     minTrivialWinSamples,
     minStepsForNoChoices,
+    highSkippedEffectsRate,
+    highSkippedEffectsMinAttempts,
   } = resolvedThresholds;
 
   if (loopDetectedCount > 0 || (maxRepeatRatio >= loopRepeatRatio && maxRepeatedStates >= minRepeatedStates)) {
@@ -269,6 +285,22 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
     }
   }
 
+  const effectAttempts = skippedEffectsTotal + appliedEffectsTotal;
+  if (effectAttempts >= highSkippedEffectsMinAttempts && effectAttempts > 0) {
+    const skipRate = skippedEffectsTotal / effectAttempts;
+    ratios["high-skipped-effects"] = skipRate;
+    if (skipRate >= highSkippedEffectsRate) {
+      flags.add("high-skipped-effects");
+      details["high-skipped-effects"] = formatDetail({
+        skip_rate: skipRate,
+        threshold: highSkippedEffectsRate,
+        skipped: skippedEffectsTotal,
+        applied: appliedEffectsTotal,
+        attempts: effectAttempts,
+      });
+    }
+  }
+
   return { flags, details, ratios };
 }
 
@@ -301,6 +333,12 @@ function detectDegeneracy(summaries, thresholds = {}) {
     ),
     minStepsForNoChoices: clampNumber(
       thresholds.minStepsForNoChoices ?? DEFAULT_DEGENERACY_THRESHOLDS.minStepsForNoChoices
+    ),
+    highSkippedEffectsRate: clampNumber(
+      thresholds.highSkippedEffectsRate ?? DEFAULT_DEGENERACY_THRESHOLDS.highSkippedEffectsRate
+    ),
+    highSkippedEffectsMinAttempts: clampNumber(
+      thresholds.highSkippedEffectsMinAttempts ?? DEFAULT_DEGENERACY_THRESHOLDS.highSkippedEffectsMinAttempts
     ),
   };
 

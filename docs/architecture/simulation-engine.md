@@ -61,11 +61,17 @@ otherwise it falls back to `configs/simulation.json`.
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
    (`move_spatial`), repeat wrappers (`repeat`), conditional wrappers
    (`conditional`), and scoped flags (`set_flag`).
-   Failed effects are **skipped** rather than throwing — `applyAction` collects
-   skipped effects with their reason and source (`"cost"` or `"effect"`) and
-   returns them alongside applied effects. This allows structurally complex
-   genomes to survive evaluation even when some effects target non-existent
-   structures.
+   Cost effects are applied with `boundsMode: "reject"` — if any cost fails
+   (e.g., decrementing a variable already at its minimum), the entire action
+   is aborted: `applyAction` returns `{ appliedEffects: [], skippedEffects,
+   costAborted: true }` with no state mutation. This is a safety net; cost
+   feasibility is already checked during legality (step 1) so cost failures
+   should not be reachable in normal play.
+   Non-cost effects that fail are **skipped** rather than throwing —
+   `applyAction` collects skipped effects with their reason and source
+   (`"cost"` or `"effect"`) and returns them alongside applied effects. This
+   allows structurally complex genomes to survive evaluation even when some
+   effects target non-existent structures.
 10. Clear action-scoped flags (`clearFlags(state, "action")`).
 11. Apply after-action triggers (`applyAfterActionTriggers`). If a trigger
     fails, it is recorded as a `skippedTrigger` rather than throwing, and
@@ -86,6 +92,11 @@ after-action triggers because no action occurred.
     per-player variable specified by `definition.turn.orderBy`. Tie-breaking:
     lowest player ID wins. Round increments when every player has completed at
     least one turn (tracked via an internal `_actedThisRound` Set).
+  - `token_holder`: selects the player who holds a token of type
+    `definition.turn.tokenType` in per-player zone `definition.turn.zone`.
+    Tie-breaking: lowest player ID wins if multiple players hold matching
+    tokens. Round increments when every player has completed at least one turn
+    (tracked via `_actedThisRound`).
 - Phase cycling is shared: within a multi-phase turn, phases advance sequentially
   before the scheduler picks the next player.
 - If `maxTurns` is exceeded, termination reason is `"max-turns"` and the outcome is computed
@@ -169,6 +180,12 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
   to concrete token instance IDs (e.g., `{ unit: "t3" }`).
 - `appliedEffects` (AppliedEffect[], optional): ordered list of atomic effects
   actually executed in this step, including trigger-origin effects.
+- `skippedEffects` (SkippedEffect[], optional): effects that failed during this
+  step. Each entry has `reason` (e.g., `"bounds"`, `"unknown-variable"`),
+  `source` (`"cost"` or `"effect"`), and optionally the original `effect`
+  object. Present only when non-empty.
+- `skippedTriggers` (SkippedTrigger[], optional): triggers that failed during
+  this step. Each entry has a `reason` string. Present only when non-empty.
 
 ### AppliedEffect Type
 
@@ -269,9 +286,12 @@ target selectors resolve to concrete instance IDs.
 
 ### Action Legality (`actions.js`)
 
-`isActionLegal` checks preconditions and target selector availability. If an action
-declares targets, all selectors must resolve to at least one matching token for the
-action to be legal.
+`isActionLegal` checks preconditions, target selector availability, and cost
+feasibility. If an action declares targets, all selectors must resolve to at
+least one matching token. If an action declares costs, `checkCostFeasibility`
+trial-applies each cost effect on a `structuredClone` of the state with
+`boundsMode: "reject"` — if any cost would violate variable bounds the action
+is illegal. This prevents agents from selecting actions they cannot afford.
 
 `checkActionBounds` uses `structuredClone(state)` to deep-clone the full state
 (variables, zones, tokens) before trial-applying effects, preventing bounds checks
@@ -300,6 +320,8 @@ Optional fields:
 - `stateHash?`: per-step deterministic state hash (see Trace Fields above).
 - `bindings?`: per-step resolved target bindings (see Trace Fields above).
 - `appliedEffects?`: per-step ordered applied effects (see Trace Fields above).
+- `skippedEffects?`: per-step skipped effects with reasons (see Trace Fields above).
+- `skippedTriggers?`: per-step skipped triggers with reasons (see Trace Fields above).
 
 Hard rules:
 

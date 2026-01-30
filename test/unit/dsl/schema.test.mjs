@@ -72,6 +72,23 @@ describe("schema", () => {
       ];
       assertValid(candidate);
     });
+
+    it("accepts token_holder scheduler with tokenType and zone", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.state.zones.push({
+        id: "hand",
+        tokenType: "pawn",
+        scope: "per_player",
+        order: "unordered",
+        visibility: "public",
+      });
+      candidate.turn = {
+        scheduler: "token_holder",
+        tokenType: "pawn",
+        zone: "hand",
+      };
+      assertValid(candidate);
+    });
   });
 
   describe("rejected definitions", () => {
@@ -178,6 +195,31 @@ describe("schema", () => {
           condition: { kind: "value", value: true },
         },
       ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects token_holder scheduler missing tokenType", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.state.zones.push({
+        id: "hand",
+        tokenType: "pawn",
+        scope: "per_player",
+        order: "unordered",
+        visibility: "public",
+      });
+      candidate.turn = {
+        scheduler: "token_holder",
+        zone: "hand",
+      };
+      assertInvalid(candidate);
+    });
+
+    it("rejects token_holder scheduler missing zone", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn = {
+        scheduler: "token_holder",
+        tokenType: "pawn",
+      };
       assertInvalid(candidate);
     });
   });

@@ -67,6 +67,71 @@ function advancePriorityQueue(definition, state) {
   };
 }
 
+function findTokenHolder(definition, state) {
+  const tokenType = definition.turn.tokenType;
+  const zoneId = definition.turn.zone;
+  if (!tokenType || !zoneId) {
+    return { ok: false, reason: "token-holder-missing-config" };
+  }
+  const zone = state.zones?.[zoneId];
+  if (!zone || zone.scope !== "per_player") {
+    return { ok: false, reason: "token-holder-not-found" };
+  }
+  for (let pid = 1; pid <= definition.players.count; pid += 1) {
+    const tokens = zone.tokensByPlayer?.[pid] ?? [];
+    for (const tokenId of tokens) {
+      const token = state.tokens[tokenId];
+      if (token?.type === tokenType) {
+        return { ok: true, playerId: pid };
+      }
+    }
+  }
+  return { ok: false, reason: "token-holder-not-found" };
+}
+
+function advanceTokenHolder(definition, state) {
+  const phases = resolvePhases(definition);
+  const currentPhase = state.turn.phase ?? null;
+  const currentIndex = phases.indexOf(currentPhase);
+  const phaseIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  if (phaseIndex < phases.length - 1) {
+    return {
+      nextPhase: phases[phaseIndex + 1],
+      nextPlayer: state.turn.currentPlayer,
+      nextTurn: state.turn.turn,
+      nextRound: state.turn.round,
+      _actedThisRound: state.turn._actedThisRound,
+    };
+  }
+
+  const holderResult = findTokenHolder(definition, state);
+  if (!holderResult.ok) {
+    return holderResult;
+  }
+
+  const nextPlayer = holderResult.playerId;
+  const nextTurn = state.turn.turn + 1;
+
+  const acted = state.turn._actedThisRound ?? new Set();
+  acted.add(state.turn.currentPlayer);
+
+  let nextRound = state.turn.round;
+  let nextActed = acted;
+  if (acted.size >= definition.players.count) {
+    nextRound = state.turn.round + 1;
+    nextActed = new Set();
+  }
+
+  return {
+    nextPhase: phases[0],
+    nextPlayer,
+    nextTurn,
+    nextRound,
+    _actedThisRound: nextActed,
+  };
+}
+
 function advanceRoundRobin(definition, state) {
   const phases = resolvePhases(definition);
   const currentPhase = state.turn.phase ?? null;
@@ -177,7 +242,7 @@ function recordLoopState(state, limit) {
 
 export function advanceTurnPhase(definition, state, options = {}) {
   const scheduler = definition.turn.scheduler;
-  if (scheduler !== "round_robin" && scheduler !== "priority_queue") {
+  if (scheduler !== "round_robin" && scheduler !== "priority_queue" && scheduler !== "token_holder") {
     return { ok: false, reason: "unsupported-scheduler" };
   }
 
@@ -203,7 +268,12 @@ export function advanceTurnPhase(definition, state, options = {}) {
 
   const advanceResult = scheduler === "priority_queue"
     ? advancePriorityQueue(definition, state)
-    : advanceRoundRobin(definition, state);
+    : scheduler === "token_holder"
+      ? advanceTokenHolder(definition, state)
+      : advanceRoundRobin(definition, state);
+  if (advanceResult.ok === false) {
+    return advanceResult;
+  }
   const { nextPhase, nextPlayer, nextTurn, nextRound } = advanceResult;
   const maxTurns = resolveMaxTurns(definition, options);
   if (typeof maxTurns === "number" && nextTurn > maxTurns) {

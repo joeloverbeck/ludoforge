@@ -41,7 +41,9 @@ then repeats.
 
 3. Simulate and compute analytics
    - Simulation produces trajectories and termination outcomes; the game kernel
-     dispatches effects, checks action legality, and resolves target selectors.
+     dispatches effects, checks action legality (including cost feasibility), and
+     resolves target selectors. Failed effects and triggers are recorded as
+     `skippedEffects`/`skippedTriggers` in trajectory steps for observability.
      Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
    - When `portfolioMetrics.enabled` is `true`, the evaluator also runs
      agent-suite simulations via `runSuites()` from
@@ -99,6 +101,8 @@ then repeats.
      based on per-operator failure rates.
    - Removal operators enforce structural minimum guards (e.g., `action-remove` is
      a no-op when only one action exists) to prevent producing empty definitions.
+   - The `phase-remove` operator rebinds dangling action phase references after
+     removal. Repair also validates trigger conditions and step-effect references.
    - See [evolutionary-engine.md](evolutionary-engine.md#mutation-operators) for the
      full operator catalogue, effect helpers, and configuration.
 

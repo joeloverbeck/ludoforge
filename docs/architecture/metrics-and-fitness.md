@@ -8,6 +8,9 @@ Analytics operate on per-simulation summaries that include:
 - `keySteps` (samples of steps with `legalActionCount`)
 - `actionCounts` (frequency map of action ids)
 - `terminalOutcome`, `terminationReason`, and `terminated`
+- `totalSkippedEffects`, `totalAppliedEffects` (accumulated from trajectory
+  step `skippedEffects` and `appliedEffects` arrays; used for skip-rate
+  degeneracy detection)
 
 ## Config Defaults and Overrides
 
@@ -176,6 +179,10 @@ Implemented in `src/evaluation-analytics/degeneracy.js` with defaults from
   flagged as no-choices).
 - Dominant action: top action frequency / total actions >= 0.8 with >= 10 samples.
 - Trivial win: one player wins >= 0.9 of samples and average steps <= 3.
+- High skipped effects: skipped effect rate (`totalSkippedEffects /
+  (totalSkippedEffects + totalAppliedEffects)`) >= 0.10 with at least 50 total
+  effect attempts across all summaries. Indicates genomes with many structurally
+  invalid or bounds-violating effects.
 
 Note: `forcedMove` and `noChoices` are preference/policy knobs, not genre-truth.
 Some game designs legitimately have constrained action spaces.
@@ -187,6 +194,7 @@ Degeneracy flags and filters are configured by:
 - `thresholds.dominantAction.ratio`, `thresholds.dominantAction.minSamples`
 - `thresholds.trivialWin.winRate`, `thresholds.trivialWin.maxAvgSteps`,
   `thresholds.trivialWin.minSamples`
+- `thresholds.highSkippedEffects.rate`, `thresholds.highSkippedEffects.minAttempts`
 - `enabledFlags`: which degeneracy flags are active
 - `policyByFlag`: per-flag policy with three semantics:
   - `"reject"` — genome is filtered out entirely (hard gate)
@@ -196,7 +204,8 @@ Degeneracy flags and filters are configured by:
 - `minStepsForNoChoices`: minimum total trajectory steps required before the no-choices
   flag can fire (guards against false positives on very short games)
 
-Default policies: `loop`, `non-terminating`, and `no-choices` → reject; all others → penalize.
+Default policies: `loop`, `non-terminating`, and `no-choices` → reject; all others
+(including `high-skipped-effects`) → penalize.
 
 ### Compound Rejection
 
@@ -223,7 +232,8 @@ Implemented in `src/evaluation-analytics/feature-vector.js`:
   to distinguish "unknown" from a real 0.
 - Ordering defaults to `configs/metrics-core.json` `featureOrder`:
   `agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
-  `turn_taking_rate`, `interaction_rate`.
+  `turn_taking_rate`, `interaction_rate`, `structural_complexity`,
+  `advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`.
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
 - Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.

@@ -370,7 +370,12 @@
       "additionalProperties": false,
       "required": ["scheduler"],
       "properties": {
-        "scheduler": { "type": "string", "enum": ["round_robin", "priority_queue", "custom"] },
+        "scheduler": {
+          "type": "string",
+          "enum": ["round_robin", "priority_queue", "token_holder", "custom"]
+        },
+        "tokenType": { "type": "string" },
+        "zone": { "type": "string" },
         "orderBy": {
           "type": "object",
           "additionalProperties": false,
@@ -389,7 +394,19 @@
           "items": { "$ref": "#/$defs/TriggerDef" }
         },
         "noLegalActions": { "$ref": "#/$defs/NoLegalActionsDef" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scheduler": { "const": "token_holder" } } },
+          "then": {
+            "required": ["tokenType", "zone"],
+            "properties": {
+              "tokenType": {},
+              "zone": {}
+            }
+          }
+        }
+      ]
     },
     "NoLegalActionsDef": {
       "type": "object",

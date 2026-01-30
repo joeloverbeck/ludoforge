@@ -48,6 +48,15 @@
             "maxAvgSteps": { "type": "integer", "minimum": 1 },
             "minSamples": { "type": "integer", "minimum": 1 }
           }
+        },
+        "highSkippedEffects": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rate", "minAttempts"],
+          "properties": {
+            "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minAttempts": { "type": "integer", "minimum": 1 }
+          }
         }
       }
     },
@@ -65,7 +74,8 @@
         "dominant-action": { "$ref": "#/$defs/DegeneracyPolicy" },
         "trivial-win": { "$ref": "#/$defs/DegeneracyPolicy" },
         "no-choices": { "$ref": "#/$defs/DegeneracyPolicy" },
-        "non-terminating": { "$ref": "#/$defs/DegeneracyPolicy" }
+        "non-terminating": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "high-skipped-effects": { "$ref": "#/$defs/DegeneracyPolicy" }
       }
     },
     "penalties": {
@@ -112,6 +122,14 @@
           "properties": {
             "weight": { "type": "number", "minimum": 0 }
           }
+        },
+        "high-skipped-effects": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
         }
       }
     },
@@ -140,7 +158,8 @@
         "dominant-action",
         "trivial-win",
         "no-choices",
-        "non-terminating"
+        "non-terminating",
+        "high-skipped-effects"
       ]
     },
     "DegeneracyPolicy": {

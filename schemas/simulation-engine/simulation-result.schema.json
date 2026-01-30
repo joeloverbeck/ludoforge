@@ -96,6 +96,14 @@
         "appliedEffects": {
           "type": "array",
           "items": { "$ref": "#/$defs/AppliedEffect" }
+        },
+        "skippedEffects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SkippedEffect" }
+        },
+        "skippedTriggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SkippedTrigger" }
         }
       }
     },
@@ -171,6 +179,24 @@
         "source": { "enum": ["cost", "effect", "trigger"] },
         "amount": { "type": "number" },
         "value": {}
+      }
+    },
+    "SkippedEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "source"],
+      "properties": {
+        "effect": { "type": "object" },
+        "reason": { "type": "string" },
+        "source": { "enum": ["cost", "effect"] }
+      }
+    },
+    "SkippedTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "type": "string" }
       }
     }
   }

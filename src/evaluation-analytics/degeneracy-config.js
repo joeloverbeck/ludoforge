@@ -39,6 +39,8 @@ const FALLBACK_DEGENERACY_THRESHOLDS = {
   trivialWinMaxAverageSteps: 3,
   minTrivialWinSamples: 3,
   minStepsForNoChoices: 10,
+  highSkippedEffectsRate: 0.10,
+  highSkippedEffectsMinAttempts: 50,
 };
 
 const FALLBACK_DEGENERACY_FLAGS = [
@@ -49,6 +51,7 @@ const FALLBACK_DEGENERACY_FLAGS = [
   "trivial-win",
   "no-choices",
   "non-terminating",
+  "high-skipped-effects",
 ];
 
 function resolveFiniteNumber(value, fallback) {
@@ -91,6 +94,14 @@ const DEFAULT_DEGENERACY_THRESHOLDS = {
   minStepsForNoChoices: resolveFiniteNumber(
     DEFAULT_DEGENERACY_CONFIG?.minStepsForNoChoices,
     FALLBACK_DEGENERACY_THRESHOLDS.minStepsForNoChoices
+  ),
+  highSkippedEffectsRate: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highSkippedEffects?.rate,
+    FALLBACK_DEGENERACY_THRESHOLDS.highSkippedEffectsRate
+  ),
+  highSkippedEffectsMinAttempts: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highSkippedEffects?.minAttempts,
+    FALLBACK_DEGENERACY_THRESHOLDS.highSkippedEffectsMinAttempts
   ),
 };
 

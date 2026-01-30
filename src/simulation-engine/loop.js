@@ -113,10 +113,17 @@ function runSimulationLoop(config) {
       ...triggerResult.appliedEffects,
     ];
 
+    const skippedEffects = actionResult.skippedEffects ?? [];
+    const skippedTriggers = triggerResult.skippedTrigger
+      ? [triggerResult.skippedTrigger]
+      : [];
+
     const step = buildStep(state, action.id, legalActionCount, impact, {
       stateHash,
       bindings: {},
       appliedEffects,
+      skippedEffects,
+      skippedTriggers,
     });
     recordStep(step, trajectory, config.stepControl);
     stepsTaken += 1;

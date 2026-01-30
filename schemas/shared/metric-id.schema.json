@@ -13,6 +13,7 @@
     "interaction_rate",
     "structural_complexity",
     "advantage_reversal_rate",
-    "policy_sensitivity"
+    "policy_sensitivity",
+    "skipped_effect_rate"
   ]
 }

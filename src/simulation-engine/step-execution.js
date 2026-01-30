@@ -33,10 +33,10 @@ export function applyAction(definition, state, action, context) {
   const appliedEffects = [];
   const skippedEffects = [];
   for (const effect of action.costs ?? []) {
-    const result = applyEffect(state, effect, effectContext);
+    const result = applyEffect(state, effect, effectContext, { boundsMode: "reject" });
     if (!result.ok) {
       skippedEffects.push({ effect, reason: result.reason ?? "unknown", source: "cost" });
-      continue;
+      return { appliedEffects: [], skippedEffects, costAborted: true };
     }
     if (result.appliedEffect) {
       appliedEffects.push({ ...result.appliedEffect, source: "cost" });
@@ -100,7 +100,7 @@ function finalizeStepImpact(impact) {
  * @param {string|null|undefined} actionId
  * @param {number} legalActionCount
  * @param {object} [impact]
- * @param {object} [trace] - Trace data: { stateHash, bindings, appliedEffects }
+ * @param {object} [trace] - Trace data: { stateHash, bindings, appliedEffects, skippedEffects, skippedTriggers }
  * @returns {object}
  */
 export function buildStep(state, actionId, legalActionCount, impact, trace) {
@@ -118,6 +118,12 @@ export function buildStep(state, actionId, legalActionCount, impact, trace) {
     step.stateHash = trace.stateHash;
     step.bindings = trace.bindings;
     step.appliedEffects = trace.appliedEffects;
+    if (Array.isArray(trace.skippedEffects) && trace.skippedEffects.length > 0) {
+      step.skippedEffects = trace.skippedEffects;
+    }
+    if (Array.isArray(trace.skippedTriggers) && trace.skippedTriggers.length > 0) {
+      step.skippedTriggers = trace.skippedTriggers;
+    }
   }
   return step;
 }

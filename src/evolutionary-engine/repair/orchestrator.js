@@ -5,6 +5,7 @@ import {
 import { normalizeArray } from "./utils.js";
 import { repairVariables, repairTokenTypes } from "./variable-repair.js";
 import { repairActions, repairTriggers } from "./action-repair.js";
+import { repairEffects } from "./effect-repair.js";
 import { hasZoneReferencingEffects } from "./effect-queries.js";
 
 export const dslSafetyRepair = {
@@ -32,6 +33,18 @@ export const dslSafetyRepair = {
     definition.actions = repairActions(definition);
     if (definition.triggers) {
       definition.triggers = repairTriggers(definition);
+    }
+
+    if (definition.turn?.stepEffects) {
+      definition.turn = {
+        ...definition.turn,
+        stepEffects: definition.turn.stepEffects.map((se) => {
+          if (!se || typeof se !== "object") {
+            return se;
+          }
+          return { ...se, effects: repairEffects(se.effects, definition) };
+        }),
+      };
     }
 
     const actions = normalizeArray(definition.actions);

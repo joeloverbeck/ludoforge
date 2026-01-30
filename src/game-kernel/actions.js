@@ -35,6 +35,32 @@ function isActorAllowed(action, state, context) {
   }
 }
 
+function checkCostFeasibility(definition, state, action, context, variableIndex) {
+  const costs = action.costs;
+  if (!Array.isArray(costs) || costs.length === 0) {
+    return true;
+  }
+  const workingState = structuredClone(state);
+  const bindings = resolveActionTargets(definition, workingState, action, {
+    ...context,
+    variableIndex,
+  });
+  const effectContext = {
+    ...context,
+    state: workingState,
+    variableIndex,
+    bindings,
+    definition,
+  };
+  for (const cost of costs) {
+    const result = applyEffect(workingState, cost, effectContext, { boundsMode: "reject" });
+    if (!result.ok) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function isActionLegal(definition, state, action, context = {}) {
   const variableIndex = buildVariableIndex(definition);
   const phase = getPhase(context, state);
@@ -65,6 +91,9 @@ export function isActionLegal(definition, state, action, context = {}) {
         return false;
       }
     }
+  }
+  if (!checkCostFeasibility(definition, state, action, context, variableIndex)) {
+    return false;
   }
   return true;
 }
