@@ -6,6 +6,8 @@ import { computeExtendedMetrics } from "./metrics/extended.js";
 import { detectDegeneracy } from "./degeneracy.js";
 import { assembleFeatureVector } from "./feature-vector.js";
 import { computePreferenceAwareFitness } from "./fitness.js";
+import { createRunCache } from "../simulation-engine/run-cache.js";
+import { runSuites } from "./suite-runner.js";
 
 /**
  * @param {import("../dsl/types.js").GameDefinition} definition
@@ -30,6 +32,9 @@ function defaultAgentFactory(definition, playerCount) {
  * @param {boolean} [options.includeExtendedMetrics]
  * @param {object} [options.extendedMetricsOptions]
  * @param {number | null} [options.seed]
+ * @param {import("./agent-suite.js").AgentSuite[]} [options.agentSuites]
+ * @param {Record<string, number>} [options.agentSuiteRuns]
+ * @param {{ enabled?: boolean }} [options.portfolioMetrics]
  * @returns {{ evaluator: function }}
  */
 export function createEvaluator(options = {}) {
@@ -44,6 +49,9 @@ export function createEvaluator(options = {}) {
     includeExtendedMetrics = false,
     extendedMetricsOptions = {},
     seed = null,
+    agentSuites = [],
+    agentSuiteRuns = {},
+    portfolioMetrics = {},
   } = options;
 
   function evaluator(genome) {
@@ -78,6 +86,22 @@ export function createEvaluator(options = {}) {
           error: err instanceof Error ? err.message : String(err),
         },
       };
+    }
+
+    // Step 4b: Optionally run agent suite simulations
+    const shouldRunSuites = portfolioMetrics.enabled === true && agentSuites.length > 0;
+    let suiteResults = null;
+    if (shouldRunSuites) {
+      const baseSeed = seed ?? 0;
+      const cache = createRunCache();
+      suiteResults = runSuites({
+        definition,
+        suites: agentSuites,
+        runsPerSuite: agentSuiteRuns,
+        baseSeed,
+        simulationConfig,
+        cache,
+      });
     }
 
     // Step 5: Adapt simulation log
@@ -154,6 +178,7 @@ export function createEvaluator(options = {}) {
           simulationCount: results.length,
           logAdapterOk: true,
           nonFiniteFitness: true,
+          ...(suiteResults != null ? { suiteResults } : {}),
         },
       };
     }
@@ -176,6 +201,7 @@ export function createEvaluator(options = {}) {
         fitnessResult,
         simulationCount: results.length,
         logAdapterOk: true,
+        ...(suiteResults != null ? { suiteResults } : {}),
       },
     };
   }

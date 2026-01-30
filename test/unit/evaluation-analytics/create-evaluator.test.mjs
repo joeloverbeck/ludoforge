@@ -185,4 +185,72 @@ describe("createEvaluator", () => {
     assert.equal(result.descriptors.nonexistent_key_xyz, 0);
   });
 
+  it("default behavior (no suites) has no suiteResults in diagnostics", () => {
+    const { evaluator } = createEvaluator({ simulationRuns: 2 });
+    const result = evaluator(makeGenome());
+    assert.equal(result.diagnostics.suiteResults, undefined);
+  });
+
+  it("portfolioMetrics.enabled without suites has no suiteResults", () => {
+    const { evaluator } = createEvaluator({
+      simulationRuns: 2,
+      portfolioMetrics: { enabled: true },
+    });
+    const result = evaluator(makeGenome());
+    assert.equal(result.diagnostics.suiteResults, undefined);
+  });
+
+  it("portfolioMetrics.enabled with suites populates diagnostics.suiteResults", () => {
+    const suites = [
+      { id: "random-only", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
+      { id: "random-greedy", agents: [{ kind: "random" }, { kind: "greedy" }], seedPolicy: "derive" },
+    ];
+    const { evaluator } = createEvaluator({
+      simulationRuns: 2,
+      seed: 42,
+      agentSuites: suites,
+      agentSuiteRuns: { "random-only": 2, "random-greedy": 2 },
+      portfolioMetrics: { enabled: true },
+    });
+    const result = evaluator(makeGenome());
+    assert.ok(result.diagnostics.suiteResults != null);
+    assert.ok("random-only" in result.diagnostics.suiteResults);
+    assert.ok("random-greedy" in result.diagnostics.suiteResults);
+    assert.ok(Array.isArray(result.diagnostics.suiteResults["random-only"].results));
+    assert.equal(result.diagnostics.suiteResults["random-only"].results.length, 2);
+  });
+
+  it("suite results are deterministic with same seed", () => {
+    const suites = [
+      { id: "s1", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
+    ];
+    const opts = {
+      simulationRuns: 2,
+      seed: 77,
+      agentSuites: suites,
+      agentSuiteRuns: { s1: 3 },
+      portfolioMetrics: { enabled: true },
+    };
+    const { evaluator: ev1 } = createEvaluator(opts);
+    const { evaluator: ev2 } = createEvaluator(opts);
+    const r1 = ev1(makeGenome());
+    const r2 = ev2(makeGenome());
+    assert.deepStrictEqual(r1.diagnostics.suiteResults, r2.diagnostics.suiteResults);
+  });
+
+  it("portfolioMetrics not enabled does not run suites even if provided", () => {
+    const suites = [
+      { id: "s1", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
+    ];
+    const { evaluator } = createEvaluator({
+      simulationRuns: 2,
+      seed: 42,
+      agentSuites: suites,
+      agentSuiteRuns: { s1: 2 },
+      // portfolioMetrics not set or enabled: false
+    });
+    const result = evaluator(makeGenome());
+    assert.equal(result.diagnostics.suiteResults, undefined);
+  });
+
 });
