@@ -372,7 +372,7 @@
       "properties": {
         "scheduler": {
           "type": "string",
-          "enum": ["round_robin", "priority_queue", "token_holder", "simultaneous", "custom"]
+          "enum": ["round_robin", "priority_queue", "token_holder", "simultaneous", "random_draw", "custom"]
         },
         "resolution": {
           "type": "object",

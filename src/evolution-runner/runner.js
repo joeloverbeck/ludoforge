@@ -92,6 +92,9 @@ export async function runEvolutionRunner(options) {
 
   const mutationRate = resolveRate(mutationConfig.rate, "evolution.mutation.rate");
   const crossoverRate = resolveRate(crossoverConfig.rate, "evolution.crossover.rate");
+  const maxMutationRetries = Number.isInteger(mutationConfig.maxMutationRetries)
+    ? mutationConfig.maxMutationRetries
+    : undefined;
 
   const mutationOperators = Array.isArray(options.mutationOperators)
     ? options.mutationOperators
@@ -208,6 +211,7 @@ export async function runEvolutionRunner(options) {
       repairOperators: options.repairOperators,
       mutationSelector,
       telemetry,
+      ...(maxMutationRetries !== undefined ? { maxMutationRetries } : {}),
     });
 
     const evolvedPopulation = evolutionResult.population;

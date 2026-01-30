@@ -114,7 +114,7 @@ describe("evolution-applicator outcome handling", () => {
         outcome: "noOp",
       }));
 
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       applyEvolution([makeGenome()], options);
 
       assert.equal(options.telemetry.operators["test-op"].attempts, 1);
@@ -128,7 +128,7 @@ describe("evolution-applicator outcome handling", () => {
         outcome: "noOp",
       }));
 
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       applyEvolution([makeGenome()], options);
 
       assert.equal(options.telemetry.operators["test-op"].repairFailed, 0);
@@ -162,7 +162,7 @@ describe("evolution-applicator outcome handling", () => {
         outcome: "repairFailed",
       }));
 
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       applyEvolution([makeGenome()], options);
 
       assert.equal(options.telemetry.operators["test-op"].attempts, 1);
@@ -176,7 +176,7 @@ describe("evolution-applicator outcome handling", () => {
         outcome: "repairFailed",
       }));
 
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       applyEvolution([makeGenome()], options);
 
       assert.equal(options.telemetry.operators["test-op"].noOp, 0);
@@ -192,7 +192,7 @@ describe("evolution-applicator outcome handling", () => {
       }));
 
       const population = [makeGenome(), makeGenome("g2")];
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       const result = applyEvolution(population, options);
 
       result.population.forEach((genome) => {
@@ -210,7 +210,7 @@ describe("evolution-applicator outcome handling", () => {
       }));
 
       const population = [makeGenome()];
-      const options = makeOptions();
+      const options = makeOptions({ maxMutationRetries: 0 });
       const result = applyEvolution(population, options);
 
       result.population.forEach((genome) => {
@@ -233,6 +233,28 @@ describe("evolution-applicator outcome handling", () => {
       applyEvolution(population, options);
 
       assert.equal(options.telemetry.operators["test-op"].attempts, 3);
+    });
+  });
+
+  describe("outcomes return value", () => {
+    it("returns an outcomes array alongside population and operatorNames", () => {
+      mutateAndRepairGenomeMock.mock.mockImplementation(() => ({
+        genome: { id: "g1", definition: { name: "m", phases: [] } },
+        operatorName: "test-op",
+        outcome: "ok",
+      }));
+
+      const result = applyEvolution([makeGenome()], makeOptions());
+
+      assert.ok(Array.isArray(result.outcomes));
+      assert.equal(result.outcomes.length, 1);
+      assert.equal(result.outcomes[0], "ok");
+    });
+
+    it("outcomes array has null for slots where mutation did not fire", () => {
+      const result = applyEvolution([makeGenome()], makeOptions({ mutationRate: 0 }));
+
+      assert.equal(result.outcomes[0], null);
     });
   });
 });

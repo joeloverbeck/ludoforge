@@ -187,6 +187,11 @@ const simultaneousDefinition: GameDefinition = {
   turn: { scheduler: "simultaneous", resolution: { order: "random" } },
 };
 
+const randomDrawDefinition: GameDefinition = {
+  ...definition,
+  turn: { scheduler: "random_draw" },
+};
+
 // @ts-expect-error - random effect kind was removed
 const randomEffect: Effect = { kind: "random", target: { kind: "zone", id: "board" } };
 
@@ -202,6 +207,7 @@ void spatialEffect;
 void repeatEffect;
 void flagEffect;
 void simultaneousDefinition;
+void randomDrawDefinition;
 void randomEffect;
 void foreachEffect;
 

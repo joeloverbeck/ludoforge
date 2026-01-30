@@ -18,10 +18,11 @@ import { buildDrawOutcome, buildSimulationOutcome } from "./termination-outcome.
  * @param {{ maxTurns: number|undefined, events: object, trajectory: object }} opts
  * @returns {{ done: true, result: object } | { done: false }}
  */
-export function advanceAndCheck(definition, state, { maxTurns, events, trajectory }) {
+export function advanceAndCheck(definition, state, { maxTurns, events, trajectory, rng }) {
   const advanceResult = advanceTurnPhase(definition, state, {
     maxTurns,
     stateHistoryLimit: 0,
+    rng,
   });
 
   if (advanceResult.ok) {

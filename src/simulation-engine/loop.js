@@ -185,7 +185,7 @@ function runSimulationLoop(config) {
       };
     }
 
-    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory });
+    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory, rng });
     if (turnCheck.done) {
       return turnCheck.result;
     }
@@ -363,7 +363,7 @@ function runSimultaneousLoop({
     }
 
     state.turn.currentPlayer = 1;
-    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory });
+    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory, rng });
     if (turnCheck.done) {
       return turnCheck.result;
     }

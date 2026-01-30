@@ -111,6 +111,10 @@ When `definition.turn.scheduler === "simultaneous"` the loop changes:
   - `simultaneous`: all players act each turn; phases advance in order, and
     rounds increment every time phases wrap. Resolution order is controlled by
     `turn.resolution.order`.
+  - `random_draw`: selects a player uniformly at random using the seeded RNG
+    each turn. RNG flows from `loop.js` → `advanceAndCheck` → `advanceTurnPhase`
+    via `options.rng`. Round increments when every player has acted at least once
+    (tracked via `_actedThisRound`).
 - Phase cycling is shared: within a multi-phase turn, phases advance sequentially
   before the scheduler picks the next player.
 - If `maxTurns` is exceeded, termination reason is `"max-turns"` and the outcome is computed

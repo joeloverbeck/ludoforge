@@ -570,6 +570,146 @@ describe("scheduler", () => {
     });
   });
 
+  describe("random_draw scheduler", () => {
+    function makeRng(values) {
+      let i = 0;
+      return () => values[i++ % values.length];
+    }
+
+    const randomDrawDef = {
+      ...baseDefinition,
+      turn: { scheduler: "random_draw", phases: ["main"] },
+      termination: { conditions: [], maxTurns: 50 },
+    };
+
+    it("selects a player using the provided RNG", () => {
+      const state = createInitialState(randomDrawDef);
+      // rng returns 0.0 → floor(0.0 * 2) + 1 = 1
+      const rng = makeRng([0.0]);
+      const result = advanceTurnPhase(randomDrawDef, state, { rng });
+      assert.equal(result.ok, true);
+      assert.equal(state.turn.currentPlayer, 1);
+    });
+
+    it("selects player 2 when RNG returns high value", () => {
+      const state = createInitialState(randomDrawDef);
+      // rng returns 0.9 → floor(0.9 * 2) + 1 = 2
+      const rng = makeRng([0.9]);
+      const result = advanceTurnPhase(randomDrawDef, state, { rng });
+      assert.equal(result.ok, true);
+      assert.equal(state.turn.currentPlayer, 2);
+    });
+
+    it("produces deterministic sequence with same RNG seed values", () => {
+      const values = [0.1, 0.7, 0.3, 0.9];
+      const state1 = createInitialState(randomDrawDef);
+      const state2 = createInitialState(randomDrawDef);
+
+      const players1 = [];
+      const players2 = [];
+      const rng1 = makeRng(values);
+      const rng2 = makeRng(values);
+
+      for (let i = 0; i < 4; i++) {
+        advanceTurnPhase(randomDrawDef, state1, { rng: rng1 });
+        players1.push(state1.turn.currentPlayer);
+        advanceTurnPhase(randomDrawDef, state2, { rng: rng2 });
+        players2.push(state2.turn.currentPlayer);
+      }
+
+      assert.deepEqual(players1, players2);
+    });
+
+    it("produces different sequences with different RNG values", () => {
+      const state1 = createInitialState(randomDrawDef);
+      const state2 = createInitialState(randomDrawDef);
+
+      const rng1 = makeRng([0.1, 0.1, 0.1, 0.1]);
+      const rng2 = makeRng([0.9, 0.9, 0.9, 0.9]);
+
+      const players1 = [];
+      const players2 = [];
+      for (let i = 0; i < 4; i++) {
+        advanceTurnPhase(randomDrawDef, state1, { rng: rng1 });
+        players1.push(state1.turn.currentPlayer);
+        advanceTurnPhase(randomDrawDef, state2, { rng: rng2 });
+        players2.push(state2.turn.currentPlayer);
+      }
+
+      assert.notDeepEqual(players1, players2);
+    });
+
+    it("eventually selects all players over many steps", () => {
+      const def3 = {
+        ...randomDrawDef,
+        players: { count: 3 },
+      };
+      const state = createInitialState(def3);
+      // cycle through values that map to players 1, 2, 3
+      const rng = makeRng([0.0, 0.4, 0.8]);
+      const seen = new Set();
+
+      for (let i = 0; i < 6; i++) {
+        advanceTurnPhase(def3, state, { rng });
+        seen.add(state.turn.currentPlayer);
+      }
+
+      assert.equal(seen.size, 3);
+      assert.ok(seen.has(1));
+      assert.ok(seen.has(2));
+      assert.ok(seen.has(3));
+    });
+
+    it("cycles phases before selecting next player", () => {
+      const multiPhaseDef = {
+        ...randomDrawDef,
+        turn: { scheduler: "random_draw", phases: ["setup", "main"] },
+      };
+      const state = createInitialState(multiPhaseDef);
+      const rng = makeRng([0.9]);
+
+      // First advance: phase setup→main, same player
+      const first = advanceTurnPhase(multiPhaseDef, state, { rng });
+      assert.equal(first.ok, true);
+      assert.equal(state.turn.phase, "main");
+      assert.equal(state.turn.currentPlayer, 1); // still player 1
+      assert.equal(state.turn.turn, 1); // same turn
+
+      // Second advance: last phase done → random draw picks next player
+      const second = advanceTurnPhase(multiPhaseDef, state, { rng });
+      assert.equal(second.ok, true);
+      assert.equal(state.turn.phase, "setup");
+      assert.equal(state.turn.currentPlayer, 2); // rng 0.9 → player 2
+      assert.equal(state.turn.turn, 2);
+    });
+
+    it("increments round when all players have acted", () => {
+      const state = createInitialState(randomDrawDef);
+      // With 2 players, both must act before round increments.
+      // P1 acts first (initial), then P2 via rng.
+      const rng = makeRng([0.9, 0.0]); // picks P2, then P1
+
+      assert.equal(state.turn.round, 1);
+
+      // Advance: P1 acted (initial), rng picks P2
+      advanceTurnPhase(randomDrawDef, state, { rng });
+      assert.equal(state.turn.currentPlayer, 2);
+      // P1 has acted, P2 now current but hasn't completed yet
+      // The acted set tracks the outgoing player each advance
+
+      // Advance: P2 acted, rng picks P1 → both acted → round increments
+      advanceTurnPhase(randomDrawDef, state, { rng });
+      assert.equal(state.turn.round, 2);
+    });
+
+    it("fails with reason when RNG is not provided", () => {
+      const state = createInitialState(randomDrawDef);
+      const result = advanceTurnPhase(randomDrawDef, state);
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "random-draw-missing-rng");
+    });
+  });
+
   describe("applyTriggers", () => {
     it("blocks re-entry when recursion depth is exceeded", () => {
       const definition = {

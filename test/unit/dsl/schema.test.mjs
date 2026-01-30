@@ -90,6 +90,12 @@ describe("schema", () => {
       assertValid(candidate);
     });
 
+    it("accepts random_draw scheduler", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.turn = { scheduler: "random_draw" };
+      assertValid(candidate);
+    });
+
     it("accepts simultaneous scheduler with resolution order", () => {
       const candidate = structuredClone(baseDefinition);
       candidate.turn = {

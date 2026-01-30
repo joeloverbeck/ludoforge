@@ -132,6 +132,49 @@ function advanceTokenHolder(definition, state) {
   };
 }
 
+function advanceRandomDraw(definition, state, rng) {
+  if (!rng) {
+    return { ok: false, reason: "random-draw-missing-rng" };
+  }
+
+  const phases = resolvePhases(definition);
+  const currentPhase = state.turn.phase ?? null;
+  const currentIndex = phases.indexOf(currentPhase);
+  const phaseIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  if (phaseIndex < phases.length - 1) {
+    return {
+      nextPhase: phases[phaseIndex + 1],
+      nextPlayer: state.turn.currentPlayer,
+      nextTurn: state.turn.turn,
+      nextRound: state.turn.round,
+      _actedThisRound: state.turn._actedThisRound,
+    };
+  }
+
+  const playerCount = definition.players.count;
+  const nextPlayer = Math.floor(rng() * playerCount) + 1;
+  const nextTurn = state.turn.turn + 1;
+
+  const acted = state.turn._actedThisRound ?? new Set();
+  acted.add(state.turn.currentPlayer);
+
+  let nextRound = state.turn.round;
+  let nextActed = acted;
+  if (acted.size >= playerCount) {
+    nextRound = state.turn.round + 1;
+    nextActed = new Set();
+  }
+
+  return {
+    nextPhase: phases[0],
+    nextPlayer,
+    nextTurn,
+    nextRound,
+    _actedThisRound: nextActed,
+  };
+}
+
 function advanceRoundRobin(definition, state) {
   const phases = resolvePhases(definition);
   const currentPhase = state.turn.phase ?? null;
@@ -267,7 +310,8 @@ export function advanceTurnPhase(definition, state, options = {}) {
     scheduler !== "round_robin" &&
     scheduler !== "priority_queue" &&
     scheduler !== "token_holder" &&
-    scheduler !== "simultaneous"
+    scheduler !== "simultaneous" &&
+    scheduler !== "random_draw"
   ) {
     return { ok: false, reason: "unsupported-scheduler" };
   }
@@ -298,7 +342,9 @@ export function advanceTurnPhase(definition, state, options = {}) {
       ? advanceTokenHolder(definition, state)
       : scheduler === "simultaneous"
         ? advanceSimultaneous(definition, state)
-        : advanceRoundRobin(definition, state);
+        : scheduler === "random_draw"
+          ? advanceRandomDraw(definition, state, options.rng)
+          : advanceRoundRobin(definition, state);
   if (advanceResult.ok === false) {
     return advanceResult;
   }
