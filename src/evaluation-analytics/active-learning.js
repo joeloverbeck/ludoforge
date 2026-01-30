@@ -53,6 +53,27 @@ function sigmoid(value) {
   return 1 / (1 + Math.exp(-value));
 }
 
+function clamp01(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+}
+
+function entropy(probability) {
+  const p = clamp01(probability);
+  if (p === 0 || p === 1) {
+    return 0;
+  }
+  return -p * Math.log(p) - (1 - p) * Math.log(1 - p);
+}
+
 function dotProduct(weights, featureVector) {
   if (!weights || typeof weights !== "object") {
     return 0;
@@ -65,8 +86,14 @@ function dotProduct(weights, featureVector) {
   return total;
 }
 
-function linearScore(state, featureVector) {
-  return dotProduct(state?.weights, featureVector) + safeNumber(state?.bias);
+function resolveModels(state) {
+  if (Array.isArray(state?.models) && state.models.length > 0) {
+    return state.models;
+  }
+  if (state && typeof state === "object" && ("weights" in state || "bias" in state)) {
+    return [state];
+  }
+  return [];
 }
 
 function candidateId(candidate, index) {
@@ -82,7 +109,7 @@ function pairKey(idA, idB) {
 
 function comparePairs(a, b) {
   if (a.uncertainty !== b.uncertainty) {
-    return a.uncertainty - b.uncertainty;
+    return b.uncertainty - a.uncertainty;
   }
   if (a.idA !== b.idA) {
     return a.idA < b.idA ? -1 : 1;
@@ -91,6 +118,42 @@ function comparePairs(a, b) {
     return a.idB < b.idB ? -1 : 1;
   }
   return 0;
+}
+
+function computePairAcquisition(models, featureA, featureB) {
+  if (!models.length) {
+    return {
+      winProbability: 0.5,
+      acquisition: 0,
+      pVar: 0,
+      bald: 0,
+    };
+  }
+
+  let sum = 0;
+  let sumSquares = 0;
+  let entropySum = 0;
+  for (const model of models) {
+    const scoreA = dotProduct(model?.weights, featureA) + safeNumber(model?.bias);
+    const scoreB = dotProduct(model?.weights, featureB) + safeNumber(model?.bias);
+    const probability = sigmoid(scoreA - scoreB);
+    sum += probability;
+    sumSquares += probability * probability;
+    entropySum += entropy(probability);
+  }
+
+  const count = models.length;
+  const pMean = sum / count;
+  const pVar = Math.max(0, sumSquares / count - pMean * pMean);
+  const bald = Math.max(0, entropy(pMean) - entropySum / count);
+  const acquisition = models.length > 1 && Number.isFinite(bald) ? bald : pVar;
+
+  return {
+    winProbability: pMean,
+    acquisition,
+    pVar,
+    bald,
+  };
 }
 
 function collectUnderrepresentedNiches(candidates) {
@@ -135,6 +198,7 @@ function selectActiveLearningPairs(candidates, modelState, options = {}) {
     return [];
   }
 
+  const models = resolveModels(modelState);
   const cadence = safeNumber(options.cadence, DEFAULT_CADENCE);
   const iteration = safeNumber(options.iteration, 0);
   if (cadence > 1 && iteration % cadence !== 0) {
@@ -160,7 +224,7 @@ function selectActiveLearningPairs(candidates, modelState, options = {}) {
     index,
     id: candidateId(candidate, index),
     nicheId: candidate?.nicheId ?? null,
-    linear: linearScore(modelState, candidate?.featureVector),
+    featureVector: candidate?.featureVector ?? null,
   }));
 
   const pairs = [];
@@ -168,8 +232,11 @@ function selectActiveLearningPairs(candidates, modelState, options = {}) {
     for (let j = i + 1; j < scored.length; j += 1) {
       const left = scored[i];
       const right = scored[j];
-      const winProbability = sigmoid(left.linear - right.linear);
-      const uncertainty = Math.abs(winProbability - 0.5);
+      const { winProbability, acquisition } = computePairAcquisition(
+        models,
+        left.featureVector,
+        right.featureVector
+      );
       pairs.push({
         candidateA: left.candidate,
         candidateB: right.candidate,
@@ -179,7 +246,7 @@ function selectActiveLearningPairs(candidates, modelState, options = {}) {
         nicheB: right.nicheId,
         key: pairKey(left.id, right.id),
         winProbability,
-        uncertainty,
+        uncertainty: acquisition,
       });
     }
   }
@@ -187,7 +254,7 @@ function selectActiveLearningPairs(candidates, modelState, options = {}) {
   pairs.sort(comparePairs);
 
   const uncertainPairs = Number.isFinite(options.uncertaintyThreshold)
-    ? pairs.filter((pair) => pair.uncertainty <= uncertaintyThreshold)
+    ? pairs.filter((pair) => pair.uncertainty >= uncertaintyThreshold)
     : pairs;
   const remainderPool = uncertainPairs.length > 0 ? uncertainPairs : pairs;
 

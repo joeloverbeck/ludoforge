@@ -18,7 +18,7 @@ describe("active-learning", () => {
     const modelState = createPreferenceModelState({ weights: { x: 1 }, bias: 0 });
     const pairs = selectActiveLearningPairs(candidates, modelState, {
       maxPairs: 2,
-      uncertaintyThreshold: 0.05,
+      uncertaintyThreshold: 0,
       diversityQuota: 1,
     });
 

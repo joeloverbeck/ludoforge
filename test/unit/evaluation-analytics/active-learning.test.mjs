@@ -4,18 +4,10 @@ import { readFile } from "node:fs/promises";
 import { selectActiveLearningPairs } from "../../../src/evaluation-analytics/active-learning.js";
 
 const baseModelState = {
-  version: 1,
-  weights: { x: 1 },
-  bias: 0,
-  sampleCount: 0,
-  history: [],
-  learningRate: 0.05,
-  maxHistory: 100,
-  comparisonWeight: 1,
-  ratingWeight: 0.25,
-  weightDecay: 0,
-  maxWeightAbs: 5,
-  maxBiasAbs: 5,
+  models: [
+    { weights: { x: 1 }, bias: 0, sampleCount: 0 },
+    { weights: { x: 1 }, bias: 0, sampleCount: 0 },
+  ],
 };
 
 describe("active-learning", () => {
@@ -30,12 +22,12 @@ describe("active-learning", () => {
 
       const first = selectActiveLearningPairs(candidates, baseModelState, {
         maxPairs: 2,
-        uncertaintyThreshold: 0.6,
+        uncertaintyThreshold: 0,
         diversityQuota: 0,
       });
       const second = selectActiveLearningPairs(candidates, baseModelState, {
         maxPairs: 2,
-        uncertaintyThreshold: 0.6,
+        uncertaintyThreshold: 0,
         diversityQuota: 0,
       });
 
@@ -43,21 +35,27 @@ describe("active-learning", () => {
       assert.deepStrictEqual(candidates, snapshot);
     });
 
-    it("uncertainty ranking favors pairs closest to 0.5", () => {
+    it("acquisition ranking favors max BALD/pVar", () => {
+      const ensembleState = {
+        models: [
+          { weights: { x: 1 }, bias: 0, sampleCount: 0 },
+          { weights: { x: -1 }, bias: 0, sampleCount: 0 },
+        ],
+      };
       const candidates = [
         { id: "a", featureVector: { x: 0 } },
         { id: "b", featureVector: { x: 1 } },
         { id: "c", featureVector: { x: 2 } },
       ];
 
-      const [pair] = selectActiveLearningPairs(candidates, baseModelState, {
+      const [pair] = selectActiveLearningPairs(candidates, ensembleState, {
         maxPairs: 1,
-        uncertaintyThreshold: 1,
+        uncertaintyThreshold: 0,
         diversityQuota: 0,
       });
 
       assert.equal(pair.candidateA.id, "a");
-      assert.equal(pair.candidateB.id, "b");
+      assert.equal(pair.candidateB.id, "c");
     });
 
     it("diversity quota includes underrepresented niches", () => {
@@ -69,7 +67,7 @@ describe("active-learning", () => {
 
       const [pair] = selectActiveLearningPairs(candidates, baseModelState, {
         maxPairs: 1,
-        uncertaintyThreshold: 0.05,
+        uncertaintyThreshold: 0,
         diversityQuota: 1,
       });
 
@@ -92,7 +90,9 @@ describe("active-learning", () => {
         { id: "e", featureVector: { x: 0 } },
       ];
 
-      const neutralModel = { ...baseModelState, weights: {}, bias: 0 };
+      const neutralModel = {
+        models: [{ weights: {}, bias: 0, sampleCount: 0 }],
+      };
 
       const selection = selectActiveLearningPairs(candidates, neutralModel, {});
 

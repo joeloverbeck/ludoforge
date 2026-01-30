@@ -126,6 +126,24 @@ export function createEvaluator(options = {}) {
       degeneracyReport,
     });
 
+    const fitnessScore = fitnessResult.score;
+    if (!Number.isFinite(fitnessScore)) {
+      return {
+        fitness: null,
+        descriptors: null,
+        diagnostics: {
+          coreMetrics,
+          extendedMetrics: includeExtendedMetrics ? extendedMetrics : null,
+          degeneracy: degeneracyReport,
+          featureVector,
+          fitnessResult,
+          simulationCount: results.length,
+          logAdapterOk: true,
+          nonFiniteFitness: true,
+        },
+      };
+    }
+
     // Step 12: Extract descriptors
     const nonFiniteSet = new Set(nonFiniteKeys);
     const descriptors = Object.fromEntries(
@@ -134,7 +152,7 @@ export function createEvaluator(options = {}) {
 
     // Step 13: Return result
     return {
-      fitness: fitnessResult.score,
+      fitness: fitnessScore,
       descriptors,
       diagnostics: {
         coreMetrics,
