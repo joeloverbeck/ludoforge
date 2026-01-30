@@ -97,6 +97,34 @@ function collectZoneIds(definition) {
   return new Set(zones.map((z) => z?.id).filter((id) => typeof id === "string"));
 }
 
+function collectVariableIds(definition) {
+  const variables = normalizeArray(definition?.state?.variables);
+  return new Set(variables.map((variable) => variable?.id).filter((id) => typeof id === "string"));
+}
+
+function collectTokenTypeIds(definition) {
+  const tokenTypes = normalizeArray(definition?.state?.tokenTypes);
+  return new Set(tokenTypes.map((tokenType) => tokenType?.id).filter((id) => typeof id === "string"));
+}
+
+function collectTokenAttributeIds(definition) {
+  const tokenTypes = normalizeArray(definition?.state?.tokenTypes);
+  const map = new Map();
+  for (const tokenType of tokenTypes) {
+    const tokenTypeId = tokenType?.id;
+    if (typeof tokenTypeId !== "string") {
+      continue;
+    }
+    const attributes = new Set(
+      normalizeArray(tokenType?.attributes)
+        .map((attribute) => attribute?.id)
+        .filter((id) => typeof id === "string")
+    );
+    map.set(tokenTypeId, attributes);
+  }
+  return map;
+}
+
 function collectSpatialZoneNodes(definition) {
   const zones = normalizeArray(definition?.state?.zones);
   const map = new Map();
@@ -112,14 +140,68 @@ function repairEffect(effect, definition, depth) {
   if (!effect || typeof effect !== "object") {
     return effect;
   }
+  const variableIds = collectVariableIds(definition);
+  const tokenTypeIds = collectTokenTypeIds(definition);
+  const tokenAttributeIds = collectTokenAttributeIds(definition);
   const zoneIds = collectZoneIds(definition);
+  let nextEffect = effect;
+
+  if (effect.target && typeof effect.target === "object") {
+    if (effect.target.kind === "var" && typeof effect.target.id === "string") {
+      if (!variableIds.has(effect.target.id)) {
+        const validVariables = [...variableIds];
+        if (validVariables.length === 0) {
+          return null;
+        }
+        nextEffect = {
+          ...nextEffect,
+          target: { ...effect.target, id: validVariables[0] },
+        };
+      }
+    }
+
+    if (effect.target.kind === "token" && effect.kind === "spawn") {
+      if (typeof effect.target.id === "string" && !tokenTypeIds.has(effect.target.id)) {
+        const validTokenTypes = [...tokenTypeIds];
+        if (validTokenTypes.length === 0) {
+          return null;
+        }
+        const replacementId = validTokenTypes[0];
+        const nextTarget = { ...effect.target, id: replacementId };
+        if (typeof nextTarget.attribute === "string") {
+          const attributes = tokenAttributeIds.get(replacementId);
+          if (!attributes || !attributes.has(nextTarget.attribute)) {
+            delete nextTarget.attribute;
+          }
+        }
+        nextEffect = {
+          ...nextEffect,
+          target: nextTarget,
+        };
+      }
+    }
+
+    if (effect.target.kind === "zone" && typeof effect.target.id === "string") {
+      if (!zoneIds.has(effect.target.id)) {
+        const validZones = [...zoneIds];
+        if (validZones.length === 0) {
+          return null;
+        }
+        nextEffect = {
+          ...nextEffect,
+          target: { ...effect.target, id: validZones[0] },
+        };
+      }
+    }
+  }
 
   if ((effect.kind === "move" || effect.kind === "spawn") && effect.toZone) {
     if (!zoneIds.has(effect.toZone)) {
       const validZones = [...zoneIds];
-      if (validZones.length > 0) {
-        return { ...effect, toZone: validZones[0] };
+      if (validZones.length === 0) {
+        return null;
       }
+      nextEffect = { ...nextEffect, toZone: validZones[0] };
     }
   }
 
@@ -127,15 +209,16 @@ function repairEffect(effect, definition, depth) {
     const spatialMap = collectSpatialZoneNodes(definition);
     if (effect.zone && !spatialMap.has(effect.zone)) {
       const validSpatial = [...spatialMap.keys()];
-      if (validSpatial.length > 0) {
-        const newZone = validSpatial[0];
-        const nodes = [...spatialMap.get(newZone)];
-        return { ...effect, zone: newZone, toNode: nodes[0] ?? effect.toNode };
+      if (validSpatial.length === 0) {
+        return null;
       }
+      const newZone = validSpatial[0];
+      const nodes = [...spatialMap.get(newZone)];
+      nextEffect = { ...nextEffect, zone: newZone, toNode: nodes[0] ?? effect.toNode };
     } else if (effect.zone && spatialMap.has(effect.zone)) {
       const nodes = spatialMap.get(effect.zone);
       if (effect.toNode && !nodes.has(effect.toNode)) {
-        return { ...effect, toNode: [...nodes][0] };
+        nextEffect = { ...nextEffect, toNode: [...nodes][0] };
       }
     }
   }
@@ -148,27 +231,29 @@ function repairEffect(effect, definition, depth) {
     const count = typeof effect.count === "number"
       ? clampNumber(effect.count, 1, 10)
       : 1;
-    const subEffects = normalizeArray(effect.effects).map((e) =>
-      repairEffect(e, definition, depth + 1)
-    ).filter(Boolean);
+    const subEffects = normalizeArray(effect.effects)
+      .map((e) => repairEffect(e, definition, depth + 1))
+      .filter(Boolean);
     if (subEffects.length === 0) {
       return null;
     }
-    return { ...effect, count, effects: subEffects };
+    return { ...nextEffect, count, effects: subEffects };
   }
 
   if (effect.kind === "set_flag") {
     const validDurations = ["action", "phase", "turn"];
     if (effect.duration && !validDurations.includes(effect.duration)) {
-      return { ...effect, duration: "action" };
+      return { ...nextEffect, duration: "action" };
     }
   }
 
-  return effect;
+  return nextEffect;
 }
 
 function repairEffects(effects, definition) {
-  return normalizeArray(effects).map((e) => repairEffect(e, definition, 0)).filter(Boolean);
+  return normalizeArray(effects)
+    .map((e) => repairEffect(e, definition, 0))
+    .filter(Boolean);
 }
 
 function effectReferencesZone(effect) {
@@ -210,7 +295,32 @@ function hasZoneReferencingEffects(definition) {
   return false;
 }
 
+function exprReferencesMissingVariable(expr, variableIds) {
+  if (!expr || typeof expr !== "object") {
+    return false;
+  }
+  switch (expr.kind) {
+    case "and":
+    case "or":
+    case "cmp":
+      return (
+        exprReferencesMissingVariable(expr.left, variableIds) ||
+        exprReferencesMissingVariable(expr.right, variableIds)
+      );
+    case "not":
+      return exprReferencesMissingVariable(expr.value, variableIds);
+    case "ref":
+      if (expr.ref?.kind === "var" && typeof expr.ref.id === "string") {
+        return !variableIds.has(expr.ref.id);
+      }
+      return false;
+    default:
+      return false;
+  }
+}
+
 function repairActions(definition) {
+  const variableIds = collectVariableIds(definition);
   const actions = normalizeArray(definition.actions);
   return actions.map((action) => {
     if (!action || typeof action !== "object") {
@@ -218,7 +328,11 @@ function repairActions(definition) {
     }
     const costs = repairEffects(action.costs, definition);
     const effects = repairEffects(action.effects, definition);
-    return { ...action, costs, effects };
+    const nextAction = { ...action, costs, effects };
+    if (action.preconditions && exprReferencesMissingVariable(action.preconditions, variableIds)) {
+      delete nextAction.preconditions;
+    }
+    return nextAction;
   });
 }
 
