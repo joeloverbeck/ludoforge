@@ -281,6 +281,368 @@ describe("semantic", () => {
       });
     });
 
+    describe("scheduler validation", () => {
+      it("reports priority_queue with orderBy referencing non-existent variable", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "priority_queue",
+          orderBy: { variable: "nonExistentVar", direction: "asc" },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+        const issue = findIssue(issues, "ref-unknown");
+        assert.ok(issue.path.includes("/turn/orderBy/variable"));
+      });
+
+      it("allows priority_queue with valid orderBy variable", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "priority_queue",
+          orderBy: { variable: "score", direction: "asc" },
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        const schedulerIssues = issues.filter((i) =>
+          i.path.startsWith("/turn/orderBy")
+        );
+        assert.deepEqual(schedulerIssues, []);
+      });
+
+      it("reports token_holder with non-existent token type", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "token_holder",
+          tokenType: "nonExistentToken",
+          zone: "board",
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "token-type-unknown"));
+        const issue = findIssue(issues, "token-type-unknown");
+        assert.ok(issue.path.includes("/turn/tokenType"));
+      });
+
+      it("reports token_holder with non-existent zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "token_holder",
+          tokenType: "pawn",
+          zone: "nonExistentZone",
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "zone-unknown"));
+        const issue = findIssue(issues, "zone-unknown");
+        assert.ok(issue.path.includes("/turn/zone"));
+      });
+
+      it("allows token_holder with valid tokenType and zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "token_holder",
+          tokenType: "pawn",
+          zone: "board",
+        };
+
+        const issues = collectSemanticIssues(candidate);
+
+        const schedulerIssues = issues.filter(
+          (i) =>
+            i.path.startsWith("/turn/tokenType") ||
+            i.path.startsWith("/turn/zone")
+        );
+        assert.deepEqual(schedulerIssues, []);
+      });
+    });
+
+    describe("conditional effect validation", () => {
+      it("reports unknown variable refs inside conditional then branch", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 1 },
+            },
+            then: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "nonExistentVar" },
+                amount: 1,
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+      });
+
+      it("reports unknown variable refs inside conditional else branch", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 1 },
+            },
+            then: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "score" },
+                amount: 1,
+              },
+            ],
+            else: [
+              {
+                kind: "dec",
+                target: { kind: "var", id: "missingElseVar" },
+                amount: 1,
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+      });
+
+      it("reports unknown variable refs in conditional condition", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "badCondVar" } },
+              right: { kind: "value", value: 1 },
+            },
+            then: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "score" },
+                amount: 1,
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+      });
+
+      it("allows conditional effect with empty then array", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 1 },
+            },
+            then: [],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        const conditionalIssues = issues.filter(
+          (i) => i.rule !== "free-lunch" && i.rule !== "unused-token-type"
+        );
+        assert.deepEqual(conditionalIssues, []);
+      });
+
+      it("allows valid conditional effect with all refs correct", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 1 },
+            },
+            then: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "score" },
+                amount: 1,
+              },
+            ],
+            else: [
+              {
+                kind: "dec",
+                target: { kind: "var", id: "score" },
+                amount: 1,
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        const refIssues = issues.filter((i) => i.rule === "ref-unknown");
+        assert.deepEqual(refIssues, []);
+      });
+    });
+
+    describe("move.toPlayer validation", () => {
+      it("reports move.toPlayer used with a global zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "move",
+            target: { kind: "token", id: "pawn" },
+            toZone: "board",
+            toPlayer: "opponent",
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "move-to-player-scope"));
+      });
+
+      it("allows move.toPlayer with a per_player zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.zones.push({
+          id: "hand",
+          tokenType: "pawn",
+          scope: "per_player",
+          order: "ordered",
+          visibility: "private",
+        });
+        candidate.actions[0].effects = [
+          {
+            kind: "move",
+            target: { kind: "token", id: "pawn" },
+            toZone: "hand",
+            toPlayer: "opponent",
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.equal(findRule(issues, "move-to-player-scope"), false);
+      });
+    });
+
+    describe("valid definitions with new primitives", () => {
+      it("passes validation with priority_queue, conditional, and start_round trigger", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables.push({
+          id: "time_pos",
+          scope: "per_player",
+          type: { kind: "int", min: 0, max: 100 },
+          initial: 0,
+        });
+        candidate.turn = {
+          scheduler: "priority_queue",
+          orderBy: { variable: "time_pos", direction: "asc" },
+        };
+        candidate.triggers = [
+          {
+            event: "start_round",
+            effects: [
+              {
+                kind: "set",
+                target: { kind: "var", id: "time_pos" },
+                value: 0,
+              },
+            ],
+          },
+        ];
+        candidate.actions[0].effects = [
+          {
+            kind: "conditional",
+            condition: {
+              kind: "cmp",
+              op: ">=",
+              left: { kind: "ref", ref: { kind: "var", id: "score" } },
+              right: { kind: "value", value: 5 },
+            },
+            then: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "score" },
+                amount: 2,
+              },
+            ],
+            else: [
+              {
+                kind: "inc",
+                target: { kind: "var", id: "score" },
+                amount: 1,
+              },
+            ],
+          },
+        ];
+
+        const result = validateSemanticDefinition(candidate);
+
+        assert.equal(result.valid, true);
+      });
+
+      it("passes validation with token_holder scheduler", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.turn = {
+          scheduler: "token_holder",
+          tokenType: "pawn",
+          zone: "board",
+        };
+
+        const result = validateSemanticDefinition(candidate);
+
+        assert.equal(result.valid, true);
+      });
+
+      it("passes validation with end_round trigger and move.toPlayer on per_player zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.zones.push({
+          id: "player_hand",
+          tokenType: "pawn",
+          scope: "per_player",
+          order: "ordered",
+          visibility: "private",
+        });
+        candidate.triggers = [
+          {
+            event: "end_round",
+            effects: [
+              {
+                kind: "move",
+                target: { kind: "token", id: "pawn" },
+                toZone: "player_hand",
+                toPlayer: "next",
+              },
+            ],
+          },
+        ];
+
+        const result = validateSemanticDefinition(candidate);
+
+        assert.equal(result.valid, true);
+      });
+    });
+
     describe("action rules", () => {
       it("reports free lunch actions", () => {
         const candidate = structuredClone(baseDefinition);

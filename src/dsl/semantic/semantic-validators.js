@@ -3,6 +3,8 @@ export function createSemanticValidators({
   validateZoneRef,
   validateTokenTypeRef,
   joinPath,
+  zoneById,
+  pushIssue,
 }) {
   function validateSelector(selector, path) {
     if (!selector || typeof selector !== "object") {
@@ -36,6 +38,31 @@ export function createSemanticValidators({
       subEffects.forEach((subEffect, idx) => {
         validateEffect(subEffect, joinPath(path, `effects/${idx}`), options);
       });
+    }
+
+    if (effect.kind === "conditional") {
+      if (effect.condition) {
+        validateExpr(effect.condition, joinPath(path, "condition"));
+      }
+      const thenEffects = Array.isArray(effect.then) ? effect.then : [];
+      thenEffects.forEach((subEffect, idx) => {
+        validateEffect(subEffect, joinPath(path, `then/${idx}`), options);
+      });
+      const elseEffects = Array.isArray(effect.else) ? effect.else : [];
+      elseEffects.forEach((subEffect, idx) => {
+        validateEffect(subEffect, joinPath(path, `else/${idx}`), options);
+      });
+    }
+
+    if (effect.kind === "move" && typeof effect.toPlayer === "string" && typeof effect.toZone === "string") {
+      const zone = zoneById?.get(effect.toZone);
+      if (zone && zone.scope !== "per_player") {
+        pushIssue?.(
+          joinPath(path, "toPlayer"),
+          `move.toPlayer requires a per_player zone, but zone "${effect.toZone}" has scope "${zone.scope}"`,
+          "move-to-player-scope"
+        );
+      }
     }
   }
 

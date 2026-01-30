@@ -51,6 +51,7 @@ export function collectSemanticIssues(definition) {
     tokenAttributeIds,
     tokenAttributeDefs,
     variableById,
+    zoneById,
   } = buildIdIndex({ variables, tokenTypes, zones });
 
   variables.forEach((variable, index) => {
@@ -151,6 +152,8 @@ export function collectSemanticIssues(definition) {
     validateZoneRef,
     validateTokenTypeRef,
     joinPath,
+    zoneById,
+    pushIssue,
   });
 
   const actions = normalizeArray(definition.actions);
@@ -218,6 +221,36 @@ export function collectSemanticIssues(definition) {
       validateEffect(effect, `/turn/stepEffects/${index}/effects/${effectIndex}`);
     });
   });
+
+  const scheduler = definition.turn?.scheduler;
+  if (scheduler === "priority_queue") {
+    const orderByVar = definition.turn?.orderBy?.variable;
+    if (typeof orderByVar === "string" && !variableIds.has(orderByVar)) {
+      pushIssue(
+        "/turn/orderBy/variable",
+        `priority_queue orderBy references unknown variable: ${orderByVar}`,
+        "ref-unknown"
+      );
+    }
+  }
+  if (scheduler === "token_holder") {
+    const tokenType = definition.turn?.tokenType;
+    if (typeof tokenType === "string" && !tokenTypeIds.has(tokenType)) {
+      pushIssue(
+        "/turn/tokenType",
+        `token_holder references unknown token type: ${tokenType}`,
+        "token-type-unknown"
+      );
+    }
+    const zone = definition.turn?.zone;
+    if (typeof zone === "string" && !zoneIds.has(zone)) {
+      pushIssue(
+        "/turn/zone",
+        `token_holder references unknown zone: ${zone}`,
+        "zone-unknown"
+      );
+    }
+  }
 
   terminationConditions.forEach((termination, index) => {
     if (termination?.condition) {

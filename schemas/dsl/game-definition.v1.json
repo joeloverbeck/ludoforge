@@ -405,6 +405,15 @@
               "zone": {}
             }
           }
+        },
+        {
+          "if": { "properties": { "scheduler": { "const": "priority_queue" } } },
+          "then": {
+            "required": ["orderBy"],
+            "properties": {
+              "orderBy": {}
+            }
+          }
         }
       ]
     },

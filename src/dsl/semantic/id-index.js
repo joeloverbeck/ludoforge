@@ -48,5 +48,10 @@ export function buildIdIndex({ variables, tokenTypes, zones } = {}) {
         .filter((variable) => typeof variable?.id === "string")
         .map((variable) => [variable.id, variable])
     ),
+    zoneById: new Map(
+      zoneList
+        .filter((zone) => typeof zone?.id === "string")
+        .map((zone) => [zone.id, zone])
+    ),
   };
 }
