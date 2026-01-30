@@ -126,7 +126,18 @@ Degeneracy flags and filters are configured by:
 - `minStepsForNoChoices`: minimum total trajectory steps required before the no-choices
   flag can fire (guards against false positives on very short games)
 
-Default policies: `loop` and `non-terminating` → reject; all others → penalize.
+Default policies: `loop`, `non-terminating`, and `no-choices` → reject; all others → penalize.
+
+### Compound Rejection
+
+When `compoundRejection.enabled` is `true` (default), genomes with more than
+`maxPenaltyFlags` (default `3`) penalize-policy flags are rejected outright,
+even though no single flag would trigger rejection. This prevents heavily
+degenerate genomes from surviving through penalty stacking alone.
+
+Implemented in `src/evaluation-analytics/degeneracy-penalty.js`
+(`applyDegeneracyFilters`). Config lives in `configs/degeneracy.json` under
+`compoundRejection: { enabled, maxPenaltyFlags }`.
 
 ## Feature Vector Assembly
 
@@ -146,6 +157,9 @@ Implemented in `src/evaluation-analytics/feature-vector.js`:
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
 - Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.
+- Default fitness weights (`configs/fitness.json`) assign zero weight to all
+  `degeneracy.*` features. Degeneracy pressure is applied entirely through the
+  multiplicative penalty (see § Fitness Blend), not through the weighted sum.
 
 ## Composite Score
 
@@ -198,12 +212,16 @@ Implemented in `src/evaluation-analytics/fitness.js` and `scoring.js`:
 - Bootstrap: if sample count < `preferenceBootstrapSamples`, cap is reduced to
   `preferenceBootstrapCap`.
 
-Final fitness = base + diversity + preference - degeneracyPenalty.
+Final fitness = `(base + diversity + preference) * (1 - clamp(penalty, 0, 1))`.
 
 The degeneracy penalty is computed by summing per-flag penalties for all raised flags
 whose policy is `"penalize"`. Each flag's penalty entry specifies a `weight` and an
 optional `freeRatio` (portion of the flag's severity that is forgiven). Flags with
-policy `"reject"` or `"ignore"` do not contribute to the penalty.
+policy `"reject"` or `"ignore"` do not contribute to the penalty. The penalty sum is
+clamped to `[0, 1]` and applied as a multiplicative factor `(1 - penalty)`, so a
+penalty of 1.0 zeroes fitness entirely. This multiplicative formulation (implemented
+in `scoring.js` as `combined * penaltyMultiplier`) prevents degenerate genomes from
+compensating for penalties through high base scores.
 
 ## Built-in Evaluator
 
@@ -269,6 +287,15 @@ passes it to the runner as `options.evaluation`.
 - If `adaptSimulationLog` fails (`ok: false`), return `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
 - If `engine.runBatch()` throws (e.g., bounds violations from dec-at-zero actions), the evaluator catches the error and returns `{ fitness: null, descriptors: null, diagnostics: { simulationError: true, error: message } }`. Callers (e.g., `generateSeedPopulation`) treat null-fitness results as evaluation errors.
 - All metric/fitness functions handle edge cases (empty summaries, zero-step games) gracefully.
+
+### Non-Finite Fitness Guard
+
+The built-in evaluator (Step 11) checks the fitness value returned by
+`computePreferenceAwareFitness()`. If the score is non-finite (`NaN`, `Infinity`,
+or `-Infinity`), the evaluator returns `{ fitness: null, descriptors: null }` with
+a diagnostic `{ nonFiniteFitness: true }`. This prevents corrupt fitness values
+from entering the MAP-Elites grid and ensures the genome is rejected by the
+evaluation adapter rather than silently placed.
 
 ## LTS Builder and Motif Mining
 

@@ -99,8 +99,71 @@ about the seeded simulation and evolution loop.
     below 50%. Exercises the grammar generator's dec-precondition logic, the evaluator's
     simulation-error resilience, and the seed population's null-fitness guard.
 
+- Smoke test
+  - `test/e2e/smoke.e2e.test.mjs`
+  - Verifies the test runner process is alive (`process.pid` check).
+
+- Evaluation fidelity
+  - `test/e2e/evaluation-fidelity.e2e.test.mjs`
+  - High-agency definitions produce higher agency scores than low-agency ones.
+  - Degeneracy flags are raised for degenerate fixtures.
+  - Metric values are deterministic across repeated evaluations with the same seed.
+
+- Degeneracy accuracy
+  - `test/e2e/degeneracy-accuracy.e2e.test.mjs`
+  - Degenerate fixtures are detected and flagged.
+  - Forced-move games produce the forced-move flag.
+  - Healthy game definitions receive no reject-policy flags.
+  - Fitness ordering: healthy > degenerate.
+  - Reject-policy flags vs penalize-policy flags behave distinctly.
+
+- Mutation operator effectiveness
+  - `test/e2e/mutation-operator-effectiveness.e2e.test.mjs`
+  - Each enabled operator produces a valid, different genome.
+  - Add/remove structural operators maintain DSL validity.
+  - `mutateAndRepairGenome` always returns a valid genome.
+
+- Simulation correctness
+  - `test/e2e/simulation-correctness.e2e.test.mjs`
+  - Multi-phase games execute phase transitions correctly.
+  - Token movement effects update zone state.
+  - Per-player variable scoping isolates player state.
+  - All DSL fixture files are simulatable without errors.
+
+- Apply evolution chain
+  - `test/e2e/apply-evolution-chain.e2e.test.mjs`
+  - Full mutation+crossover+repair chain produces valid genomes.
+  - Mutation-only and crossover-only chains produce valid output.
+  - Repair survives destructive mutation sequences.
+
+- Config-driven evolution
+  - `test/e2e/config-driven-evolution.e2e.test.mjs`
+  - Rate=0 skips mutation/crossover; rate=1 applies them.
+  - Shortlist size is respected.
+  - Generation count matches config.
+  - Invalid configs are rejected with clear errors.
+
+- Multi-generation evolution
+  - `test/e2e/multi-generation-evolution.e2e.test.mjs`
+  - Two-generation happy path produces valid populations.
+  - Deterministic output for identical seeds.
+  - Zero mutation/crossover rates preserve population.
+  - Population size is maintained across generations.
+
+- MAP-Elites diversity
+  - `test/e2e/map-elites-diversity.e2e.test.mjs`
+  - Multiple niches are occupied after evaluation.
+  - Shortlist covers distinct niches.
+  - Higher-fitness genomes win within a niche.
+  - NaN descriptor values bin to `"unknown"`.
+  - Niche diversity is maintained across multiple generations.
+
+- Operator telemetry
+  - `test/e2e/operator-telemetry.e2e.test.mjs`
+  - `operator-stats.json` is persisted each generation.
+  - Telemetry counters accumulate correctly on resume.
+
 ## Gaps and Not Yet Proven in E2E
 
-- Active learning selection is already covered; gaps below exclude it.
 - Extended metrics aggregation (including meaningful choice/comeback rollouts).
 - Worker-thread batch simulations.
