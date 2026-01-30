@@ -32,7 +32,7 @@ describe("triggerAddMutation", () => {
     const mutated = triggerAddMutation.mutate(genome, rng);
     const newTrigger = mutated.definition.triggers.at(-1);
 
-    const validEvents = ["start_turn", "end_turn", "start_phase", "end_phase", "after_action"];
+    const validEvents = ["start_turn", "end_turn", "start_phase", "end_phase", "start_round", "end_round", "after_action"];
     assert.ok(validEvents.includes(newTrigger.event));
   });
 
@@ -88,5 +88,66 @@ describe("triggerAddMutation", () => {
           `Expected 1-2 effects, got ${trigger.effects.length} for seed ${seed}`);
       }
     }
+  });
+
+  it("can produce a start_round trigger (seed 866)", () => {
+    const definition = cloneDefinition(baseDefinition);
+    const genome = { definition };
+    const rng = createSeededRng(866);
+
+    const mutated = triggerAddMutation.mutate(genome, rng);
+    const newTrigger = mutated.definition.triggers.at(-1);
+
+    assert.equal(newTrigger.event, "start_round");
+    assert.ok(newTrigger.effects.length >= 1);
+  });
+
+  it("can produce an end_round trigger (seed 1234)", () => {
+    const definition = cloneDefinition(baseDefinition);
+    const genome = { definition };
+    const rng = createSeededRng(1234);
+
+    const mutated = triggerAddMutation.mutate(genome, rng);
+    const newTrigger = mutated.definition.triggers.at(-1);
+
+    assert.equal(newTrigger.event, "end_round");
+    assert.ok(newTrigger.effects.length >= 1);
+  });
+
+  it("round triggers reference valid game definition elements", () => {
+    const definition = cloneDefinition(baseDefinition);
+    const genome = { definition };
+    const rng = createSeededRng(866);
+
+    const mutated = triggerAddMutation.mutate(genome, rng);
+    const newTrigger = mutated.definition.triggers.at(-1);
+
+    assert.equal(newTrigger.event, "start_round");
+    for (const effect of newTrigger.effects) {
+      if (effect.target) {
+        const validTokenTypes = definition.state.tokenTypes.map((t) => t.id);
+        const validVarIds = (definition.state.variables ?? []).map((v) => v.id);
+        const targetId = effect.target.id;
+        assert.ok(
+          validTokenTypes.includes(targetId) || validVarIds.includes(targetId),
+          `Effect target "${targetId}" should reference a valid variable or token type`,
+        );
+      }
+    }
+  });
+
+  it("appends round triggers to definitions that already have triggers", () => {
+    const definition = cloneDefinition(baseDefinition);
+    definition.triggers = [
+      { event: "start_turn", effects: [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }] },
+    ];
+    const genome = { definition };
+    const rng = createSeededRng(866);
+
+    const mutated = triggerAddMutation.mutate(genome, rng);
+
+    assert.equal(mutated.definition.triggers.length, 2);
+    assert.equal(mutated.definition.triggers[0].event, "start_turn");
+    assert.equal(mutated.definition.triggers[1].event, "start_round");
   });
 });
