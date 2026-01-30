@@ -175,6 +175,18 @@ function advanceRandomDraw(definition, state, rng) {
   };
 }
 
+function resolveNextPlayerRoundRobin(currentPlayer, playerCount, turnOrder) {
+  if (Array.isArray(turnOrder) && turnOrder.length === playerCount) {
+    const idx = turnOrder.indexOf(currentPlayer);
+    if (idx >= 0 && idx < turnOrder.length - 1) {
+      return { nextPlayer: turnOrder[idx + 1], wrapped: false };
+    }
+    return { nextPlayer: turnOrder[0], wrapped: true };
+  }
+  const next = (currentPlayer % playerCount) + 1;
+  return { nextPlayer: next, wrapped: next === 1 };
+}
+
 function advanceRoundRobin(definition, state) {
   const phases = resolvePhases(definition);
   const currentPhase = state.turn.phase ?? null;
@@ -188,9 +200,14 @@ function advanceRoundRobin(definition, state) {
 
   if (phaseIndex >= phases.length - 1) {
     nextPhase = phases[0];
-    nextPlayer = (state.turn.currentPlayer % definition.players.count) + 1;
+    const resolved = resolveNextPlayerRoundRobin(
+      state.turn.currentPlayer,
+      definition.players.count,
+      state.turn.turnOrder
+    );
+    nextPlayer = resolved.nextPlayer;
     nextTurn = state.turn.turn + 1;
-    if (nextPlayer === 1) {
+    if (resolved.wrapped) {
       nextRound = state.turn.round + 1;
     }
   } else {
@@ -262,6 +279,7 @@ function snapshotLoopState(state) {
       phase: state.turn.phase ?? null,
       turn: state.turn.turn,
       round: state.turn.round,
+      turnOrder: state.turn.turnOrder ?? null,
     },
   });
 }
@@ -374,6 +392,7 @@ export function advanceTurnPhase(definition, state, options = {}) {
     phase: nextPhase,
     turn: nextTurn,
     round: nextRound,
+    turnOrder: state.turn.turnOrder ?? null,
   };
   if (advanceResult._actedThisRound !== undefined) {
     newTurn._actedThisRound = advanceResult._actedThisRound;

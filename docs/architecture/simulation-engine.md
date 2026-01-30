@@ -98,7 +98,9 @@ When `definition.turn.scheduler === "simultaneous"` the loop changes:
 - `advanceTurnPhase` controls phase cycling and player selection.
 - Supported schedulers (`definition.turn.scheduler`):
   - `round_robin`: cycles players 1 → 2 → … → N → 1. Round increments when
-    player wraps back to player 1.
+    player wraps back to player 1. If `state.turn.turnOrder` is set (by a
+    `set_turn_order` effect), players cycle in that custom order instead of
+    the default 1…N sequence.
   - `priority_queue`: selects the player with the min (or max) value of a
     per-player variable specified by `definition.turn.orderBy`. Tie-breaking:
     lowest player ID wins. Round increments when every player has completed at
@@ -232,7 +234,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 ```
 
 Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
-`move_spatial`, `repeat`, `conditional`, `set_flag`.
+`move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`.
 
 ### Pass-Step Rules
 
@@ -267,6 +269,9 @@ When `actionId === null` (pass step):
 - **Conditional wrapper** (`conditional`): evaluates `condition` and applies the
   `then` or `else` branch recursively.
 - **Scoped flags** (`set_flag`): attaches a flag with duration to a token or player.
+- **Turn order** (`set_turn_order`): sorts players by a per-player variable value
+  (ascending or descending, tie-break by lower player ID) and writes the resulting
+  order into `state.turn.turnOrder` for the `round_robin` scheduler to consult.
 
 Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`
 (attribute access and existence), `zone_query` (count, has_token), and

@@ -57,7 +57,7 @@ export class WeightedSelector {
       }
 
       const failureRate =
-        (stats.attempts - (stats.validOffspring ?? 0)) / stats.attempts;
+        (stats.attempts - (stats.validEvaluated ?? stats.validOffspring ?? 0)) / stats.attempts;
 
       if (failureRate > FAILURE_RATE_PENALIZE) {
         return Math.max(MIN_WEIGHT, current * RESTORE_FACTOR);

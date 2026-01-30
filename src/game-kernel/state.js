@@ -83,6 +83,7 @@ export function createInitialState(definition) {
       phase,
       turn: 1,
       round: 1,
+      turnOrder: null,
     },
     nextTokenId: 1,
   };

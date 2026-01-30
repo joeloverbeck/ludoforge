@@ -1,5 +1,7 @@
 # ADAOPEWEIISS-05: Update WeightedSelector.observe to use productiveOffspring
 
+**Status: COMPLETED**
+
 ## What
 
 Change the adaptive weighting formula in `WeightedSelector.observe()` from the current `(attempts - validOffspring) / attempts` to use `validEvaluated` as the success metric. This fixes the core bug: fallback/no-op genomes were inflating the "success" count.
@@ -42,3 +44,22 @@ Keep existing threshold logic:
 ## Dependencies
 
 - ADAOPEWEIISS-01 (telemetry counters include `validEvaluated`)
+
+## Outcome
+
+### What was changed
+
+**Source** (`src/evolutionary-engine/operator-selector.js`):
+- Single-line change in `observe()`: the fallback chain in the failure rate computation was updated from `(stats.validOffspring ?? 0)` to `(stats.validEvaluated ?? stats.validOffspring ?? 0)`.
+
+**Tests** (`test/unit/evolutionary-engine/operator-selector.test.mjs`):
+- Updated 6 existing tests to use `validEvaluated` instead of `validOffspring` in their telemetry objects (tests still exercise the same threshold/floor/cap/neutral-zone logic).
+- Added 4 new tests matching the acceptance criteria:
+  1. Penalizes when `validEvaluated=0, attempts=100` (inefficiency 1.0)
+  2. Restores when `validEvaluated=95, attempts=100` (inefficiency 0.05)
+  3. Falls back to `validOffspring` when `validEvaluated` is absent
+  4. Regression: `attempts=100, validOffspring=100, validEvaluated=0` penalizes under new logic (old logic would have restored)
+
+### Versus originally planned
+
+No deviations. The ticket was accurate in its assumptions about the code structure, formula location, and test file. All acceptance criteria met. Full unit suite (1261 tests) passes, tsc clean.

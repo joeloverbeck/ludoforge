@@ -336,6 +336,17 @@
             "flag": { "type": "string" },
             "duration": { "type": "string", "enum": ["action", "phase", "turn", "round"] }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "order", "variable", "direction"],
+          "properties": {
+            "kind": { "const": "set_turn_order" },
+            "order": { "const": "by_variable" },
+            "variable": { "type": "string" },
+            "direction": { "type": "string", "enum": ["asc", "desc"] }
+          }
         }
       ]
     },

@@ -54,7 +54,9 @@ describe("health-metrics", () => {
       assert.deepEqual(result.rejectionReasons, {});
       assert.deepEqual(result.degeneracyFlags, {});
       assert.equal(result.nicheOccupancy, 0);
+      assert.equal(result.operatorInefficiencyRate, 0);
       assert.equal(result.repairFailureRate, 0);
+      assert.equal(result.noOpRate, 0);
     });
 
     it("computes rejection rate and reason counts", () => {
@@ -116,25 +118,6 @@ describe("health-metrics", () => {
       assert.equal(result.nicheOccupancy, 3);
     });
 
-    it("computes repair failure rate from telemetry", () => {
-      const telemetry = {
-        operators: {
-          "numeric-tweak": { attempts: 10, validOffspring: 8 },
-          "action-remove": { attempts: 5, validOffspring: 2 },
-        },
-      };
-
-      const result = computeHealthMetrics({
-        evaluated: [{ fitness: 1, diagnostics: {} }],
-        rejected: [],
-        mapElites: { elites: new Map() },
-        telemetry,
-      });
-
-      // (10+5) - (8+2) = 5 failures out of 15 attempts
-      assert.equal(result.repairFailureRate, 5 / 15);
-    });
-
     it("all numeric fields are finite numbers", () => {
       const result = computeHealthMetrics({
         evaluated: [],
@@ -147,7 +130,9 @@ describe("health-metrics", () => {
       assert.ok(Number.isFinite(result.medianFitness));
       assert.ok(Number.isFinite(result.rejectionRate));
       assert.ok(Number.isFinite(result.nicheOccupancy));
+      assert.ok(Number.isFinite(result.operatorInefficiencyRate));
       assert.ok(Number.isFinite(result.repairFailureRate));
+      assert.ok(Number.isFinite(result.noOpRate));
     });
 
     it("handles non-finite fitness values gracefully", () => {
@@ -179,11 +164,14 @@ describe("health-metrics", () => {
 
       assert.deepEqual(result.rejectionReasons, { unknown: 1 });
     });
+  });
 
-    it("returns repairFailureRate 0 when telemetry has zero attempts", () => {
+  describe("operator rate metrics", () => {
+    it("computes operatorInefficiencyRate correctly", () => {
       const telemetry = {
         operators: {
-          "numeric-tweak": { attempts: 0, validOffspring: 0 },
+          "numeric-tweak": { attempts: 60, validEvaluated: 40, repairFailed: 5, noOp: 10 },
+          "action-remove": { attempts: 40, validEvaluated: 20, repairFailed: 5, noOp: 5 },
         },
       };
 
@@ -194,7 +182,162 @@ describe("health-metrics", () => {
         telemetry,
       });
 
+      // total attempts=100, totalValidEvaluated=60
+      // (100 - 60) / 100 = 0.4
+      assert.equal(result.operatorInefficiencyRate, 0.4);
+    });
+
+    it("computes repairFailureRate correctly from repairFailed counters", () => {
+      const telemetry = {
+        operators: {
+          "numeric-tweak": { attempts: 50, validEvaluated: 30, repairFailed: 10, noOp: 5 },
+          "action-remove": { attempts: 50, validEvaluated: 20, repairFailed: 5, noOp: 10 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      // totalRepairFailed=15, totalAttempts=100
+      // 15 / 100 = 0.15
+      assert.equal(result.repairFailureRate, 0.15);
+    });
+
+    it("computes noOpRate correctly from noOp counters", () => {
+      const telemetry = {
+        operators: {
+          "numeric-tweak": { attempts: 60, validEvaluated: 30, repairFailed: 5, noOp: 15 },
+          "action-remove": { attempts: 40, validEvaluated: 20, repairFailed: 5, noOp: 10 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      // totalNoOp=25, totalAttempts=100
+      // 25 / 100 = 0.25
+      assert.equal(result.noOpRate, 0.25);
+    });
+
+    it("returns all rates as 0 when attempts is 0", () => {
+      const telemetry = {
+        operators: {
+          "numeric-tweak": { attempts: 0, validEvaluated: 0, repairFailed: 0, noOp: 0 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      assert.equal(result.operatorInefficiencyRate, 0);
       assert.equal(result.repairFailureRate, 0);
+      assert.equal(result.noOpRate, 0);
+    });
+
+    it("returns all rates as 0 when telemetry is null", () => {
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry: null,
+      });
+
+      assert.equal(result.operatorInefficiencyRate, 0);
+      assert.equal(result.repairFailureRate, 0);
+      assert.equal(result.noOpRate, 0);
+    });
+
+    it("returns all rates as 0 when telemetry has no operators", () => {
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry: {},
+      });
+
+      assert.equal(result.operatorInefficiencyRate, 0);
+      assert.equal(result.repairFailureRate, 0);
+      assert.equal(result.noOpRate, 0);
+    });
+
+    it("operatorInefficiencyRate is 1.0 when no operator produces valid evaluated output", () => {
+      const telemetry = {
+        operators: {
+          "numeric-tweak": { attempts: 50, validEvaluated: 0, repairFailed: 20, noOp: 30 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      assert.equal(result.operatorInefficiencyRate, 1.0);
+    });
+
+    it("matches ticket acceptance criteria: operatorInefficiencyRate = (100-60)/100 = 0.4", () => {
+      const telemetry = {
+        operators: {
+          a: { attempts: 100, validEvaluated: 60, repairFailed: 10, noOp: 20 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      assert.equal(result.operatorInefficiencyRate, 0.4);
+    });
+
+    it("matches ticket acceptance criteria: repairFailureRate = 15/100 = 0.15", () => {
+      const telemetry = {
+        operators: {
+          a: { attempts: 100, validEvaluated: 60, repairFailed: 15, noOp: 10 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      assert.equal(result.repairFailureRate, 0.15);
+    });
+
+    it("matches ticket acceptance criteria: noOpRate = 25/100 = 0.25", () => {
+      const telemetry = {
+        operators: {
+          a: { attempts: 100, validEvaluated: 60, repairFailed: 10, noOp: 25 },
+        },
+      };
+
+      const result = computeHealthMetrics({
+        evaluated: [],
+        rejected: [],
+        mapElites: { elites: new Map() },
+        telemetry,
+      });
+
+      assert.equal(result.noOpRate, 0.25);
     });
   });
 });

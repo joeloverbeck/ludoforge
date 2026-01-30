@@ -111,7 +111,9 @@ describe("artifact-writer", () => {
         rejectionReasons: { "repair-failure": 1 },
         degeneracyFlags: { "forced-move": 2, stalemate: 1 },
         nicheOccupancy: 3,
+        operatorInefficiencyRate: 0.4,
         repairFailureRate: 0.1,
+        noOpRate: 0.05,
       };
 
       const result = await writeGenerationArtifacts({
@@ -143,7 +145,9 @@ describe("artifact-writer", () => {
       assert.deepEqual(parsed.rejectionReasons, { "repair-failure": 1 });
       assert.deepEqual(parsed.degeneracyFlags, { "forced-move": 2, stalemate: 1 });
       assert.equal(parsed.nicheOccupancy, 3);
+      assert.equal(parsed.operatorInefficiencyRate, 0.4);
       assert.equal(parsed.repairFailureRate, 0.1);
+      assert.equal(parsed.noOpRate, 0.05);
     });
 
     it("all health.json numeric fields are finite numbers", async () => {
@@ -157,7 +161,9 @@ describe("artifact-writer", () => {
         rejectionReasons: {},
         degeneracyFlags: {},
         nicheOccupancy: 0,
+        operatorInefficiencyRate: 0,
         repairFailureRate: 0,
+        noOpRate: 0,
       };
 
       const result = await writeGenerationArtifacts({
@@ -182,7 +188,7 @@ describe("artifact-writer", () => {
 
       const healthContents = await readFile(result.healthPath, "utf8");
       const parsed = JSON.parse(healthContents);
-      for (const key of ["meanFitness", "medianFitness", "rejectionRate", "nicheOccupancy", "repairFailureRate"]) {
+      for (const key of ["meanFitness", "medianFitness", "rejectionRate", "nicheOccupancy", "operatorInefficiencyRate", "repairFailureRate", "noOpRate"]) {
         assert.ok(Number.isFinite(parsed[key]), `${key} should be finite, got ${parsed[key]}`);
       }
     });

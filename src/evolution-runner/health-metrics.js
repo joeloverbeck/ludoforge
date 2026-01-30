@@ -5,7 +5,7 @@
  * @param {Array<{fitness: number, diagnostics?: object}>} options.evaluated
  * @param {Array<{reason?: string}>} options.rejected
  * @param {{elites: Map<string, object>}} options.mapElites
- * @param {{operators: Record<string, {attempts: number, validOffspring: number}>}} options.telemetry
+ * @param {{operators: Record<string, {attempts: number, validEvaluated: number, repairFailed: number, noOp: number}>}} options.telemetry
  * @returns {object} Health metrics object safe for JSON serialization
  */
 export function computeHealthMetrics({ evaluated, rejected, mapElites, telemetry }) {
@@ -47,7 +47,7 @@ export function computeHealthMetrics({ evaluated, rejected, mapElites, telemetry
     ? mapElites.elites.size
     : 0;
 
-  const repairFailureRate = computeRepairFailureRate(telemetry);
+  const operatorRates = computeOperatorRates(telemetry);
 
   return {
     meanFitness: sanitizeNumber(meanFitness),
@@ -56,7 +56,9 @@ export function computeHealthMetrics({ evaluated, rejected, mapElites, telemetry
     rejectionReasons,
     degeneracyFlags,
     nicheOccupancy,
-    repairFailureRate: sanitizeNumber(repairFailureRate),
+    operatorInefficiencyRate: sanitizeNumber(operatorRates.operatorInefficiencyRate),
+    repairFailureRate: sanitizeNumber(operatorRates.repairFailureRate),
+    noOpRate: sanitizeNumber(operatorRates.noOpRate),
   };
 }
 
@@ -72,24 +74,38 @@ function computeMedian(values) {
   return sorted[mid];
 }
 
-function computeRepairFailureRate(telemetry) {
+function computeOperatorRates(telemetry) {
+  const zero = { operatorInefficiencyRate: 0, repairFailureRate: 0, noOpRate: 0 };
   if (!telemetry || typeof telemetry !== "object" || !telemetry.operators) {
-    return 0;
+    return zero;
   }
   let totalAttempts = 0;
-  let totalValid = 0;
+  let totalValidEvaluated = 0;
+  let totalRepairFailed = 0;
+  let totalNoOp = 0;
   for (const entry of Object.values(telemetry.operators)) {
-    if (entry && typeof entry.attempts === "number") {
-      totalAttempts += entry.attempts;
+    if (!entry || typeof entry.attempts !== "number") {
+      continue;
     }
-    if (entry && typeof entry.validOffspring === "number") {
-      totalValid += entry.validOffspring;
+    totalAttempts += entry.attempts;
+    if (typeof entry.validEvaluated === "number") {
+      totalValidEvaluated += entry.validEvaluated;
+    }
+    if (typeof entry.repairFailed === "number") {
+      totalRepairFailed += entry.repairFailed;
+    }
+    if (typeof entry.noOp === "number") {
+      totalNoOp += entry.noOp;
     }
   }
   if (totalAttempts === 0) {
-    return 0;
+    return zero;
   }
-  return (totalAttempts - totalValid) / totalAttempts;
+  return {
+    operatorInefficiencyRate: (totalAttempts - totalValidEvaluated) / totalAttempts,
+    repairFailureRate: totalRepairFailed / totalAttempts,
+    noOpRate: totalNoOp / totalAttempts,
+  };
 }
 
 function sanitizeNumber(value) {

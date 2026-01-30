@@ -64,8 +64,8 @@ describe("operator selectors", () => {
 
     selector.observe({
       operators: {
-        a: { attempts: 10, validOffspring: 5 },
-        b: { attempts: 10, validOffspring: 10 },
+        a: { attempts: 10, validEvaluated: 5 },
+        b: { attempts: 10, validEvaluated: 10 },
       },
     });
 
@@ -82,7 +82,7 @@ describe("operator selectors", () => {
 
     selector.observe({
       operators: {
-        x: { attempts: 10, validOffspring: 10 },
+        x: { attempts: 10, validEvaluated: 10 },
       },
     });
 
@@ -96,7 +96,7 @@ describe("operator selectors", () => {
 
     selector.observe({
       operators: {
-        low: { attempts: 10, validOffspring: 2 },
+        low: { attempts: 10, validEvaluated: 2 },
       },
     });
 
@@ -112,7 +112,7 @@ describe("operator selectors", () => {
 
     selector.observe({
       operators: {
-        cap: { attempts: 100, validOffspring: 100 },
+        cap: { attempts: 100, validEvaluated: 100 },
       },
     });
 
@@ -127,10 +127,73 @@ describe("operator selectors", () => {
 
     selector.observe({
       operators: {
-        mid: { attempts: 10, validOffspring: 8 },
+        mid: { attempts: 10, validEvaluated: 8 },
       },
     });
 
     assert.equal(selector.weights[0], 3);
+  });
+
+  it("penalizes when validEvaluated=0 and attempts=100 (inefficiency 1.0)", () => {
+    const operators = [createOperator("bad")];
+    const weights = { bad: 2 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.observe({
+      operators: {
+        bad: { attempts: 100, validEvaluated: 0 },
+      },
+    });
+
+    assert.equal(selector.weights[0], Math.max(0.1, 2 * 0.5));
+  });
+
+  it("restores when validEvaluated=95 and attempts=100 (inefficiency 0.05)", () => {
+    const operators = [createOperator("good")];
+    const weights = { good: 4 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.weights = [1];
+
+    selector.observe({
+      operators: {
+        good: { attempts: 100, validEvaluated: 95 },
+      },
+    });
+
+    assert.equal(selector.weights[0], 1 + (4 - 1) * 0.5);
+  });
+
+  it("falls back to validOffspring when validEvaluated is absent", () => {
+    const operators = [createOperator("legacy")];
+    const weights = { legacy: 4 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.weights = [1];
+
+    selector.observe({
+      operators: {
+        legacy: { attempts: 100, validOffspring: 80 },
+      },
+    });
+
+    // inefficiency = (100 - 80) / 100 = 0.20 → neutral zone, no change
+    assert.equal(selector.weights[0], 1);
+  });
+
+  it("regression: attempts=100, validOffspring=100, validEvaluated=0 penalizes under new logic", () => {
+    const operators = [createOperator("fallback-inflated")];
+    const weights = { "fallback-inflated": 2 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    // Old logic would see (100 - 100) / 100 = 0.0 → restore
+    // New logic sees (100 - 0) / 100 = 1.0 → penalize
+    selector.observe({
+      operators: {
+        "fallback-inflated": { attempts: 100, validOffspring: 100, validEvaluated: 0 },
+      },
+    });
+
+    assert.equal(selector.weights[0], Math.max(0.1, 2 * 0.5));
   });
 });

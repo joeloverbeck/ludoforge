@@ -1,4 +1,4 @@
-# ACTSELTURSTRPRI-16: Add `set_turn_order` effect (Wave 2)
+# ACTSELTURSTRPRI-16: Add `set_turn_order` effect (Wave 2) ✅ COMPLETED
 
 ## What
 
@@ -36,3 +36,16 @@ The effect writes a `turnOrder` array into `state.turn` that the `round_robin` s
 
 - ACTSELTURSTRPRI-01 (round tracking)
 - ACTSELTURSTRPRI-02 (round triggers, for typical usage)
+
+## Outcome
+
+All changes matched the original plan. No discrepancies found between ticket assumptions and codebase.
+
+**Files changed:**
+- `schemas/dsl/game-definition.v1.json` — added `set_turn_order` variant to Effect oneOf
+- `src/dsl/types.ts` — added `set_turn_order` to Effect union type
+- `src/game-kernel/state.js` — initialised `state.turn.turnOrder` to `null`
+- `src/game-kernel/effect-application.js` — added `applySetTurnOrder()` handler; sorts players by variable value with direction and tie-breaking by player ID
+- `src/game-kernel/scheduler.js` — extracted `resolveNextPlayerRoundRobin()` to consult `turnOrder` array; preserved `turnOrder` through state transitions and loop detection snapshots
+
+**Tests added:** `test/unit/game-kernel/set-turn-order.test.mjs` (10 tests across 4 suites)

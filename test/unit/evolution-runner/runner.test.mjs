@@ -148,13 +148,17 @@ describe("runner", () => {
           assert.ok("rejectionReasons" in health);
           assert.ok("degeneracyFlags" in health);
           assert.ok("nicheOccupancy" in health);
+          assert.ok("operatorInefficiencyRate" in health);
           assert.ok("repairFailureRate" in health);
+          assert.ok("noOpRate" in health);
 
           assert.ok(Number.isFinite(health.meanFitness));
           assert.ok(Number.isFinite(health.medianFitness));
           assert.ok(Number.isFinite(health.rejectionRate));
           assert.ok(Number.isFinite(health.nicheOccupancy));
+          assert.ok(Number.isFinite(health.operatorInefficiencyRate));
           assert.ok(Number.isFinite(health.repairFailureRate));
+          assert.ok(Number.isFinite(health.noOpRate));
         }
       });
 
