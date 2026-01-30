@@ -1,12 +1,13 @@
 # EVOQUAOVE-16: Compound degeneracy rejection rule
 
+**Status:** ✅ Completed
 **Spec ref:** EQ-04
 **Phase:** 4 — Observability and adaptive control
 **Depends on:** EVOQUAOVE-06 (EQ-01 — flag escalation)
 
 ## Problem
 
-Individual penalties are weak. A game can accumulate `forced-move + dominant-action + trivial-win + stalemate` (penalty ~0.9) and still score positive if the base composite is high. There is no cliff that prevents flag accumulation.
+Individual penalties are weak. A game can accumulate `forced-move + dominant-action + trivial-win + stalemate` (the four remaining penalize-policy flags after EVOQUAOVE-06 escalated `no-choices` to reject) and still score positive if the base composite is high. There is no cliff that prevents flag accumulation.
 
 ## Fix
 
@@ -25,6 +26,7 @@ Implement in `applyDegeneracyFilters()` in `degeneracy-penalty.js`: after checki
 ## Files to touch
 
 - `configs/degeneracy.json` — add `compoundRejection` config
+- `schemas/config/degeneracy.schema.json` — add `compoundRejection` to schema
 - `src/evaluation-analytics/degeneracy-penalty.js` — add compound check to `applyDegeneracyFilters()`
 
 ## Out of scope
@@ -53,3 +55,21 @@ Implement in `applyDegeneracyFilters()` in `degeneracy-penalty.js`: after checki
 - Compound rejection is additive to individual flag policies, not a replacement
 - The `compoundRejection` flag in the return object distinguishes compound from individual rejections
 - `configs/degeneracy.json` remains valid against its schema (schema may need update)
+
+## Outcome
+
+**What changed vs originally planned:**
+
+The implementation matched the ticket plan closely. Two corrections were applied to the ticket before implementation:
+
+1. **Problem statement corrected:** The ticket originally implied `no-choices` was still a penalize-policy flag. In reality, EVOQUAOVE-06 already escalated `no-choices` to `"reject"`. The problem statement was updated to reference the four remaining penalize flags: `forced-move`, `dominant-action`, `trivial-win`, `stalemate`.
+
+2. **Files to touch updated:** Added `schemas/config/degeneracy.schema.json` to the files list since the schema needed updating to accept the new `compoundRejection` property.
+
+**Files modified:**
+- `configs/degeneracy.json` — added `compoundRejection: { enabled: true, maxPenaltyFlags: 3 }`
+- `schemas/config/degeneracy.schema.json` — added `compoundRejection` object schema
+- `src/evaluation-analytics/degeneracy-penalty.js` — extended `applyDegeneracyFilters()` with compound check
+- `test/unit/evaluation-analytics/degeneracy.test.mjs` — added 5 new tests in "compound rejection" describe block
+
+**Test results:** 910/910 unit tests pass (including 5 new compound rejection tests).

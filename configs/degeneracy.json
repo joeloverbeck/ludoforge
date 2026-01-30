@@ -44,5 +44,9 @@
     "trivial-win": { "weight": 0.3 },
     "stalemate": { "weight": 0.1 }
   },
-  "minStepsForNoChoices": 10
+  "minStepsForNoChoices": 10,
+  "compoundRejection": {
+    "enabled": true,
+    "maxPenaltyFlags": 3
+  }
 }

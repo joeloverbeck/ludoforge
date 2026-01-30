@@ -6,11 +6,32 @@ import {
 function applyDegeneracyFilters(report, options = {}) {
   const rejectFlags = options.rejectFlags ?? DEFAULT_DEGENERACY_FILTERS.rejectFlags;
   const rejectSet = new Set(rejectFlags);
-  const rejectedFlags = (report?.flags ?? []).filter((flag) => rejectSet.has(flag));
-  return {
-    allow: rejectedFlags.length === 0,
-    rejectedFlags,
-  };
+  const flags = report?.flags ?? [];
+  const rejectedFlags = flags.filter((flag) => rejectSet.has(flag));
+
+  if (rejectedFlags.length > 0) {
+    return { allow: false, rejectedFlags };
+  }
+
+  const compoundRejection =
+    options.compoundRejection ?? DEFAULT_DEGENERACY_CONFIG.compoundRejection;
+  if (compoundRejection?.enabled) {
+    const policyByFlag =
+      options.policyByFlag ?? DEFAULT_DEGENERACY_CONFIG.policyByFlag ?? {};
+    const penaltyFlags = flags.filter(
+      (flag) => policyByFlag[flag] === "penalize"
+    );
+    const maxPenaltyFlags = compoundRejection.maxPenaltyFlags ?? 3;
+    if (penaltyFlags.length > maxPenaltyFlags) {
+      return {
+        allow: false,
+        rejectedFlags: penaltyFlags,
+        compoundRejection: true,
+      };
+    }
+  }
+
+  return { allow: true, rejectedFlags: [] };
 }
 
 function computeDegeneracyPenalty(report, penaltyConfig) {

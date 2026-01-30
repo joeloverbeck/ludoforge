@@ -119,6 +119,15 @@
       "type": "integer",
       "minimum": 1,
       "default": 10
+    },
+    "compoundRejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "maxPenaltyFlags"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxPenaltyFlags": { "type": "integer", "minimum": 1 }
+      }
     }
   },
   "$defs": {

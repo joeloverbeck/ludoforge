@@ -299,6 +299,98 @@ describe("degeneracy", () => {
     });
   });
 
+  describe("compound rejection", () => {
+    const penalizePolicy = {
+      "forced-move": "penalize",
+      "dominant-action": "penalize",
+      "trivial-win": "penalize",
+      "stalemate": "penalize",
+      "loop": "reject",
+      "non-terminating": "reject",
+      "no-choices": "reject",
+    };
+
+    it("rejects when penalty flag count exceeds threshold", () => {
+      const report = {
+        flags: ["forced-move", "dominant-action", "trivial-win", "stalemate"],
+        details: {},
+      };
+      const decision = applyDegeneracyFilters(report, {
+        rejectFlags: ["loop", "non-terminating", "no-choices"],
+        compoundRejection: { enabled: true, maxPenaltyFlags: 3 },
+        policyByFlag: penalizePolicy,
+      });
+
+      assert.equal(decision.allow, false);
+      assert.equal(decision.compoundRejection, true);
+      assert.deepEqual(
+        decision.rejectedFlags.sort(),
+        ["dominant-action", "forced-move", "stalemate", "trivial-win"]
+      );
+    });
+
+    it("allows when penalty flag count is below threshold", () => {
+      const report = {
+        flags: ["forced-move", "dominant-action"],
+        details: {},
+      };
+      const decision = applyDegeneracyFilters(report, {
+        rejectFlags: ["loop", "non-terminating", "no-choices"],
+        compoundRejection: { enabled: true, maxPenaltyFlags: 3 },
+        policyByFlag: penalizePolicy,
+      });
+
+      assert.equal(decision.allow, true);
+      assert.deepEqual(decision.rejectedFlags, []);
+    });
+
+    it("allows when penalty flag count equals threshold (not above)", () => {
+      const report = {
+        flags: ["forced-move", "dominant-action", "trivial-win"],
+        details: {},
+      };
+      const decision = applyDegeneracyFilters(report, {
+        rejectFlags: ["loop", "non-terminating", "no-choices"],
+        compoundRejection: { enabled: true, maxPenaltyFlags: 3 },
+        policyByFlag: penalizePolicy,
+      });
+
+      assert.equal(decision.allow, true);
+      assert.deepEqual(decision.rejectedFlags, []);
+    });
+
+    it("allows high flag count when compound rejection is disabled", () => {
+      const report = {
+        flags: ["forced-move", "dominant-action", "trivial-win", "stalemate"],
+        details: {},
+      };
+      const decision = applyDegeneracyFilters(report, {
+        rejectFlags: ["loop", "non-terminating", "no-choices"],
+        compoundRejection: { enabled: false, maxPenaltyFlags: 3 },
+        policyByFlag: penalizePolicy,
+      });
+
+      assert.equal(decision.allow, true);
+      assert.deepEqual(decision.rejectedFlags, []);
+    });
+
+    it("individual reject flags still work independently of compound rule", () => {
+      const report = {
+        flags: ["loop", "forced-move"],
+        details: {},
+      };
+      const decision = applyDegeneracyFilters(report, {
+        rejectFlags: ["loop", "non-terminating", "no-choices"],
+        compoundRejection: { enabled: true, maxPenaltyFlags: 3 },
+        policyByFlag: penalizePolicy,
+      });
+
+      assert.equal(decision.allow, false);
+      assert.deepEqual(decision.rejectedFlags, ["loop"]);
+      assert.equal(decision.compoundRejection, undefined);
+    });
+  });
+
   describe("schema validation", () => {
     it("degeneracy config validates against the v2 schema", async () => {
       const config = await readJson("../../../configs/degeneracy.json");
