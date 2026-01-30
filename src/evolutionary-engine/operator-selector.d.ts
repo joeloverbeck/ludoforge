@@ -3,7 +3,9 @@ import type { Genome, MutationOperator } from "./types.js";
 
 export interface OperatorSelector {
   pick(rng?: SeededRng): string;
-  observe(name: string, outcome?: unknown): void;
+  observe(telemetry?: {
+    operators?: Record<string, { attempts: number; validOffspring: number }>;
+  }): void;
 }
 
 export class WeightedSelector implements OperatorSelector {
@@ -13,5 +15,7 @@ export class WeightedSelector implements OperatorSelector {
   });
 
   pick(rng?: SeededRng): string;
-  observe(name: string, outcome?: unknown): void;
+  observe(telemetry?: {
+    operators?: Record<string, { attempts: number; validOffspring: number }>;
+  }): void;
 }

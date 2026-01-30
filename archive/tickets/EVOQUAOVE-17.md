@@ -49,3 +49,7 @@ Use the existing `operator-telemetry.js` for data and `operator-selector.js` `We
 - Base weights from `evolution-operators.json` serve as the starting point and maximum
 - All weights remain positive (> 0)
 - The system converges to stable weights when population dynamics stabilize
+
+## Outcome
+
+Implemented adaptive operator weighting. `WeightedSelector.observe(telemetry)` adjusts weights per operator based on failure rate: >30% halves the weight (floor 0.1), <10% restores halfway toward base weight, 10-30% no change. Runner calls `observe()` after telemetry recording each generation. 8 unit tests pass, full suite (915 tests) green, type check clean.

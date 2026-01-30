@@ -43,11 +43,94 @@ describe("operator selectors", () => {
     }
   });
 
-  it("observe is a no-op", () => {
+  it("observe handles null/undefined/empty telemetry safely", () => {
     const operators = [createOperator("solo")];
     const weights = { solo: 1 };
     const selector = new WeightedSelector({ operators, weights });
 
-    assert.doesNotThrow(() => selector.observe("solo", { valid: true }));
+    assert.doesNotThrow(() => selector.observe());
+    assert.doesNotThrow(() => selector.observe(null));
+    assert.doesNotThrow(() => selector.observe(undefined));
+    assert.doesNotThrow(() => selector.observe({}));
+    assert.doesNotThrow(() => selector.observe({ operators: null }));
+
+    assert.deepStrictEqual(selector.weights, [1]);
+  });
+
+  it("observe halves weight when failure rate > 30%", () => {
+    const operators = [createOperator("a"), createOperator("b")];
+    const weights = { a: 2, b: 4 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.observe({
+      operators: {
+        a: { attempts: 10, validOffspring: 5 },
+        b: { attempts: 10, validOffspring: 10 },
+      },
+    });
+
+    assert.equal(selector.weights[0], 1);
+    assert.equal(selector.weights[1], 4);
+  });
+
+  it("observe restores weight when failure rate < 10%", () => {
+    const operators = [createOperator("x")];
+    const weights = { x: 4 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.weights = [1];
+
+    selector.observe({
+      operators: {
+        x: { attempts: 10, validOffspring: 10 },
+      },
+    });
+
+    assert.equal(selector.weights[0], 1 + (4 - 1) * 0.5);
+  });
+
+  it("observe does not drop below minimum floor", () => {
+    const operators = [createOperator("low")];
+    const weights = { low: 0.15 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.observe({
+      operators: {
+        low: { attempts: 10, validOffspring: 2 },
+      },
+    });
+
+    assert.equal(selector.weights[0], 0.1);
+  });
+
+  it("observe never exceeds base weight", () => {
+    const operators = [createOperator("cap")];
+    const weights = { cap: 2 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.weights = [1.9];
+
+    selector.observe({
+      operators: {
+        cap: { attempts: 100, validOffspring: 100 },
+      },
+    });
+
+    assert.ok(selector.weights[0] <= 2);
+    assert.equal(selector.weights[0], 1.9 + (2 - 1.9) * 0.5);
+  });
+
+  it("observe makes no adjustment in neutral zone", () => {
+    const operators = [createOperator("mid")];
+    const weights = { mid: 3 };
+    const selector = new WeightedSelector({ operators, weights });
+
+    selector.observe({
+      operators: {
+        mid: { attempts: 10, validOffspring: 8 },
+      },
+    });
+
+    assert.equal(selector.weights[0], 3);
   });
 });

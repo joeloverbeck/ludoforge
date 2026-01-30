@@ -152,6 +152,10 @@ export async function runEvolutionRunner(options) {
       });
     }
 
+    if (mutationSelector) {
+      mutationSelector.observe(telemetry);
+    }
+
     const evolutionResult = applyEvolution(loopResult.nextGeneration, {
       rng: rng ?? undefined,
       mutationRate,
