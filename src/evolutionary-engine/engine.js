@@ -145,7 +145,17 @@ export function runGenerationLoop(options) {
     const result = evaluateGenome(genome, options.evaluation);
     const candidate = result.genome ?? genome;
     if (result.fitness == null || result.descriptors == null) {
-      rejected.push({ genome: candidate, diagnostics: result.diagnostics });
+      const diag = result.diagnostics;
+      const reason = diag?.repair?.failed
+        ? "repair-failure"
+        : diag?.validation && !diag.validation.valid
+          ? "validation-failure"
+          : Array.isArray(diag?.safety) && diag.safety.length > 0
+            ? "safety-failure"
+            : diag?.evaluation?.error
+              ? "evaluation-error"
+              : "evaluation-null";
+      rejected.push({ genome: candidate, reason, diagnostics: diag });
       return;
     }
     evaluated.push({
