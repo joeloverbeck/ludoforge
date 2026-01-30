@@ -234,6 +234,36 @@ the preference model continues from its stored state.
 See [human-feedback.md](human-feedback.md) § CLI Integration for the full
 wiring details and provider internals.
 
+### Adaptive Sampling Budget
+
+Implemented in `src/evolution-runner/adaptive-budget.js`.
+
+`computeAdaptiveBudget({ preferenceModelState, baseMaxSamples, metricIds,
+previousMetricIds, candidates, lowUncertaintyThreshold,
+highUncertaintyThreshold, enabled })` dynamically adjusts the per-generation
+human feedback sample count based on ensemble uncertainty and metric changes:
+
+- **Disabled** (`enabled !== true`): returns `baseMaxSamples` (normalized to
+  at least 1).
+- **New metric IDs detected**: if `metricIds` contains IDs not present in
+  `previousMetricIds`, returns `ceil(baseMaxSamples * 1.5)` (50% increase) to
+  gather more preference data for the new feature dimensions.
+- **High uncertainty** (mean ensemble uncertainty >= `highUncertaintyThreshold`,
+  default `0.35`): returns `ceil(baseMaxSamples * 1.5)` (50% increase).
+- **Low uncertainty** (mean ensemble uncertainty <= `lowUncertaintyThreshold`,
+  default `0.1`): returns `floor(baseMaxSamples * 0.5)` (50% reduction).
+- **Otherwise**: returns the base budget unchanged.
+
+The minimum budget is always 1 (`Math.max(1, ...)`).
+
+Mean uncertainty is computed by calling `computePreferenceScore()` on each
+candidate's feature vector and averaging the `uncertainty` values.
+
+Config keys (in `humanFeedback.adaptiveBudget`):
+- `enabled` (boolean): whether adaptive budgeting is active.
+- `lowUncertaintyThreshold` (number): threshold below which the budget is halved.
+- `highUncertaintyThreshold` (number): threshold above which the budget is increased.
+
 ## Current Implementation Status
 
 - The evolution runner is implemented in `src/evolution-runner/` with unit coverage.

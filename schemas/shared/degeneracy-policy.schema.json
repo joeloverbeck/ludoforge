@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/shared/degeneracy-policy.schema.json",
+  "title": "DegeneracyPolicy",
+  "type": "string",
+  "enum": ["reject", "penalize", "ignore"]
+}

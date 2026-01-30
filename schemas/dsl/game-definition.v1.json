@@ -368,23 +368,7 @@
       "required": ["policy"],
       "properties": {
         "policy": { "type": "string", "enum": ["terminate", "pass", "error"] },
-        "defaultOutcome": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type"],
-          "properties": {
-            "type": { "type": "string", "enum": ["win", "lose", "draw"] },
-            "players": {
-              "oneOf": [
-                { "type": "string", "enum": ["all", "active"] },
-                {
-                  "type": "array",
-                  "items": { "type": "integer" }
-                }
-              ]
-            }
-          }
-        },
+        "defaultOutcome": { "$ref": "#/$defs/OutcomeDef" },
         "reason": { "type": "string" }
       },
       "allOf": [
@@ -422,22 +406,23 @@
       "required": ["condition", "outcome"],
       "properties": {
         "condition": { "$ref": "#/$defs/Expr" },
-        "outcome": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type"],
-          "properties": {
-            "type": { "type": "string", "enum": ["win", "lose", "draw"] },
-            "players": {
-              "oneOf": [
-                { "type": "string", "enum": ["all", "active"] },
-                {
-                  "type": "array",
-                  "items": { "type": "integer" }
-                }
-              ]
+        "outcome": { "$ref": "#/$defs/OutcomeDef" }
+      }
+    },
+    "OutcomeDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["win", "lose", "draw"] },
+        "players": {
+          "oneOf": [
+            { "type": "string", "enum": ["all", "active"] },
+            {
+              "type": "array",
+              "items": { "type": "integer" }
             }
-          }
+          ]
         }
       }
     },

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/shared/agent-descriptor.schema.json",
+  "title": "AgentDescriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["random", "greedy"] },
+    "options": { "type": "object" }
+  }
+}

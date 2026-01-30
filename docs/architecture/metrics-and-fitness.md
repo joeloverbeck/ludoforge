@@ -89,6 +89,76 @@ Implemented in `src/evaluation-analytics/metrics/extended.js`:
   `skillExpression.agentTiers`, `skillExpression.seed`, and optional passthrough
   `skillExpression.maxTurns`/`skillExpression.maxSteps`. Built-in tiers support
   `random` and `greedy` agents, or explicit agent objects.
+- Advantage reversal rate (`advantage_reversal_rate`) is optional and requires
+  simulations (not just summaries). For each run, it evaluates the scoring
+  expression at each step to determine the current leader, then counts how often
+  the leader changes between consecutive steps. The metric reports the average
+  leader-change rate across runs, normalized to `[0, 1]`. Returns 0 when
+  disabled, when no simulations are available, or when runs have fewer than 2
+  valid scored steps. Opt-in via `advantageReversal.enabled`. Can optionally
+  specify `advantageReversal.suiteId` to use results from a specific agent suite
+  instead of the default simulations.
+  Implemented in `src/evaluation-analytics/metrics/extended/decision-quality/advantage-reversal.js`.
+- Policy sensitivity (`policy_sensitivity`) is optional and runs extra
+  simulations. It measures the marginal win-rate delta across adjacent agent
+  tiers in a ladder, with seat-bias cancellation (same technique as
+  `skill_expression`). For each consecutive tier pair and each seat, it runs
+  matches with the stronger tier in the focal seat and matches with the weaker
+  tier in the focal seat, then averages the per-seat win-rate deltas across all
+  tier pairs and seats. The metric clamps the average to `[0, 1]` and returns 0
+  when disabled or when fewer than two tiers resolve. Opt-in via
+  `policySensitivity.enabled` with config defaults in
+  `configs/metrics-extended.json`: `policySensitivity.matchesPerSeat`,
+  `policySensitivity.agentTiers`, `policySensitivity.seed`, and optional
+  `policySensitivity.maxTurns`/`policySensitivity.maxSteps`. Can reuse
+  pre-computed suite results when `suiteResults` are provided via the evaluator.
+  Implemented in `src/evaluation-analytics/metrics/extended/policy-sensitivity.js`.
+
+## Agent Suites
+
+Implemented in `src/evaluation-analytics/agent-suite.js`.
+
+An `AgentSuite` defines a fixed agent lineup for simulation batches:
+
+```
+{
+  id: string,               // unique suite identifier
+  agents: AgentDescriptor[], // ordered agent descriptors (e.g. { kind: "random" })
+  seedPolicy: "derive" | "fixed",
+  seed?: number,             // required when seedPolicy is "fixed"
+  notes?: string
+}
+```
+
+- `validateAgentSuites(suites)` validates an array of suites, checking for
+  required fields, duplicate IDs, non-empty agent arrays, and seed consistency.
+  Returns `{ valid: boolean, errors: string[] }`.
+- `loadDefaultAgentSuites()` loads suites from `configs/agent-suites.json`
+  (validated by `schemas/config/agent-suites.schema.json`).
+
+Default suites (`configs/agent-suites.json`):
+- `random-only`: two random agents (baseline).
+- `random-greedy`: one random, one greedy (mixed-strength).
+
+## Suite Runner
+
+Implemented in `src/evaluation-analytics/suite-runner.js`.
+
+`runSuites({ definition, suites, runsPerSuite, baseSeed, simulationConfig, cache })`
+executes simulation batches for each agent suite:
+
+1. For each suite, run `runsPerSuite[suite.id]` simulations.
+2. Per run, derive a seed via `deriveSeed(baseSeed, suite.id, runIndex)` (or use
+   the fixed seed when `seedPolicy === "fixed"`).
+3. Use the run cache (`cache.getOrRun(key, runFn)`) to avoid re-running identical
+   simulations. Cache keys are `"${suite.id}:${seed}"`.
+4. Adapt the combined results via `adaptSimulationLog()`.
+5. Return `suiteResults` keyed by suite ID, each containing `{ results,
+   trajectorySummaries, agents }` (or `{ error }` on failure).
+
+Suite results are passed to `computeExtendedMetrics()` as the fourth argument,
+enabling portfolio metrics (`advantage_reversal_rate`, `policy_sensitivity`) to
+reuse pre-computed simulations instead of running their own.
 
 ## Degeneracy Detection
 
@@ -246,6 +316,9 @@ passes it to the runner as `options.evaluation`.
 | `includeExtendedMetrics` | `boolean` | `false` | Whether to compute extended metrics |
 | `extendedMetricsOptions` | `object` | `{}` | Options for `computeExtendedMetrics` |
 | `seed` | `number\|null` | `null` | Base RNG seed (each run offsets by index) |
+| `agentSuites` | `AgentSuite[]` | `[]` | Agent suites for portfolio metric simulations |
+| `agentSuiteRuns` | `Record<string, number>` | `{}` | Map of suite ID → number of runs per suite |
+| `portfolioMetrics` | `{ enabled?: boolean }` | `{}` | When `enabled: true`, triggers agent-suite simulations via `runSuites()` with run caching |
 
 ### Pipeline Steps
 
@@ -253,9 +326,10 @@ passes it to the runner as `options.evaluation`.
 2. **Resolve simulation defaults** — `resolveSimulationDefaults()` merges config defaults.
 3. **Create simulation engine** — `createSimulationEngine(resolvedConfig)`.
 4. **Run N simulations** — `engine.runBatch(simulationRuns)`.
+4b. **Optionally run agent-suite simulations** — when `portfolioMetrics.enabled` is `true` and `agentSuites` is non-empty, create a `RunCache` via `createRunCache()` and call `runSuites()` to execute simulation batches per suite. The suite results are passed to `computeExtendedMetrics()` so portfolio metrics (`advantage_reversal_rate`, `policy_sensitivity`) can reuse them.
 5. **Adapt results** — `adaptSimulationLog()` with `LOG_ADAPTER_VERSION`. If `ok: false`, return early with `{ fitness: null, descriptors: null, diagnostics: { error, logAdapterOk: false } }`.
 6. **Compute core metrics** — `computeCoreMetrics(trajectorySummaries)`.
-7. **Optionally compute extended metrics** — if `includeExtendedMetrics`, call `computeExtendedMetrics(definition, trajectorySummaries, { ...extendedMetricsOptions, simulations: results })`.
+7. **Optionally compute extended metrics** — if `includeExtendedMetrics`, call `computeExtendedMetrics(definition, trajectorySummaries, { ...extendedMetricsOptions, simulations: results }, suiteResults)`.
 8. **Concatenate metrics** — `[...coreMetrics, ...extendedMetrics]`.
 9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
 10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.

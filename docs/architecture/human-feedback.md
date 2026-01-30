@@ -44,6 +44,29 @@ Active learning defaults are loaded from `configs/active-learning.json`
 - `cadence` controls how often selection runs (every N iterations).
 - Intended to run on a shortlist of elites before prompting comparisons.
 
+### Adaptive Sampling Budget
+
+Implemented in `src/evolution-runner/adaptive-budget.js`.
+
+The adaptive budget feature dynamically adjusts `maxSamplesPerGen` — the
+per-generation cap on human feedback prompts — based on ensemble uncertainty:
+
+- When ensemble mean uncertainty is low (<= `lowUncertaintyThreshold`, default
+  `0.1`), the budget is halved (50% reduction), reducing unnecessary human
+  effort when the model is confident.
+- When ensemble mean uncertainty is high (>= `highUncertaintyThreshold`, default
+  `0.35`), or when new metric IDs are detected that the model has not yet
+  learned, the budget is increased by 50% to gather more informative samples.
+- The minimum budget is always 1.
+
+This interacts with the active learning pair selection: the adaptive budget
+determines _how many_ pairs to request, while BALD acquisition determines
+_which_ pairs are most informative. The `diversityQuota` from active learning
+still reserves slots for underrepresented niches within the adapted budget.
+
+See [evolution-runner.md](evolution-runner.md) § Adaptive Sampling Budget for
+implementation details and config keys.
+
 ### Comparison Assembly
 
 `assemblePreferenceFeedbackComparison` ties feedback to feature vectors:

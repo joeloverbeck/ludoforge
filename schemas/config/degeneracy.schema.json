@@ -144,8 +144,7 @@
       ]
     },
     "DegeneracyPolicy": {
-      "type": "string",
-      "enum": ["reject", "penalize", "ignore"]
+      "$ref": "https://ludoforge.dev/schemas/shared/degeneracy-policy.schema.json"
     }
   }
 }

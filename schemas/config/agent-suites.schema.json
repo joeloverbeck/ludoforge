@@ -15,13 +15,7 @@
   },
   "$defs": {
     "AgentDescriptor": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind"],
-      "properties": {
-        "kind": { "type": "string", "enum": ["random", "greedy"] },
-        "options": { "type": "object" }
-      }
+      "$ref": "https://ludoforge.dev/schemas/shared/agent-descriptor.schema.json"
     },
     "AgentSuite": {
       "type": "object",

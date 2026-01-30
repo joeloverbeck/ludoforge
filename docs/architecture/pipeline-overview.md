@@ -43,9 +43,16 @@ then repeats.
    - Simulation produces trajectories and termination outcomes; the game kernel
      dispatches effects, checks action legality, and resolves target selectors.
      Analytics convert trajectories into metrics, degeneracy flags, and descriptors.
+   - When `portfolioMetrics.enabled` is `true`, the evaluator also runs
+     agent-suite simulations via `runSuites()` from
+     `src/evaluation-analytics/suite-runner.js`. Suite simulations use a
+     per-evaluator `RunCache` (see [simulation-engine.md](simulation-engine.md)
+     § Run Cache) to avoid re-running identical configurations. Suite results are
+     passed to `computeExtendedMetrics()` so portfolio metrics
+     (`advantage_reversal_rate`, `policy_sensitivity`) can reuse them.
    - See [simulation-engine.md](simulation-engine.md) for effect kinds, kernel internals,
      and action legality, and [metrics-and-fitness.md](metrics-and-fitness.md) for the
-     full evaluation pipeline.
+     full evaluation pipeline including agent suites and suite runner.
 
 4. Human feedback capture
    - When `humanFeedback.enabled` is `true` in the runner config, the CLI creates
@@ -103,6 +110,10 @@ then repeats.
 ## Determinism Controls
 
 - Simulation RNG uses a seeded LCG for repeatable runs.
+- `deriveSeed(baseSeed, ...components)` from `src/simulation-engine/seed-derivation.js`
+  deterministically derives per-suite seeds using FNV-1a hashing. The suite runner
+  calls `deriveSeed(baseSeed, suite.id, runIndex)` to produce unique but
+  reproducible seeds for each suite simulation.
 - Mock evaluators in `test/e2e/` use stable hashing of candidate ids + feature vectors.
 - MAP-Elites placement is deterministic for identical inputs.
 

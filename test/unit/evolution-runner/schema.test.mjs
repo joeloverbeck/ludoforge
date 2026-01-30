@@ -13,9 +13,15 @@ const sharedSchemaJson = JSON.parse(
     new URL("../../../schemas/shared/metric-id.schema.json", import.meta.url),
   ),
 );
+const degeneracyPolicySchemaJson = JSON.parse(
+  await readFile(
+    new URL("../../../schemas/shared/degeneracy-policy.schema.json", import.meta.url),
+  ),
+);
 
 const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
 ajv.addSchema(sharedSchemaJson);
+ajv.addSchema(degeneracyPolicySchemaJson);
 const validate = ajv.compile(schemaJson);
 
 const baseConfig = {

@@ -97,6 +97,45 @@ after-action triggers because no action occurred.
 - Providing a seed makes simulation reproducible across runs; `rng.seed` in
   `configs/simulation.json` is used only when no per-run seed or RNG is provided.
 
+## Seed Derivation
+
+Implemented in `src/simulation-engine/seed-derivation.js`.
+
+`deriveSeed(baseSeed, ...components)` deterministically derives a 32-bit unsigned
+integer from a base seed and an arbitrary sequence of string or number components
+using FNV-1a hashing:
+
+- Initializes hash to the FNV offset basis (`2166136261`).
+- Processes `baseSeed` as 4 little-endian bytes.
+- For each component: numbers are converted to 4 little-endian bytes; strings
+  are processed as 2-byte-per-character sequences (low byte then high byte).
+- Each byte is folded into the hash via `(hash ^ byte) * 16777619` using
+  `Math.imul` for 32-bit multiplication.
+- Returns `hash >>> 0` (non-negative uint32).
+
+Used by the suite runner to derive per-suite, per-run seeds:
+`deriveSeed(baseSeed, suite.id, runIndex)`.
+
+## Run Cache
+
+Implemented in `src/simulation-engine/run-cache.js`.
+
+`createRunCache()` returns an in-memory cache scoped per evaluator invocation
+(not shared across genomes). The cache avoids re-running simulations with
+identical configurations within a single evaluation.
+
+API: `{ getOrRun(key, runFn) }`.
+
+- `key`: composite string identifying the simulation configuration (e.g.,
+  `"${suiteId}:${seed}"`).
+- `runFn`: zero-argument function that executes the simulation and returns the
+  result.
+- If `key` exists in the cache, the cached result is returned immediately.
+  Otherwise, `runFn()` is called, the result is stored, and then returned.
+
+The cache is created fresh per `evaluator()` call in `create-evaluator.js`,
+ensuring no cross-genome leakage.
+
 ## Outputs
 
 Simulation returns:
