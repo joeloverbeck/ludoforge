@@ -24,6 +24,7 @@ import { effectParamTweakMutation } from "./operators/effect-param-tweak.js";
 import { effectKindSwapMutation } from "./operators/effect-kind-swap.js";
 import { effectReorderMutation } from "./operators/effect-reorder.js";
 import { actionAddSmallMutation } from "./operators/action-add-small.js";
+import { actionCostTweakMutation } from "./operators/action-cost-tweak.js";
 import { motifInjectMutation } from "./operators/motif-inject.js";
 import { zoneAddMutation } from "./operators/zone-add.js";
 import { tokenTypeAddMutation } from "./operators/token-type-add.js";
@@ -53,6 +54,7 @@ const ALL_MUTATION_OPERATORS = [
   effectKindSwapMutation,
   effectReorderMutation,
   actionAddSmallMutation,
+  actionCostTweakMutation,
   motifInjectMutation,
   zoneAddMutation,
   tokenTypeAddMutation,

@@ -36,6 +36,7 @@
         "effect-kind-swap",
         "effect-reorder",
         "action-add-small",
+        "action-cost-tweak",
         "motif-inject",
         "zone-add",
         "token-type-add",

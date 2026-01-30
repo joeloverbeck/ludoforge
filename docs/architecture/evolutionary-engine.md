@@ -139,6 +139,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `effect-kind-swap`: replaces an effect's kind with a different valid kind, builds a new target appropriate for the new kind via `buildRefForKind`, and rebuilds its properties. Returns the genome unchanged if no valid target exists for the new kind.
 - `effect-reorder`: swaps two effects within a random action's effects list.
 - `action-add-small`: creates a new action with 1-2 random effects and a unique id.
+- `action-cost-tweak`: tweaks a `dec` cost amount by +/-1 or +/-2 (clamped to min 1).
 - `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns); can also use mined motifs when motif mining is enabled.
 - `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
 - `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
@@ -164,7 +165,7 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 | Tier | Weight | Operators |
 |------|--------|-----------|
 | Conservative | 3 | `numeric-tweak`, `boolean-toggle`, `enum-cycle`, `action-effect-magnitude`, `precondition-negation`, `termination-threshold`, `termination-outcome`, `effect-param-tweak`, `zone-add`, `token-type-add`, `trigger-add` |
-| Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `motif-inject` |
+| Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `action-cost-tweak`, `motif-inject` |
 | Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove` |
 
 `effect-delete` is weighted at 1 (between destructive and moderate).
