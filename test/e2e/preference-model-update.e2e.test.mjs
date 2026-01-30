@@ -13,6 +13,7 @@ import {
   createPreferenceModelState,
   updatePreferenceModelState,
 } from "../../src/evaluation-analytics/preference-model.js";
+import { computePreferenceScore } from "../../src/evaluation-analytics/preference-scoring.js";
 import { assemblePreferenceFeedbackComparison } from "../../src/human-interface/feedback.js";
 
 function constantRng(value) {
@@ -58,6 +59,15 @@ function buildFeatureVector(definition, results) {
   const degeneracy = detectDegeneracy(summaries);
   const { vector } = assembleFeatureVector(metrics, degeneracy);
   return vector;
+}
+
+function diffFeatureVectors(a, b) {
+  const keys = new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]);
+  const diff = {};
+  for (const key of keys) {
+    diff[key] = (a?.[key] ?? 0) - (b?.[key] ?? 0);
+  }
+  return diff;
 }
 
 describe("preference-model-update", () => {
@@ -141,5 +151,37 @@ describe("preference-model-update", () => {
       return total + modelWeight;
     }, 0);
     assert.ok(totalWeight > 0, "Expected preference weights to update");
+
+    const deterministic = updatePreferenceModelState(initialState, feedback, { seed: 123 });
+    const deterministicRepeat = updatePreferenceModelState(initialState, feedback, { seed: 123 });
+    assert.deepEqual(
+      deterministic,
+      deterministicRepeat,
+      "Expected deterministic updates for identical seeds"
+    );
+
+    const diffVector = diffFeatureVectors(featureVectorA, featureVectorB);
+    const focusKey = differingKeys.find((key) => diffVector[key] !== 0) ?? differingKeys[0];
+    const divergentState = createPreferenceModelState({
+      models: [
+        { weights: { [focusKey]: 0.5 }, bias: 0, sampleCount: 0 },
+        { weights: { [focusKey]: -0.5 }, bias: 0, sampleCount: 0 },
+      ],
+      learningRate: 0.3,
+    });
+
+    const initialScore = computePreferenceScore(divergentState, diffVector);
+    let learnedState = divergentState;
+    for (let i = 0; i < 6; i += 1) {
+      learnedState = updatePreferenceModelState(learnedState, feedback, {
+        rng: constantRng(0.5),
+      });
+    }
+    const learnedScore = computePreferenceScore(learnedState, diffVector);
+    assert.ok(learnedScore.pMean > initialScore.pMean, "Expected mean preference to increase");
+    assert.ok(
+      learnedScore.uncertainty < initialScore.uncertainty,
+      "Expected uncertainty to decrease after repeated feedback"
+    );
   });
 });

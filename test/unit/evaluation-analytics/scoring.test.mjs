@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFile } from "node:fs/promises";
 
 import { combineFitnessScores, computeCompositeScore } from "../../../src/evaluation-analytics/scoring.js";
+
+async function readJson(relativePath) {
+  const fileUrl = new URL(relativePath, import.meta.url);
+  const raw = await readFile(fileUrl, "utf8");
+  return JSON.parse(raw);
+}
 
 describe("scoring", () => {
   describe("computeCompositeScore", () => {
@@ -61,6 +68,32 @@ describe("scoring", () => {
       });
 
       assert.ok(Math.abs(result.score - 0.4) < 1e-9);
+    });
+
+    it("ignores zero-weight degeneracy flags in composite score", async () => {
+      const config = await readJson("../../../configs/fitness.json");
+
+      assert.equal(config.weights["degeneracy.loop"], 0);
+
+      const baseVector = {
+        agency: 0.5,
+        variety: 0.5,
+        "degeneracy.loop": 0,
+      };
+      const degenerateVector = { ...baseVector, "degeneracy.loop": 1 };
+
+      const baseScore = computeCompositeScore(baseVector, {
+        weights: config.weights,
+        normalizeWeights: config.weightNormalization,
+        includeComponents: false,
+      });
+      const degenerateScore = computeCompositeScore(degenerateVector, {
+        weights: config.weights,
+        normalizeWeights: config.weightNormalization,
+        includeComponents: false,
+      });
+
+      assert.ok(Math.abs(baseScore.score - degenerateScore.score) < 1e-9);
     });
   });
 

@@ -15,7 +15,20 @@ describe("active-learning", () => {
       { id: "c", featureVector: { x: 3 }, nicheId: "rare" },
     ];
 
-    const modelState = createPreferenceModelState({ weights: { x: 1 }, bias: 0 });
+    const modelState = createPreferenceModelState({
+      models: [
+        { weights: { x: 1 }, bias: 0, sampleCount: 0 },
+        { weights: { x: -1 }, bias: 0, sampleCount: 0 },
+      ],
+    });
+    const [mostInformative] = selectActiveLearningPairs(candidates, modelState, {
+      maxPairs: 1,
+      uncertaintyThreshold: 0,
+      diversityQuota: 0,
+    });
+    assert.equal(mostInformative.candidateA.id, "a");
+    assert.equal(mostInformative.candidateB.id, "c");
+
     const pairs = selectActiveLearningPairs(candidates, modelState, {
       maxPairs: 2,
       uncertaintyThreshold: 0,
@@ -23,14 +36,9 @@ describe("active-learning", () => {
     });
 
     assert.equal(pairs.length, 2);
-    const hasUncertainPair = pairs.some((pair) => {
-      const ids = [pair.candidateA.id, pair.candidateB.id].sort().join(":");
-      return ids === "a:b";
-    });
     const hasRare = pairs.some(
       (pair) => pair.candidateA.nicheId === "rare" || pair.candidateB.nicheId === "rare",
     );
-    assert.ok(hasUncertainPair);
     assert.ok(hasRare);
 
     const humanEval = createMockHumanEval({ seed: 11 });

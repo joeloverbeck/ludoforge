@@ -74,6 +74,46 @@ describe("mock-fitness", () => {
     });
   });
 
+  describe("preference uncertainty damping", () => {
+    it("dampens preference contribution when uncertainty is high", () => {
+      const artifacts = {
+        metrics: [{ id: "novelty", value: 1 }],
+        degeneracy: { flags: [] },
+      };
+
+      const lowUncertaintyState = {
+        ...preferenceModelState,
+        models: [
+          { weights: { novelty: 2 }, bias: 0, sampleCount: 10 },
+          { weights: { novelty: 2 }, bias: 0, sampleCount: 10 },
+        ],
+      };
+      const highUncertaintyState = {
+        ...preferenceModelState,
+        models: [
+          { weights: { novelty: 2 }, bias: 0, sampleCount: 10 },
+          { weights: { novelty: 0 }, bias: 0, sampleCount: 10 },
+        ],
+      };
+
+      const lowHelper = createMockFitness({
+        preferenceModelState: lowUncertaintyState,
+        fitnessOptions: { preferenceCap: 1, preferenceWeight: 1, preferenceBootstrapSamples: 0 },
+      });
+      const highHelper = createMockFitness({
+        preferenceModelState: highUncertaintyState,
+        fitnessOptions: { preferenceCap: 1, preferenceWeight: 1, preferenceBootstrapSamples: 0 },
+      });
+
+      const lowResult = lowHelper.evaluate(artifacts);
+      const highResult = highHelper.evaluate(artifacts);
+
+      const lowPreference = lowResult.diagnostics.preferenceFitness.diagnostics.blend.preference;
+      const highPreference = highResult.diagnostics.preferenceFitness.diagnostics.blend.preference;
+      assert.ok(Math.abs(highPreference) < Math.abs(lowPreference));
+    });
+  });
+
   describe("policyByFlag reject semantics", () => {
     it("reject semantics: loop flag causes rejection under default policy", () => {
       const helper = createMockFitness({
