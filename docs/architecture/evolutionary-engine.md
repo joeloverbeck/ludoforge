@@ -7,6 +7,10 @@ Implemented in `src/evolutionary-engine/evaluation-adapter.js`.
 Steps per genome:
 
 1. Optionally apply repair operators (defaults to none). If repair fails, the genome is rejected.
+   Note: upstream in the mutation pipeline, `mutateAndRepairGenome` falls back to the
+   original (pre-mutation) genome when repair returns `null`, so genomes are never
+   silently dropped by the mutation-repair cycle. The evaluation adapter's rejection
+   path applies only when the *adapter itself* runs repair and the result is `null`.
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
 3. Run safety gates if provided.
 4. Invoke `options.evaluator(genome)` with the repaired genome if repair ran.
@@ -82,6 +86,21 @@ Implemented in `src/evolutionary-engine/engine.js`.
 - `nextGeneration` is all elites across niches.
 - `shortlist` is an optional diversified subset of elites.
 
+### Rejection Categorization
+
+The generation loop categorizes every rejected genome into one of five reasons:
+
+| Reason | Trigger |
+|--------|---------|
+| `repair-failure` | Repair operator returned `null` |
+| `validation-failure` | DSL schema or semantic validation failed |
+| `safety-failure` | One or more safety gates failed |
+| `evaluation-error` | Evaluator returned an error diagnostic |
+| `evaluation-null` | Evaluator returned `null` fitness/descriptors without an explicit error |
+
+These categories are persisted in `rejected.jsonl` per generation and surfaced in
+health metrics (see [evolution-runner.md](evolution-runner.md) § Health Metrics).
+
 ### Shortlist Selection
 
 If `shortlistSize > 0`:
@@ -130,6 +149,48 @@ The selection abstraction is `OperatorSelector` (`pick(rng) → operatorName`,
 `observe(name, outcome)`), allowing future strategies (bandits) without changing
 core mutation operators.
 
+### Differentiated Weights
+
+Operator weights in `configs/evolution-operators.json` follow a three-tier scheme:
+
+| Tier | Weight | Operators |
+|------|--------|-----------|
+| Conservative | 3 | `numeric-tweak`, `boolean-toggle`, `enum-cycle`, `action-effect-magnitude`, `precondition-negation`, `termination-threshold`, `termination-outcome`, `effect-param-tweak`, `zone-add`, `token-type-add`, `trigger-add` |
+| Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `motif-inject` |
+| Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove` |
+
+`effect-delete` is weighted at 1 (between destructive and moderate).
+The tiering ensures destructive removal mutations fire less frequently than
+conservative value tweaks, reducing invalid-offspring rates.
+
+### Structural Guards
+
+Removal operators enforce structural minimum guards to prevent producing
+empty definitions:
+
+- `action-remove`: no-op when `actions.length <= 1`.
+- `phase-remove`: no-op when `turn.phases.length <= 1`.
+- `effect-delete`: no-op when the target action has fewer than 2 effects.
+- `token-type-remove`: rewrites all references to a remaining token type.
+- `zone-remove`: rewrites all references to a remaining zone.
+
+These guards are inline within each operator, not in a separate validation pass.
+
+### Adaptive Weighting
+
+The `WeightedSelector` adjusts operator weights at runtime based on telemetry:
+
+1. After each generation, the runner calls `mutationSelector.observe(telemetry)`.
+2. For each operator, the failure rate is `(attempts - validOffspring) / attempts`.
+3. If failure rate > 0.30, the weight is halved (clamped to a floor of 0.1).
+4. If failure rate < 0.10, the weight is restored toward the base weight by 50%.
+5. Weights between the thresholds remain unchanged.
+
+Constants: `FAILURE_RATE_PENALIZE = 0.30`, `FAILURE_RATE_RESTORE = 0.10`,
+`MIN_WEIGHT = 0.1`, `RESTORE_FACTOR = 0.5`.
+
+Implemented in `src/evolutionary-engine/operator-selector.js`.
+
 ### Effect Helpers
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
@@ -163,6 +224,37 @@ Implemented in `src/evolutionary-engine/repair.js`.
 - Rejects genomes when variable or token type repair cannot be applied.
 - Repair is limited to DSL safety (static fixes). Runtime degeneracy and playability
   issues are handled by simulation + degeneracy filters rather than repair.
+
+### Structural Minimums
+
+The `dsl-safety` repair operator rejects genomes (returns `null`) when structural
+invariants are violated after repair:
+
+- **Actions ≥ 1**: at least one action must exist.
+- **Effects ≥ 1**: at least one action must have a non-empty effects array.
+- **Termination ≥ 1**: at least one termination condition must exist.
+- **Zones ≥ 1** (conditional): if any effect references a zone, at least one zone
+  must exist.
+
+These guards prevent downstream simulation and evaluation from encountering
+structurally empty definitions.
+
+### Reference Validation
+
+The `dsl-safety` repair rewrites dangling references introduced by mutation or
+crossover:
+
+- **Variable refs**: `repairEffect` redirects `target.kind === "var"` refs whose
+  `id` is absent from the definition to the first remaining variable (or drops the
+  effect if none exist).
+- **Token type refs**: spawn effects targeting a missing token type are redirected
+  to the first remaining token type, with invalid attribute references removed.
+- **Zone refs**: zone-target effects and `toZone` fields are redirected to the
+  first remaining zone.
+- **Precondition refs**: action preconditions referencing missing variables are
+  removed (delete the precondition rather than the action).
+- **Spatial node refs**: `move_spatial` effects targeting missing zones or nodes
+  are redirected to the first valid spatial zone/node.
 
 ## Configuration Files
 

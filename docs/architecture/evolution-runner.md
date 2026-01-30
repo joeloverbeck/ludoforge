@@ -18,6 +18,10 @@ Describe the evolution runner responsibilities, the per-run directory layout, an
 - Persist per-generation artifacts and logs for audit and resume.
 - Track per-operator telemetry (attempts, validity, MAP-Elites contributions) and
   persist it per generation.
+- Monitor per-generation rejection rates and halt early when thresholds are exceeded.
+- Compute and persist population health metrics (`health.json`) each generation.
+- Integrate adaptive operator weighting by feeding telemetry to the `WeightedSelector`
+  (see [evolutionary-engine.md](evolutionary-engine.md) § Adaptive Weighting).
 - Emit structured logging for major phases and generation boundaries.
 
 ## Run Naming and Selection
@@ -37,6 +41,7 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `determinism.json` (when seeds/RNG metadata are available)
   - `motifs.jsonl` (when motif mining is enabled)
   - `operator-stats.json` (per-operator telemetry snapshot)
+  - `health.json` (population health metrics snapshot)
 
 ## Run Isolation Rules
 
@@ -70,6 +75,49 @@ Counters per operator:
 - `gridContributions.improvedElite`: placements that replaced an existing elite.
 
 Snapshots are cumulative within a run and continue when resuming the same `runId`.
+
+## Early Stopping
+
+The runner monitors per-generation rejection rates and halts the run when the
+population is overwhelmingly degenerate:
+
+- **Threshold**: `rejectionRateThreshold` (default `0.8`). A generation is
+  considered high-rejection when `rejected.length / totalEvaluated > threshold`.
+- **Consecutive limit**: `maxConsecutiveRejections` (default `3`). The run halts
+  after this many consecutive high-rejection generations.
+- **Halt payload**: the runner result includes `haltedReason` with `{ generation,
+  rejectionRate, consecutiveHighRejections, dominantReason }`.
+- **Logging**: the runner emits a warning log (`"evolution halted due to high
+  rejection rate"`) with the halt payload.
+
+Config keys live in `runner` block: `rejectionRateThreshold`, `maxConsecutiveRejections`.
+
+## Health Metrics
+
+Each generation, the runner computes population health metrics via
+`computeHealthMetrics()` from `src/evolution-runner/health-metrics.js` and
+persists them as `health.json`.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `meanFitness` | number | Mean fitness of evaluated genomes |
+| `medianFitness` | number | Median fitness of evaluated genomes |
+| `rejectionRate` | number | `rejected / (evaluated + rejected)` |
+| `rejectionReasons` | object | Frequency map of rejection reason categories |
+| `degeneracyFlags` | object | Frequency map of degeneracy flags across evaluated genomes |
+| `nicheOccupancy` | number | Number of occupied MAP-Elites niches |
+| `repairFailureRate` | number | `(attempts - validOffspring) / attempts` across all operators |
+
+Health metrics support observability dashboards and early-stopping decisions.
+
+## Adaptive Weight Integration
+
+After evaluating each generation, the runner calls
+`mutationSelector.observe(telemetry)` to update operator weights based on
+per-operator failure rates. See
+[evolutionary-engine.md](evolutionary-engine.md) § Adaptive Weighting for the
+algorithm details. The updated weights take effect for the next generation's
+mutation selection.
 
 ## Motif Mining
 

@@ -35,3 +35,13 @@ Each file includes `version` (integer schema version) and `updatedAt` (ISO-8601 
 
 Default values are defined in the config files themselves, not embedded in documentation prose.
 Subsystem docs reference config keys; see each doc for the specific keys consumed.
+
+## Runtime Artifacts
+
+In addition to config-driven outputs, the runner writes per-generation runtime
+artifacts:
+
+| Artifact | Description | Architecture Doc |
+|---|---|---|
+| `health.json` | Population health metrics (fitness distribution, rejection rates, niche occupancy) | `evolution-runner.md` |
+| `operator-stats.json` | Per-operator telemetry (attempts, valid offspring, grid contributions) | `evolution-runner.md` |
