@@ -41,6 +41,8 @@ const FALLBACK_MATCHES_PER_SEAT = 16;
 const meaningfulChoice = DEFAULT_METRICS_EXTENDED_CONFIG?.meaningfulChoice ?? {};
 const comebackPotential = DEFAULT_METRICS_EXTENDED_CONFIG?.comebackPotential ?? {};
 const skillExpression = DEFAULT_METRICS_EXTENDED_CONFIG?.skillExpression ?? {};
+const advantageReversal = DEFAULT_METRICS_EXTENDED_CONFIG?.advantageReversal ?? {};
+const policySensitivity = DEFAULT_METRICS_EXTENDED_CONFIG?.policySensitivity ?? {};
 
 const METRICS_EXTENDED_DEFAULTS = {
   meaningfulChoice: {
@@ -83,6 +85,22 @@ const METRICS_EXTENDED_DEFAULTS = {
     seed: Number.isInteger(skillExpression.seed) ? skillExpression.seed : null,
     maxTurns: Number.isInteger(skillExpression.maxTurns) ? skillExpression.maxTurns : null,
     maxSteps: Number.isInteger(skillExpression.maxSteps) ? skillExpression.maxSteps : null,
+  },
+  advantageReversal: {
+    enabled: typeof advantageReversal.enabled === "boolean" ? advantageReversal.enabled : false,
+  },
+  policySensitivity: {
+    enabled: typeof policySensitivity.enabled === "boolean" ? policySensitivity.enabled : false,
+    matchesPerSeat: normalizePositiveInt(
+      policySensitivity.matchesPerSeat,
+      FALLBACK_MATCHES_PER_SEAT
+    ),
+    agentTiers: Array.isArray(policySensitivity.agentTiers)
+      ? policySensitivity.agentTiers.slice()
+      : [],
+    seed: Number.isInteger(policySensitivity.seed) ? policySensitivity.seed : null,
+    maxTurns: Number.isInteger(policySensitivity.maxTurns) ? policySensitivity.maxTurns : null,
+    maxSteps: Number.isInteger(policySensitivity.maxSteps) ? policySensitivity.maxSteps : null,
   },
 };
 

@@ -121,3 +121,28 @@ export function buildStep(state, actionId, legalActionCount, impact, trace) {
   }
   return step;
 }
+
+/**
+ * Build a pass step (null action, zero legal actions) with a state hash.
+ * @param {object} state
+ * @param {string} stateHash
+ * @returns {object}
+ */
+export function buildPassStep(state, stateHash) {
+  return buildStep(state, null, 0, undefined, {
+    stateHash,
+    bindings: {},
+    appliedEffects: [],
+  });
+}
+
+/**
+ * Push a step onto the trajectory and fire the onStep callback.
+ * @param {object} step
+ * @param {{ steps: object[] }} trajectory
+ * @param {object} [stepControl]
+ */
+export function recordStep(step, trajectory, stepControl) {
+  trajectory.steps.push(step);
+  stepControl?.onStep?.(step);
+}

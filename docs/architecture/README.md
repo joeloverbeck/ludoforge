@@ -32,6 +32,7 @@ Each file includes `version` (integer schema version) and `updatedAt` (ISO-8601 
 | `configs/evolution-operators.json` | Mutation, crossover, repair | `evolutionary-engine.md` |
 | `configs/evolution-runner.json` | Runner (persistence, resume) | `evolution-runner.md` |
 | `configs/human-feedback.json` | Human feedback interface | `human-feedback.md` |
+| `configs/agent-suites.json` | Agent suite definitions | `metrics-and-fitness.md` |
 
 Default values are defined in the config files themselves, not embedded in documentation prose.
 Subsystem docs reference config keys; see each doc for the specific keys consumed.

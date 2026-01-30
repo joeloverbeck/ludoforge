@@ -7,7 +7,9 @@ import {
 } from "./length-metrics.js";
 import { computeOutcomeVariance } from "./outcome-metrics.js";
 import { computeComebackPotential } from "./decision-quality/comeback-potential.js";
+import { computeAdvantageReversalRate } from "./decision-quality/advantage-reversal.js";
 import { computeMeaningfulChoice } from "./decision-quality/meaningful-choice.js";
+import { computePolicySensitivity } from "./policy-sensitivity.js";
 import { METRICS_EXTENDED_DEFAULTS } from "./config.js";
 
 function resolveEnabled(value, fallback) {
@@ -65,6 +67,33 @@ function computeExtendedMetrics(definition, summaries, options = {}) {
     };
     const value = computeSkillExpressionMetric(definition, skillExpressionOptions);
     metrics.push({ id: "skill_expression", value });
+  }
+
+  const advantageReversalEnabled = resolveEnabled(
+    options?.advantageReversal?.enabled,
+    METRICS_EXTENDED_DEFAULTS.advantageReversal.enabled
+  );
+  if (advantageReversalEnabled) {
+    const value = computeAdvantageReversalRate(
+      definition,
+      options.simulations,
+      { ...options.advantageReversal, enabled: advantageReversalEnabled }
+    );
+    metrics.push({ id: "advantage_reversal_rate", value });
+  }
+
+  const policySensitivityEnabled = resolveEnabled(
+    options?.policySensitivity?.enabled,
+    METRICS_EXTENDED_DEFAULTS.policySensitivity.enabled
+  );
+  if (policySensitivityEnabled) {
+    const policySensitivityOptions = {
+      ...METRICS_EXTENDED_DEFAULTS.policySensitivity,
+      ...(options.policySensitivity ?? {}),
+      enabled: policySensitivityEnabled,
+    };
+    const value = computePolicySensitivity(definition, policySensitivityOptions);
+    metrics.push({ id: "policy_sensitivity", value });
   }
 
   return metrics;

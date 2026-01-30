@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/config/agent-suites.schema.json",
+  "title": "AgentSuitesConfigFile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "suites"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string" },
+    "suites": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/AgentSuite" }
+    }
+  },
+  "$defs": {
+    "AgentDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["random", "greedy"] },
+        "options": { "type": "object" }
+      }
+    },
+    "AgentSuite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "agents", "seedPolicy"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "agents": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/AgentDescriptor" }
+        },
+        "seedPolicy": { "type": "string", "enum": ["derive", "fixed"] },
+        "seed": { "type": "integer" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

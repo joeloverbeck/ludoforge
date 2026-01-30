@@ -163,7 +163,15 @@ about the seeded simulation and evolution loop.
   - `operator-stats.json` is persisted each generation.
   - Telemetry counters accumulate correctly on resume.
 
+- Extended metrics aggregation (determinism and wiring)
+  - `test/e2e/extended-metrics.e2e.test.mjs`
+  - All 5 conditional extended metrics (`choice_value_spread`, `comeback_potential`,
+    `skill_expression`, `advantage_reversal_rate`, `policy_sensitivity`) and 6 always-on
+    metrics are present in the feature vector when enabled.
+  - Identical seed + genome produces identical extended metrics and feature vectors.
+  - Metrics that require a scoring expression degrade gracefully to 0 without one.
+  - Extended metrics are null when `includeExtendedMetrics` is false.
+
 ## Gaps and Not Yet Proven in E2E
 
-- Extended metrics aggregation (including meaningful choice/comeback rollouts).
 - Worker-thread batch simulations.

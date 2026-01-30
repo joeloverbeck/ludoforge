@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-30T00:00:00Z",
+  "suites": [
+    {
+      "id": "random-only",
+      "agents": [
+        { "kind": "random" },
+        { "kind": "random" }
+      ],
+      "seedPolicy": "derive",
+      "notes": "Baseline: all players use random policy"
+    },
+    {
+      "id": "random-greedy",
+      "agents": [
+        { "kind": "random" },
+        { "kind": "greedy" }
+      ],
+      "seedPolicy": "derive",
+      "notes": "Mixed: player 1 random, player 2 greedy"
+    }
+  ]
+}

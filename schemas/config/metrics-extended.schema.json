@@ -4,13 +4,15 @@
   "title": "MetricsExtendedConfigFile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "meaningfulChoice", "comebackPotential", "skillExpression"],
+  "required": ["version", "meaningfulChoice", "comebackPotential", "skillExpression", "advantageReversal", "policySensitivity"],
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
     "updatedAt": { "type": "string" },
     "meaningfulChoice": { "$ref": "#/$defs/MeaningfulChoiceConfig" },
     "comebackPotential": { "$ref": "#/$defs/ComebackPotentialConfig" },
-    "skillExpression": { "$ref": "#/$defs/SkillExpressionConfig" }
+    "skillExpression": { "$ref": "#/$defs/SkillExpressionConfig" },
+    "advantageReversal": { "$ref": "#/$defs/AdvantageReversalConfig" },
+    "policySensitivity": { "$ref": "#/$defs/PolicySensitivityConfig" }
   },
   "$defs": {
     "AgentDescriptor": {
@@ -60,6 +62,37 @@
       }
     },
     "SkillExpressionConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "matchesPerSeat",
+        "agentTiers",
+        "seed",
+        "maxTurns",
+        "maxSteps"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "matchesPerSeat": { "type": "integer", "minimum": 1 },
+        "agentTiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AgentRef" }
+        },
+        "seed": { "type": ["integer", "null"] },
+        "maxTurns": { "type": ["integer", "null"], "minimum": 1 },
+        "maxSteps": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "AdvantageReversalConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "PolicySensitivityConfig": {
       "type": "object",
       "additionalProperties": false,
       "required": [

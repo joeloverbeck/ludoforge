@@ -26,5 +26,19 @@
     "seed": null,
     "maxTurns": null,
     "maxSteps": null
+  },
+  "advantageReversal": {
+    "enabled": false
+  },
+  "policySensitivity": {
+    "enabled": false,
+    "matchesPerSeat": 16,
+    "agentTiers": [
+      "random",
+      "greedy"
+    ],
+    "seed": null,
+    "maxTurns": null,
+    "maxSteps": null
   }
 }

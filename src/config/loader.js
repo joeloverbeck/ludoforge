@@ -64,6 +64,11 @@ export const DEFAULT_CONFIG_ENTRIES = [
     file: "human-feedback.json",
     schema: "human-feedback.schema.json",
   },
+  {
+    name: "agent-suites",
+    file: "agent-suites.json",
+    schema: "agent-suites.schema.json",
+  },
 ];
 
 function resolveDirUrl(input, fallback) {

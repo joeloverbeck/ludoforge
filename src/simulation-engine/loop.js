@@ -1,35 +1,20 @@
 import {
   createInitialState,
   listLegalActions,
-  validateActionChoice,
-  advanceTurnPhase,
   createEventStream,
   recordStateUpdate,
-  recordTermination,
   evaluateTermination,
 } from "../game-kernel/index.js";
 import { createSeededRng } from "./rng.js";
 import { normalizeAgents } from "./agent-serialization.js";
 import { resolveSimulationDefaults } from "./simulation-defaults.js";
-import { buildDrawOutcome, buildTerminationOutcome, buildSimulationOutcome } from "./termination-outcome.js";
-import { cloneState, applyAction, applyAfterActionTriggers, createStepImpact, buildStep } from "./step-execution.js";
+import { buildSimulationOutcome } from "./termination-outcome.js";
+import { cloneState, applyAction, applyAfterActionTriggers, createStepImpact, buildStep, recordStep } from "./step-execution.js";
 import { defaultStateHasher, recordLoopHash } from "./loop-detection.js";
-
-function resolveAgent(agents, state) {
-  const playerId = state.turn.currentPlayer;
-  const agentById = agents.find((agent) => agent.id === playerId);
-  if (agentById) {
-    return agentById;
-  }
-  const role = state.agents.find((agent) => agent.id === playerId)?.role;
-  if (role) {
-    const agentByRole = agents.find((agent) => agent.role === role);
-    if (agentByRole) {
-      return agentByRole;
-    }
-  }
-  return agents[playerId - 1] ?? agents[0];
-}
+import { advanceAndCheck } from "./turn-advance.js";
+import { checkLoopDetection } from "./loop-check.js";
+import { selectAndValidateAction } from "./agent-action.js";
+import { handleNoLegalActions } from "./no-legal-actions.js";
 
 function runSimulationLoop(config) {
   const definition = config.definition;
@@ -96,144 +81,25 @@ function runSimulationLoop(config) {
     }
 
     if (legalActionCount === 0) {
-      const noLegalActions = config.turn?.noLegalActions ?? definition.turn?.noLegalActions;
-      const policy = noLegalActions?.policy;
-
-      if (policy === "error") {
-        const reason = noLegalActions?.reason ?? "no-legal-actions";
-        throw new Error(`No legal actions: ${reason}`);
-      }
-
-      if (policy === "pass") {
-        const passHash = defaultStateHasher(state);
-        const step = buildStep(state, null, 0, undefined, {
-          stateHash: passHash,
-          bindings: {},
-          appliedEffects: [],
-        });
-        trajectory.steps.push(step);
-        config.stepControl?.onStep?.(step);
-        stepsTaken += 1;
-
-        const advanceResult = advanceTurnPhase(definition, state, {
-          maxTurns,
-          stateHistoryLimit: 0,
-        });
-        if (!advanceResult.ok) {
-          if (advanceResult.reason === "max-turns") {
-            const maxTurnOutcome = evaluateTermination(definition, state, {
-              activePlayerId: state.turn.currentPlayer,
-              maxTurnsReached: true,
-              events,
-            });
-            return {
-              trajectory,
-              outcome: buildSimulationOutcome(maxTurnOutcome),
-              terminationReason: "max-turns",
-              terminated: false,
-            };
-          }
-          if (advanceResult.reason === "state-loop") {
-            const outcome = buildDrawOutcome(definition);
-            recordTermination(events, outcome);
-            return {
-              trajectory,
-              outcome: buildSimulationOutcome(outcome),
-              terminationReason: "loop-detected",
-              terminated: false,
-            };
-          }
-          throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
-        }
-
-        const loopCheck = recordLoopHash(state, tracker);
-        if (loopCheck.repeated) {
-          const outcome = buildDrawOutcome(definition);
-          recordTermination(events, outcome);
-          return {
-            trajectory,
-            outcome: buildSimulationOutcome(outcome),
-            terminationReason: "loop-detected",
-            terminated: false,
-          };
-        }
-
-        continue;
-      }
-
-      if (policy === "terminate") {
-        const detail = noLegalActions?.reason;
-        const terminateHash = defaultStateHasher(state);
-        const step = buildStep(state, null, 0, undefined, {
-          stateHash: terminateHash,
-          bindings: {},
-          appliedEffects: [],
-        });
-        trajectory.steps.push(step);
-        config.stepControl?.onStep?.(step);
-        stepsTaken += 1;
-        const outcome = buildTerminationOutcome(
-          definition,
-          state,
-          noLegalActions?.defaultOutcome,
-          state.turn.currentPlayer,
-          "no-legal-actions"
-        );
-        recordTermination(events, outcome);
-        return {
-          trajectory,
-          outcome: buildSimulationOutcome(outcome),
-          terminationReason: "no-legal-actions",
-          terminationDetail: detail,
-          terminated: true,
-        };
-      }
-
-      const stalemateHash = defaultStateHasher(state);
-      const step = buildStep(state, null, 0, undefined, {
-        stateHash: stalemateHash,
-        bindings: {},
-        appliedEffects: [],
-      });
-      trajectory.steps.push(step);
-      config.stepControl?.onStep?.(step);
-      const outcome = buildDrawOutcome(definition);
-      recordTermination(events, outcome);
-      return {
+      const noLegalResult = handleNoLegalActions({
+        config,
+        definition,
+        state,
         trajectory,
-        outcome: buildSimulationOutcome(outcome),
-        terminationReason: "stalemate",
-        terminated: true,
-      };
+        events,
+        tracker,
+        maxTurns,
+        stepsTaken,
+        stepControl: config.stepControl,
+      });
+      if (noLegalResult.action === "return") {
+        return noLegalResult.result;
+      }
+      stepsTaken = noLegalResult.stepsTaken;
+      continue;
     }
 
-    const agent = resolveAgent(agents, state);
-    if (!agent || typeof agent.selectAction !== "function") {
-      throw new Error("No agent available to select an action.");
-    }
-
-    const selection = agent.selectAction({
-      definition,
-      state,
-      legalActions,
-      context,
-      rng,
-    });
-    const action =
-      typeof selection === "string"
-        ? definition.actions.find((candidate) => candidate.id === selection)
-        : selection;
-    if (!action) {
-      throw new Error("Agent selected an unknown action.");
-    }
-    const isLegal = legalActions.some((candidate) => candidate.id === action.id);
-    if (!isLegal) {
-      throw new Error(`Agent selected illegal action: ${action.id}`);
-    }
-    const validation = validateActionChoice(definition, state, action.id, context);
-    if (!validation.ok) {
-      throw new Error(`Agent selected invalid action: ${validation.reason ?? "unknown"}`);
-    }
+    const action = selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
 
     const impact = createStepImpact();
     const effectContext = { ...context, impact };
@@ -252,8 +118,7 @@ function runSimulationLoop(config) {
       bindings: {},
       appliedEffects,
     });
-    trajectory.steps.push(step);
-    config.stepControl?.onStep?.(step);
+    recordStep(step, trajectory, config.stepControl);
     stepsTaken += 1;
 
     const postActionTermination = evaluateTermination(definition, state, {
@@ -269,47 +134,14 @@ function runSimulationLoop(config) {
       };
     }
 
-    const advanceResult = advanceTurnPhase(definition, state, {
-      maxTurns,
-      stateHistoryLimit: 0,
-    });
-    if (!advanceResult.ok) {
-      if (advanceResult.reason === "max-turns") {
-        const maxTurnOutcome = evaluateTermination(definition, state, {
-          activePlayerId: state.turn.currentPlayer,
-          maxTurnsReached: true,
-          events,
-        });
-        return {
-          trajectory,
-          outcome: buildSimulationOutcome(maxTurnOutcome),
-          terminationReason: "max-turns",
-          terminated: false,
-        };
-      }
-      if (advanceResult.reason === "state-loop") {
-        const outcome = buildDrawOutcome(definition);
-        recordTermination(events, outcome);
-        return {
-          trajectory,
-          outcome: buildSimulationOutcome(outcome),
-          terminationReason: "loop-detected",
-          terminated: false,
-        };
-      }
-      throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
+    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory });
+    if (turnCheck.done) {
+      return turnCheck.result;
     }
 
-    const loopCheck = recordLoopHash(state, tracker);
-    if (loopCheck.repeated) {
-      const outcome = buildDrawOutcome(definition);
-      recordTermination(events, outcome);
-      return {
-        trajectory,
-        outcome: buildSimulationOutcome(outcome),
-        terminationReason: "loop-detected",
-        terminated: false,
-      };
+    const loopResult = checkLoopDetection(state, tracker, trajectory, definition, events);
+    if (loopResult.done) {
+      return loopResult.result;
     }
   }
 }
