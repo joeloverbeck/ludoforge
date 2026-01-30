@@ -186,5 +186,64 @@ describe("core-metrics", () => {
 
       assert.ok(Math.abs(computeInteractionRate([summary]) - 1 / 2) < 1e-9);
     });
+
+    it("counts affectedGlobal: true steps as interactive", () => {
+      const summary = buildSummary({
+        keySteps: [
+          {
+            turn: 1,
+            phase: null,
+            playerId: 1,
+            actionId: "a",
+            affectedPlayerIds: [1],
+            affectedGlobal: true,
+          },
+          {
+            turn: 1,
+            phase: null,
+            playerId: 2,
+            actionId: "b",
+            affectedPlayerIds: [2],
+            affectedGlobal: false,
+          },
+        ],
+      });
+
+      assert.ok(Math.abs(computeInteractionRate([summary]) - 1 / 2) < 1e-9);
+    });
+
+    it("counts step with both affectedGlobal and other-player only once", () => {
+      const summary = buildSummary({
+        keySteps: [
+          {
+            turn: 1,
+            phase: null,
+            playerId: 1,
+            actionId: "a",
+            affectedPlayerIds: [1, 2],
+            affectedGlobal: true,
+          },
+        ],
+      });
+
+      assert.ok(Math.abs(computeInteractionRate([summary]) - 1) < 1e-9);
+    });
+
+    it("affectedGlobal: false with only self is NOT interactive", () => {
+      const summary = buildSummary({
+        keySteps: [
+          {
+            turn: 1,
+            phase: null,
+            playerId: 1,
+            actionId: "a",
+            affectedPlayerIds: [1],
+            affectedGlobal: false,
+          },
+        ],
+      });
+
+      assert.ok(Math.abs(computeInteractionRate([summary])) < 1e-9);
+    });
   });
 });

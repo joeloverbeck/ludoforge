@@ -532,7 +532,8 @@
           "properties": {
             "kind": { "const": "var" },
             "id": { "type": "string" },
-            "attribute": { "type": "string" }
+            "attribute": { "type": "string" },
+            "player": { "type": "string" }
           }
         },
         {

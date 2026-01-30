@@ -8,7 +8,7 @@
     "variety": 1,
     "pacing_tension": 1,
     "turn_taking_rate": 1,
-    "interaction_rate": 0,
+    "interaction_rate": 1,
     "length_mean": 1,
     "length_variance": 1,
     "early_termination_rate": 1,

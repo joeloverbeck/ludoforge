@@ -100,7 +100,21 @@ export function resolveRefValue(ref, context) {
     if (!variable) {
       return undefined;
     }
-    return resolveVarValue(context.state, variable, context.playerId);
+    let pid = context.playerId;
+    const playerRef = ref.player;
+    if (playerRef === "opponent") {
+      const agents = context.state?.agents ?? [];
+      const opp = agents.find((a) => a.id !== context.playerId);
+      if (opp) {
+        pid = opp.id;
+      }
+    } else if (playerRef != null && playerRef !== "self") {
+      const bound = context.bindings?.[playerRef];
+      if (bound != null) {
+        pid = bound;
+      }
+    }
+    return resolveVarValue(context.state, variable, pid);
   }
   if (ref.kind === "token") {
     return resolveTokenRef(ref, context);

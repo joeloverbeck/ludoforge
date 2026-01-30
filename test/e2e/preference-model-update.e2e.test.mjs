@@ -109,8 +109,8 @@ describe("preference-model-update", () => {
       );
       assert.equal(
         featureVector.interaction_rate,
-        0,
-        "Expected global-only effects to yield zero interaction"
+        1,
+        "Expected global effects to count as interaction"
       );
     }
 

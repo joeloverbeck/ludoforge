@@ -32,8 +32,15 @@ Implemented in `src/evaluation-analytics/metrics/core.js`:
 - Variety = normalized action entropy across steps.
 - Pacing tension = average `stepCount / turnCount`.
 - Turn-taking rate = fraction of steps where the active player changes.
-- Interaction rate = fraction of action steps that affect at least one non-active player
-  (uses `affectedPlayerIds`; pass steps with `actionId = null` are excluded).
+- Interaction rate = fraction of action steps that are interactive
+  (pass steps with `actionId = null` are excluded). A step is interactive if
+  `affectedPlayerIds` contains any player other than the active player **or**
+  `affectedGlobal` is `true`. This captures direct opponent impact, shared/global
+  state changes, and reveal/hide effects on shared zones. Reveal and hide token
+  effects now record impact via `recordTokenImpact`, matching the pattern used by
+  spawn, move, and destroy. Variable effects support a `player` field on the
+  target ref (a binding name, `"self"`, or `"opponent"`) to direct writes and
+  impact recording to a specific player rather than the active player.
 
 Core metric ordering defaults to `configs/metrics-core.json`:
 
@@ -156,10 +163,23 @@ Implemented in `src/evaluation-analytics/scoring.js`:
 
 Implemented in `src/evaluation-analytics/preference-scoring.js`:
 
-- Linear score = `dot(weights, featureVector) + bias`.
-- Preference score = `sigmoid(linear)`.
-- Confidence = `abs(score - 0.5) * 2`.
-- Preference learning is comparison-first (comparisons are the primary training signal).
+The preference model is an ensemble of K independent models. Scoring
+aggregates per-model predictions:
+
+- For each model: `p_i = sigmoid(dot(w_i, featureVector) + b_i)`.
+- `pMean = mean(p_i)` — ensemble mean prediction.
+- `pVar = variance(p_i)` — model disagreement.
+- `uncertainty = clamp01(2 * sqrt(pVar))` — scaled disagreement.
+- `bald = H(pMean) - mean(H(p_i))` — information gain proxy
+  (BALD: Bayesian Active Learning by Disagreement).
+- `confidence = 1 - uncertainty`.
+- `score = pMean`.
+
+When the ensemble is empty, returns `score = 0.5`, `uncertainty = 1`.
+Legacy single-model states (with `weights`/`bias` but no `models` array)
+are transparently wrapped as a single-element ensemble.
+
+Preference learning is comparison-first (comparisons are the primary training signal).
 
 ## Fitness Blend
 
@@ -168,10 +188,13 @@ Implemented in `src/evaluation-analytics/fitness.js` and `scoring.js`:
 - Base = composite score.
 - Diversity contribution uses defaults from `configs/fitness.json`:
   `diversityPressure * diversityWeight`.
-- Preference contribution uses defaults from `configs/fitness.json`, centered and capped:
-  - `centered = (preferenceScore - 0.5) * 2`
-  - `weighted = centered * preferenceWeight`
+- Preference contribution uses defaults from `configs/fitness.json`, centered,
+  uncertainty-damped, and capped:
+  - `centered = (pMean - 0.5) * 2`
+  - `weighted = centered * preferenceWeight * (1 - uncertainty)`
   - contribution clamped to `[-preferenceCap, preferenceCap]`.
+  - The `(1 - uncertainty)` factor prevents the ensemble mean from dominating
+    fitness when models disagree. High uncertainty → near-zero contribution.
 - Bootstrap: if sample count < `preferenceBootstrapSamples`, cap is reduced to
   `preferenceBootstrapCap`.
 

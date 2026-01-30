@@ -162,6 +162,30 @@ Seeding mode is configured via the `seeding` block in the runner config
 - `src/evolution-runner/seed-resolver.js` — runner-level mode dispatch
 - `src/evolution-runner/folder-seeder.js` — folder loading with deterministic IDs
 
+## Human Feedback Integration
+
+The runner config schema requires a top-level `humanFeedback` block with at
+minimum `enabled` (boolean) and `mode` (`"comparison"` or `"rating"`). When
+`humanFeedback.enabled` is `true`, the CLI wires an interactive feedback loop
+into the generation cycle:
+
+1. `createConsoleIO()` (from `src/cli/console-io.js`) opens a readline-based
+   `HumanIO` adapter for terminal prompting.
+2. `createFeedbackProvider()` (from `src/human-interface/create-feedback-provider.js`)
+   returns an async `feedbackProvider` and a `snapshotProvider`.
+3. These are passed as `feedback` and `preferenceModelSnapshots` to
+   `runEvolutionRunner()`.
+
+The feedback provider is async — the runner awaits it each generation. This is
+backward-compatible because `await syncValue` simply unwraps synchronous return
+values.
+
+On resume, the provider is initialized with `resumeState.preferenceModel` so
+the preference model continues from its stored state.
+
+See [human-feedback.md](human-feedback.md) § CLI Integration for the full
+wiring details and provider internals.
+
 ## Current Implementation Status
 
 - The evolution runner is implemented in `src/evolution-runner/` with unit coverage.
@@ -173,4 +197,8 @@ Seeding mode is configured via the `seeding` block in the runner config
   the config are known metric names (see
   `docs/architecture/evolutionary-engine.md` § Descriptor ID Validation).
   Unknown IDs produce a `CLIError` listing the invalid names and available metrics.
+- When `humanFeedback.enabled` is `true`, the CLI creates console I/O and a
+  feedback provider, wiring them into the runner options at each call site
+  (resume, `--seeds`, config-seeding). A `try/finally` block ensures the
+  readline interface is closed on exit.
 - Data persistence modules support run-scoped records via required `runId` fields for metrics and trajectory logs; feedback can optionally include `runId`.

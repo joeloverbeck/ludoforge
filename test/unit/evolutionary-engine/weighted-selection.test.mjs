@@ -41,6 +41,16 @@ describe("weightedSelect", () => {
     assert.equal(counts.heavy, 929);
   });
 
+  it("supports fractional weights", () => {
+    const rng = createSeededRng(2026);
+    const names = ["light", "heavy"];
+    const weights = [0.5, 1.5];
+
+    const picks = Array.from({ length: 6 }, () => weightedSelect(names, weights, rng));
+
+    assert.deepEqual(picks, ["light", "light", "light", "heavy", "heavy", "heavy"]);
+  });
+
   it("throws on empty names", () => {
     assert.throws(() => weightedSelect([], [], createSeededRng(1)), /non-empty/i);
   });

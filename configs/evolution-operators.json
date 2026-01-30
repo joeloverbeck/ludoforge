@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-29T00:00:00Z",
+  "updatedAt": "2026-01-30T00:00:00Z",
   "mutation": {
     "enabled": [
       "numeric-tweak",
@@ -26,27 +26,27 @@
       "motif-inject"
     ],
     "weights": {
-      "numeric-tweak": 1,
-      "boolean-toggle": 1,
-      "enum-cycle": 1,
-      "action-duplicate": 1,
-      "action-remove": 1,
-      "action-effect-magnitude": 1,
-      "precondition-negation": 1,
-      "termination-threshold": 1,
-      "termination-outcome": 1,
-      "phase-add": 1,
-      "phase-remove": 1,
-      "token-zone-target-add": 1,
-      "token-type-remove": 1,
-      "zone-remove": 1,
-      "effect-insert": 1,
+      "numeric-tweak": 5,
+      "boolean-toggle": 3,
+      "enum-cycle": 3,
+      "action-duplicate": 2,
+      "action-remove": 0.5,
+      "action-effect-magnitude": 3,
+      "precondition-negation": 3,
+      "termination-threshold": 3,
+      "termination-outcome": 3,
+      "phase-add": 2,
+      "phase-remove": 0.5,
+      "token-zone-target-add": 2,
+      "token-type-remove": 0.5,
+      "zone-remove": 0.5,
+      "effect-insert": 2,
       "effect-delete": 1,
-      "effect-param-tweak": 1,
-      "effect-kind-swap": 1,
-      "effect-reorder": 1,
-      "action-add-small": 1,
-      "motif-inject": 1
+      "effect-param-tweak": 4,
+      "effect-kind-swap": 2,
+      "effect-reorder": 2,
+      "action-add-small": 2,
+      "motif-inject": 2
     }
   },
   "crossover": {

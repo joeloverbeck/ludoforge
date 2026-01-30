@@ -1,17 +1,17 @@
 # Interaction Rate Metric Overhaul
 
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2026-01-30
 
 ## Problem
 
-`interaction_rate` is a core metric and is used for descriptors, but it is excluded from fitness weights because the current definition under-counts interaction. Today it only counts steps where `affectedPlayerIds` contains a non-active player, which ignores:
+`interaction_rate` is a core metric and is used for descriptors, but it was excluded from fitness weights because the original definition under-counted interaction. It only counted steps where `affectedPlayerIds` contains a non-active player, which ignored:
 
-- Global/shared state changes (`affectedGlobal` is ignored).
-- Variable effects, which always record impact on the active player even if they conceptually target other players.
-- Reveal/hide effects, which do not record any impact.
+- Global/shared state changes (`affectedGlobal` was ignored).
+- Variable effects, which always recorded impact on the active player even if they conceptually target other players.
+- Reveal/hide effects, which did not record any impact.
 
-The result is a biased metric that favors per-player zones and misses many legitimate interaction patterns.
+The result was a biased metric that favored per-player zones and missed many legitimate interaction patterns.
 
 ## Goals
 
@@ -24,7 +24,7 @@ The result is a biased metric that favors per-player zones and misses many legit
 - Redesigning all impact tracking beyond what is required for interaction_rate.
 - Changing the semantic meaning of existing effects.
 
-## Proposed Definition
+## Implemented Definition
 
 Compute interaction_rate per simulation run as:
 
@@ -38,33 +38,54 @@ Where:
 - A step is `interactive` if it satisfies at least one of the following:
   1. **Affects other players directly:** `affectedPlayerIds` includes any player id different from the active player.
   2. **Affects shared/global state:** `affectedGlobal === true`.
-  3. **Affects another player's scoped zone or tokens:** the effect targets a `per_player` zone for a player other than the active player.
 
-Notes:
-- Condition (1) and (2) are computed from step impact data.
-- Condition (3) requires effect-level attribution to know the target player of a per-player zone change.
+## DSL Extension: Player Target Bindings
 
-## Required Changes
+Variable effect targets now support an optional `player` field on the `Ref` with `kind: "var"`. The `player` value is a **binding name** (e.g., `"victim"`) referencing a resolved player target, or the literal `"self"` / `"opponent"` for simple cases.
 
-### 1) Improve impact attribution for variable effects
+Example: "attack opponent, reduce their health":
 
-Current behavior records variable effects as impacting only the active player. Update the effect application layer so that when a variable is scoped per-player and the effect explicitly targets another player (e.g., a `targetPlayerId` or equivalent context), the impacted player id is recorded accordingly.
+```json
+{
+  "id": "attack",
+  "targets": [
+    { "id": "victim", "kind": "player", "selector": { "player": "opponent" } }
+  ],
+  "effects": [
+    { "kind": "dec", "target": { "kind": "var", "id": "health", "player": "victim" }, "amount": 1 }
+  ]
+}
+```
 
-### 2) Record impact for reveal/hide
+Flow:
+1. `resolveActionTargets` sees `kind: "player"` target → resolves opponent player IDs via `resolvePlayerSelector` → stores `bindings.victim = 2`
+2. `applyEffect` sees `effect.target.player === "victim"` → looks up `context.bindings.victim` → gets player ID `2`
+3. `applyVariableEffect` uses player ID `2` instead of `context.playerId` for resolve/write/impact
 
-`reveal` and `hide` should record impact. These are observable state changes and should contribute to interaction when they affect non-active players or shared state.
+For 3+ player games: The selector `{ player: "opponent" }` returns all non-self player IDs. Combined with `count: 1, random: true`, it picks one opponent.
 
-### 3) Preserve and use `affectedGlobal`
+Precondition expressions (`resolveRefValue`) also respect the `player` field on var refs, allowing conditions to read another player's variable value.
 
-`interaction_rate` should treat any step with `affectedGlobal === true` as interactive, regardless of `affectedPlayerIds`.
+## Changes Made
 
-### 4) Add per-player zone targeting signals
+### Schema
+- `schemas/dsl/game-definition.v1.json`: Added optional `player` field to var Ref.
 
-When a token is moved/spawned/destroyed into a `per_player` zone that belongs to another player, that should record the impacted player id (not the active player). This enables condition (3) for interaction detection.
+### Game Kernel
+- `src/game-kernel/selectors.js`: Added `resolvePlayerSelector()` and `kind: "player"` handling in `resolveActionTargets()`.
+- `src/game-kernel/effect-application.js`: Added `resolveTargetPlayerId()` and plumbed `targetPlayerId` through `applyVariableEffect()`.
+- `src/game-kernel/ref-resolution.js`: `resolveRefValue()` now resolves `player` field on var refs via binding lookup or literal `"self"`/`"opponent"`.
+- `src/game-kernel/token-effects.js`: `applyTokenReveal()` and `applyTokenHide()` now call `recordTokenImpact()`.
 
-### 5) Update metric definition in docs
+### Evaluation Analytics
+- `src/evaluation-analytics/metrics/core.js`: `computeInteractionRate()` now checks `affectedGlobal === true` in addition to cross-player `affectedPlayerIds`.
+- `src/evaluation-analytics/fitness.js`: Removed hardcoded `interaction_rate: 0` default weight override.
 
-Review and update any relevant docs in `docs/architecture/` to reflect the new interaction_rate definition and impact attribution behavior.
+### Config
+- `configs/fitness.json`: Changed `interaction_rate` weight from `0` to `1`.
+
+### Documentation
+- `docs/architecture/metrics-and-fitness.md`: Updated `interaction_rate` definition.
 
 ## Invariants
 
@@ -74,28 +95,29 @@ Review and update any relevant docs in `docs/architecture/` to reflect the new i
 - A step that affects another player's per-player zone is counted as interactive.
 - For games where only the active player's private state changes, interaction_rate should remain low (near 0) unless there is direct or shared impact.
 
+## Resolved Questions
+
+1. **"How should effects that target multiple players be attributed?"**
+   Already handled: `affectedPlayerIds` is a `Set`; each effect adds its impacted player(s). No change needed.
+
+2. **"Do we need a separate metric for shared vs direct opponent impact?"**
+   No. `affectedGlobal` is already recorded per-step. A separate metric can be derived later from existing data if needed. For now, both count as "interactive" in one metric.
+
+Note: `experiments/default.json` has no fitness weights — it only defines MAP-Elites descriptors. Fitness weights are solely in `configs/fitness.json`.
+
 ## Tests
 
-### New or Updated Unit Tests
+### New Unit Tests
+- `test/unit/game-kernel/player-selector.test.mjs` — `resolvePlayerSelector` and `resolveActionTargets` with `kind: "player"`.
+- `test/unit/game-kernel/variable-effect-player-targeting.test.mjs` — variable effects with `player` field (binding, literal, backward compat).
+- `test/unit/game-kernel/token-effects-impact.test.mjs` — reveal/hide impact recording for global and per-player zones.
 
-- **Core metrics:** `interaction_rate` counts `affectedGlobal` steps as interactive.
-- **Core metrics:** `interaction_rate` counts steps that affect another player's per-player zone as interactive.
-- **Effect application:** variable effects record impact for non-active player targets.
-- **Token effects:** moving/spawning/destroying tokens into another player's per-player zone records impacted player id.
-- **Reveal/hide:** reveal/hide record impact and can mark steps interactive when they affect shared or non-active player state.
-
-### Existing Tests That Must Pass
-
-- `npm run test:unit`
+### Updated Unit Tests
+- `test/unit/evaluation-analytics/core-metrics.test.mjs` — `affectedGlobal` counting, dual condition, non-interactive baseline.
+- `test/unit/evaluation-analytics/fitness.test.mjs` — `interaction_rate` weight is not zeroed out.
 
 ## Acceptance Criteria
 
-- The new definition is implemented and validated by unit tests.
-- `interaction_rate` is no longer excluded from fitness weights by default.
-- All relevant architecture docs in `docs/architecture/` are reviewed and updated to reflect the new behavior.
-
-## Open Questions
-
-- How should effects that target multiple players be attributed in `affectedPlayerIds`?
-- Do we need a separate metric for "shared impact" vs "direct opponent impact"?
-
+- [x] The new definition is implemented and validated by unit tests.
+- [x] `interaction_rate` is no longer excluded from fitness weights by default.
+- [x] All relevant architecture docs in `docs/architecture/` are reviewed and updated to reflect the new behavior.

@@ -54,11 +54,10 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
     ? {
       ...compositeDefaults,
       ...baseCompositeScoreOptions,
-      defaultWeights: { interaction_rate: 0, ...(baseDefaultWeights ?? {}) },
+      defaultWeights: { ...(baseDefaultWeights ?? {}) },
     }
     : {
       ...compositeDefaults,
-      defaultWeights: { interaction_rate: 0 },
     };
 
   const compositeScore = options.compositeScore ??

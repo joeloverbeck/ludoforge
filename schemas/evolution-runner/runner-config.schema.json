@@ -4,7 +4,7 @@
   "title": "EvolutionRunnerConfig",
   "type": "object",
   "additionalProperties": false,
-  "required": ["runner", "mapElites", "seeding"],
+  "required": ["runner", "mapElites", "seeding", "humanFeedback"],
   "properties": {
     "seed": { "type": "integer" },
     "runner": { "$ref": "#/$defs/RunnerLoopConfig" },
@@ -130,6 +130,7 @@
     "HumanFeedbackConfig": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["enabled", "mode"],
       "properties": {
         "enabled": { "type": "boolean" },
         "mode": { "type": "string", "enum": ["rating", "comparison"] },

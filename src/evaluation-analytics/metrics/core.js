@@ -190,7 +190,11 @@ function computeInteractionRate(summaries) {
         ? step.affectedPlayerIds
         : [];
       const activePlayerId = step?.playerId;
-      if (affectedPlayerIds.some((playerId) => playerId !== activePlayerId)) {
+      const affectsOtherPlayer = affectedPlayerIds.some(
+        (playerId) => playerId !== activePlayerId
+      );
+      const affectsGlobal = step.affectedGlobal === true;
+      if (affectsOtherPlayer || affectsGlobal) {
         interactiveSteps += 1;
       }
     }

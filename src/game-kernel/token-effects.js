@@ -179,6 +179,10 @@ export function applyTokenReveal(state, effect, context) {
     return { ok: false, reason: "token-not-found" };
   }
   token.revealed = true;
+  const location = findTokenZone(state, resolvedId);
+  if (location) {
+    recordTokenImpact(context, location.zone, location.playerId);
+  }
   return {
     ok: true,
     appliedEffect: {
@@ -200,6 +204,10 @@ export function applyTokenHide(state, effect, context) {
     return { ok: false, reason: "token-not-found" };
   }
   token.revealed = false;
+  const location = findTokenZone(state, resolvedId);
+  if (location) {
+    recordTokenImpact(context, location.zone, location.playerId);
+  }
   return {
     ok: true,
     appliedEffect: {

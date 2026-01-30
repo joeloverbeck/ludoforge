@@ -15,6 +15,8 @@ import { validateRunnerConfig } from "../evolution-runner/config.js";
 import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
 import { CLIError } from "./cli-error.js";
 import { validateDescriptorKeys } from "./validate-descriptor-keys.js";
+import { createConsoleIO } from "./console-io.js";
+import { createFeedbackProvider } from "../human-interface/create-feedback-provider.js";
 
 const VALUE_FLAGS = new Set(["--seeds", "--config", "--run-id", "--out"]);
 const BOOLEAN_FLAGS = new Set(["--dry-run", "--resume", "--help", "-h"]);
@@ -242,7 +244,7 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
 
     const evaluation = createEvaluator({ descriptorKeys });
 
-    const result = await deps.runEvolutionRunner({
+    const runnerOptions = {
       baseDir,
       runId,
       config,
@@ -250,15 +252,36 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
       startGeneration: resumeState.generation + 1,
       preferenceModelSnapshots: [resumeState.preferenceModel],
       evaluation,
-    });
-
-    return {
-      runId,
-      baseDir,
-      dryRun: false,
-      resumed: true,
-      result,
     };
+
+    let consoleIO;
+    try {
+      if (config.humanFeedback?.enabled) {
+        consoleIO = createConsoleIO();
+        const provider = createFeedbackProvider({
+          io: consoleIO.io,
+          config: config.humanFeedback,
+          initialModelState: resumeState.preferenceModel,
+          seed: config.seed,
+        });
+        runnerOptions.feedback = provider.feedbackProvider;
+        runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
+      }
+
+      const result = await deps.runEvolutionRunner(runnerOptions);
+
+      return {
+        runId,
+        baseDir,
+        dryRun: false,
+        resumed: true,
+        result,
+      };
+    } finally {
+      if (consoleIO) {
+        consoleIO.close();
+      }
+    }
   }
 
   if (runId) {
@@ -295,21 +318,41 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     const evaluation = createEvaluator({ descriptorKeys });
     await deps.writeRunMetadata(baseDir, runId, { config });
 
-    const result = await deps.runEvolutionRunner({
+    const runnerOptions = {
       baseDir,
       runId,
       config,
       population,
       evaluation,
-    });
-
-    return {
-      runId,
-      baseDir,
-      dryRun: false,
-      resumed: false,
-      result,
     };
+
+    let consoleIO;
+    try {
+      if (config.humanFeedback?.enabled) {
+        consoleIO = createConsoleIO();
+        const provider = createFeedbackProvider({
+          io: consoleIO.io,
+          config: config.humanFeedback,
+          seed: config.seed,
+        });
+        runnerOptions.feedback = provider.feedbackProvider;
+        runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
+      }
+
+      const result = await deps.runEvolutionRunner(runnerOptions);
+
+      return {
+        runId,
+        baseDir,
+        dryRun: false,
+        resumed: false,
+        result,
+      };
+    } finally {
+      if (consoleIO) {
+        consoleIO.close();
+      }
+    }
   }
 
   if (!config.seeding) {
@@ -336,20 +379,40 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
   const evaluation = createEvaluator({ descriptorKeys });
   await deps.writeRunMetadata(baseDir, runId, { config });
 
-  const result = await deps.runEvolutionRunner({
+  const runnerOptions = {
     baseDir,
     runId,
     config,
     evaluation,
-  });
-
-  return {
-    runId,
-    baseDir,
-    dryRun: false,
-    resumed: false,
-    result,
   };
+
+  let consoleIO;
+  try {
+    if (config.humanFeedback?.enabled) {
+      consoleIO = createConsoleIO();
+      const provider = createFeedbackProvider({
+        io: consoleIO.io,
+        config: config.humanFeedback,
+        seed: config.seed,
+      });
+      runnerOptions.feedback = provider.feedbackProvider;
+      runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
+    }
+
+    const result = await deps.runEvolutionRunner(runnerOptions);
+
+    return {
+      runId,
+      baseDir,
+      dryRun: false,
+      resumed: false,
+      result,
+    };
+  } finally {
+    if (consoleIO) {
+      consoleIO.close();
+    }
+  }
 }
 
 async function main() {
@@ -375,6 +438,7 @@ async function main() {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+const entryPath = process.argv[1];
+if (entryPath && import.meta.url === pathToFileURL(entryPath).href) {
   void main();
 }

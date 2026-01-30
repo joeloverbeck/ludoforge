@@ -430,7 +430,7 @@ export async function runEvolutionRunner(options) {
     };
 
     const feedback =
-      feedbackEnabled && feedbackProvider ? feedbackProvider(generationContext) : undefined;
+      feedbackEnabled && feedbackProvider ? await feedbackProvider(generationContext) : undefined;
     const preferenceModelSnapshots = snapshotProvider
       ? snapshotProvider(generationContext)
       : [defaultPreferenceModelSnapshot({ runId, generation, seed })];

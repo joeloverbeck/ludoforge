@@ -41,11 +41,19 @@ then repeats.
      full evaluation pipeline.
 
 4. Human feedback capture
-   - Human ratings or comparisons are collected as preference samples that update
-     the preference model used during fitness computation. Active learning can
-     prioritize comparisons by uncertainty and niche diversity.
-   - See [human-feedback.md](human-feedback.md) for collection mechanics and config,
-     and [metrics-and-fitness.md](metrics-and-fitness.md) for preference blending.
+   - When `humanFeedback.enabled` is `true` in the runner config, the CLI creates
+     a `ConsoleIO` (readline-based `HumanIO`) and a `FeedbackProvider` via
+     `createFeedbackProvider()`. The provider is async: each generation, it
+     extracts candidates from evaluated genomes, selects informative pairs via
+     active learning (BALD acquisition), prompts the human, and updates the
+     preference model state in a closure.
+   - The runner awaits the feedback provider and persists results to
+     `feedback.jsonl` and `preference-model.jsonl` per generation.
+   - On resume, the provider is initialized with the stored preference model
+     state so learning continues across sessions.
+   - See [human-feedback.md](human-feedback.md) for collection mechanics, CLI
+     wiring details, and config, and
+     [metrics-and-fitness.md](metrics-and-fitness.md) for preference blending.
 
 5. Fitness computation
    - Metrics + degeneracy flags become a feature vector.

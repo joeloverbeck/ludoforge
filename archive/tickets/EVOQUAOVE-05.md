@@ -3,6 +3,7 @@
 **Spec ref:** EQ-08
 **Phase:** 2 — Strengthen selection pressure
 **Depends on:** None
+**Status:** Completed (2026-01-30)
 
 ## Problem
 
@@ -10,10 +11,7 @@ All 21 mutation operators have equal weight `1` in `configs/evolution-operators.
 
 ## Fix
 
-Update `configs/evolution-operators.json` to assign differentiated weights:
-- Conservative operators (numeric-tweak, boolean-toggle, enum-cycle, effect-param-tweak, effect-reorder, precondition-negation, termination-threshold, termination-outcome, action-effect-magnitude): weight `3`–`5`
-- Constructive operators (action-add-small, action-duplicate, effect-insert, phase-add, token-zone-target-add, motif-inject): weight `2`–`3`
-- Destructive operators (action-remove, zone-remove, phase-remove, token-type-remove, effect-delete): weight `0.5`–`1`
+Update `configs/evolution-operators.json` to assign differentiated weights. The spec only mandates exact values for a subset of operators; apply those exact values and set all other operators to reasonable weights in the `2`–`3` range.
 
 Exact values from the spec:
 ```json
@@ -22,6 +20,7 @@ Exact values from the spec:
 "action-remove": 0.5, "zone-remove": 0.5, "phase-remove": 0.5,
 "token-type-remove": 0.5, "effect-delete": 1
 ```
+
 All other operators not listed: assign reasonable weights in the 2–3 range.
 
 ## Files to touch
@@ -39,9 +38,10 @@ All other operators not listed: assign reasonable weights in the 2–3 range.
 
 ### Tests that must pass
 
-1. **Updated schema test** in `test/unit/evolution-runner/schema.test.mjs` (if it validates config): config must still pass schema validation
-2. Existing operator-config tests pass
-
+1. Schema validation for `configs/evolution-operators.json`:
+   - `test/unit/config-schemas.test.mjs`
+2. Operator config validation:
+   - `test/unit/evolutionary-engine/operator-config-validation.test.mjs`
 3. All existing tests:
    - `npm run test:unit` passes
 
@@ -50,4 +50,10 @@ All other operators not listed: assign reasonable weights in the 2–3 range.
 - All operator names in `mutation.enabled` have a corresponding entry in `mutation.weights`
 - All weights are positive numbers (> 0)
 - `configs/evolution-operators.json` remains valid against `schemas/config/evolution-operators.schema.json`
-- The `WeightedSelector` continues to work with non-integer weights (verify it supports floats like `0.5`)
+- Weighted selection supports non-integer weights (verify via tests if needed)
+
+## Outcome
+
+- Updated mutation operator weights per EQ-08 (including fractional destructive weights) and refreshed `updatedAt`.
+- Added a fractional-weight regression test for weighted selection.
+- Added a guard to the CLI entrypoint to avoid executing `main()` when `process.argv[1]` is undefined (test runner stability).

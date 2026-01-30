@@ -181,6 +181,19 @@ describe("fitness", () => {
     });
   });
 
+  describe("interaction_rate weight", () => {
+    it("does not zero out interaction_rate weight", () => {
+      const featureVector = Object.freeze({ interaction_rate: 1, agency: 0 });
+
+      const result = computePreferenceAwareFitness(featureVector, {});
+      // If interaction_rate were zeroed, score contribution from it would be 0
+      assert.ok(
+        result.compositeScore.score > 0,
+        `interaction_rate should contribute to composite score, got ${result.compositeScore.score}`
+      );
+    });
+  });
+
   describe("degeneracy penalty integration", () => {
     it("subtracts degeneracy penalty when report provided", () => {
       const featureVector = Object.freeze({ agency: 1 });

@@ -8,3 +8,4 @@ export {
 } from "./feedback.js";
 export { runHumanTurn } from "./turn-loop.js";
 export { routeTurn } from "./router.js";
+export { createFeedbackProvider } from "./create-feedback-provider.js";

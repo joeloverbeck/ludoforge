@@ -11,6 +11,7 @@ function createRunnerConfig() {
   return {
     runner: { generations: 1, shortlistSize: 0, maxRetainedGenerations: 5 },
     mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
+    humanFeedback: { enabled: false, mode: "comparison" },
     seeding: { mode: "folder", populationSize: 1, folder: { path: "./seeds" } },
   };
 }

@@ -25,7 +25,7 @@ export type PreferenceModelSnapshotProvider<TGenome = Genome, TFitness = unknown
 
 export type FeedbackProvider<TGenome = Genome, TFitness = unknown, TDescriptors = unknown> = (
   context: GenerationContext<TGenome, TFitness, TDescriptors>
-) => FeedbackRecord[];
+) => FeedbackRecord[] | Promise<FeedbackRecord[]>;
 
 export interface EvolutionRunnerOptions<TGenome = Genome, TFitness = unknown, TDescriptors = unknown> {
   baseDir?: string;

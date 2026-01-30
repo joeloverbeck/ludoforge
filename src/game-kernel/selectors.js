@@ -74,12 +74,44 @@ export function resolveSelector(selector, state, context) {
   return tokenIds;
 }
 
+export function resolvePlayerSelector(selector, state, context) {
+  const agents = state.agents ?? [];
+  const playerSpec = selector?.player;
+  let ids;
+  if (playerSpec === "self") {
+    ids = agents.filter((a) => a.id === context.playerId).map((a) => a.id);
+  } else if (playerSpec === "opponent") {
+    ids = agents.filter((a) => a.id !== context.playerId).map((a) => a.id);
+  } else {
+    ids = agents.map((a) => a.id);
+  }
+  if (selector?.random && context.rng) {
+    for (let i = ids.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(context.rng() * (i + 1));
+      const temp = ids[i];
+      ids[i] = ids[j];
+      ids[j] = temp;
+    }
+  }
+  if (typeof selector?.count === "number" && selector.count > 0) {
+    ids = ids.slice(0, selector.count);
+  }
+  return ids;
+}
+
 export function resolveActionTargets(definition, state, action, context) {
   const targets = action.targets ?? [];
   const bindings = { ...context.bindings };
   const variableIndex = context.variableIndex ?? buildVariableIndex(definition);
 
   for (const target of targets) {
+    if (target.kind === "player") {
+      const playerIds = resolvePlayerSelector(target.selector, state, context);
+      if (playerIds.length > 0) {
+        bindings[target.id] = playerIds[0];
+      }
+      continue;
+    }
     const resolved = resolveSelector(target.selector, state, {
       ...context,
       variableIndex,

@@ -33,8 +33,28 @@ function recordImpact(context, variable, playerId) {
   impact.affectedPlayerIds.add(playerId);
 }
 
-function applyVariableEffect(state, variable, effect, context, options) {
-  const current = resolveVarValue(state, variable, context.playerId);
+function resolveTargetPlayerId(playerRef, context) {
+  if (playerRef == null) {
+    return context.playerId;
+  }
+  if (playerRef === "self") {
+    return context.playerId;
+  }
+  if (playerRef === "opponent") {
+    const agents = context.state?.agents ?? [];
+    const opponent = agents.find((a) => a.id !== context.playerId);
+    return opponent ? opponent.id : context.playerId;
+  }
+  const bound = context.bindings?.[playerRef];
+  if (bound != null) {
+    return bound;
+  }
+  return context.playerId;
+}
+
+function applyVariableEffect(state, variable, effect, context, options, targetPlayerId) {
+  const pid = targetPlayerId ?? context.playerId;
+  const current = resolveVarValue(state, variable, pid);
   let next = current;
   let clamped = false;
 
@@ -82,8 +102,8 @@ function applyVariableEffect(state, variable, effect, context, options) {
     }
   }
 
-  writeVarValue(state, variable, context.playerId, next);
-  recordImpact(context, variable, context.playerId);
+  writeVarValue(state, variable, pid, next);
+  recordImpact(context, variable, pid);
   return { ok: true, clamped };
 }
 
@@ -227,7 +247,8 @@ export function applyEffect(state, effect, context, options) {
   if (!variable) {
     return { ok: false, reason: "unknown-variable" };
   }
-  const result = applyVariableEffect(state, variable, effect, context, options);
+  const targetPlayerId = resolveTargetPlayerId(effect.target.player, context);
+  const result = applyVariableEffect(state, variable, effect, context, options, targetPlayerId);
   if (!result.ok) {
     return result;
   }

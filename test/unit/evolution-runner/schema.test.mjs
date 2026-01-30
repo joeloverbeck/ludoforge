@@ -17,6 +17,7 @@ const baseConfig = {
   mapElites: {
     descriptors: [{ id: "agency", min: 0, max: 1, bins: 4 }],
   },
+  humanFeedback: { enabled: false, mode: "comparison" },
   seeding: {
     mode: "generate",
     populationSize: 10,

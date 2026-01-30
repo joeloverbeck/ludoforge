@@ -32,9 +32,12 @@ Implemented in `src/evaluation-analytics/active-learning.js`.
 Active learning defaults are loaded from `configs/active-learning.json`
 (validated by `schemas/config/active-learning.schema.json`).
 
-- Uses the current preference model to rank pairs with predicted preference
-  closest to 0.5 (highest uncertainty).
-- Optional `uncertaintyThreshold` limits selection to low-confidence pairs.
+- Uses an ensemble preference model to rank pairs by BALD (Bayesian Active
+  Learning by Disagreement) acquisition score — a measure of information gain
+  derived from ensemble disagreement. When the ensemble has only one model,
+  falls back to prediction variance (`pVar`).
+- Optional `uncertaintyThreshold` limits selection to pairs whose acquisition
+  score meets a minimum information-gain threshold.
 - `diversityQuota` reserves slots for underrepresented `nicheId` values
   (e.g., rare Map-Elites bins).
 - `maxPairs` caps the total pairs requested per iteration.
@@ -59,9 +62,13 @@ Preference model defaults are loaded from `configs/preference-model.json`
 
 State fields:
 
-- `weights`: feature weights keyed by feature id (object map, not positional).
-- `bias`: scalar intercept term.
-- `sampleCount`: total preference samples seen.
+- `models`: array of `ModelSnapshot` objects, each containing:
+  - `weights`: feature weights keyed by feature id (object map, not positional).
+  - `bias`: scalar intercept term.
+  - `sampleCount`: total preference samples seen by this model.
+- `ensemble`: `{ size: number, method: "online-bagging" }`.
+- `version`: increments per update batch.
+- `sampleCount`: total preference samples seen (across the ensemble).
 - `learningRate`, `maxHistory` with defaults 0.05 and 100.
 - `comparisonWeight` (default 1.0) and `ratingWeight` (default 0.25) for weighting
   comparison vs rating updates.
@@ -69,7 +76,18 @@ State fields:
   applied for regularization and clamping.
 - `history`: most recent feedback samples (clamped to `maxHistory`).
 
+### Training Method: Online Bagging
+
+For each incoming feedback sample, each model in the ensemble draws
+`k ~ Poisson(1)` using the seeded RNG and applies the existing update rule
+`k` times. This produces bootstrap-like diversity across models while
+preserving determinism for identical seeds and feedback sequences.
+
 ## Model Update Rules
+
+Each model in the ensemble is updated independently via online bagging.
+Per feedback sample, each model draws `k ~ Poisson(1)` and applies the
+update rule `k` times:
 
 - Comparison feedback:
   - `target` maps to `{ a: 1, b: 0, tie: 0.5 }`.
@@ -88,13 +106,13 @@ State fields:
   - `weightDelta = learningRate * ratingWeight * error * featureVector`.
   - `biasDelta = learningRate * ratingWeight * error`.
 
-- Regularization and clamping:
+- Regularization and clamping (per model):
   - Apply deltas, then decay, then clamp.
   - `weights[key] -= learningRate * weightDecay * weights[key]`.
   - `bias -= learningRate * weightDecay * bias`.
   - Clamp weights to `[-maxWeightAbs, maxWeightAbs]` and bias to `[-maxBiasAbs, maxBiasAbs]`.
 
-Every update increments `version` and `sampleCount`.
+Every update increments `version` and `sampleCount` on the top-level state.
 
 Note: weights are stored directly under their feature ids in JSON snapshots (there
 is no separate feature-id list). Adding new metrics does not misalign existing
@@ -108,11 +126,48 @@ the score unless/ until a weight is learned for them.
 Note: comparison updates now use a Bradley–Terry / logistic error, keeping updates
 probabilistic while still deterministic for identical inputs.
 
+## CLI Integration
+
+The CLI entrypoint (`src/cli/ludoforge-evolve.js`) wires human feedback into the
+evolution runner when `config.humanFeedback.enabled` is `true`. The wiring uses
+two factory modules:
+
+- `src/cli/console-io.js` — creates a Node.js readline-based `HumanIO` adapter
+  (`{ readLine, writeLine }`) for interactive terminal prompting, with a `close()`
+  handle to release the readline interface.
+- `src/human-interface/create-feedback-provider.js` — creates
+  `{ feedbackProvider, snapshotProvider }` from an `HumanIO` instance and the
+  `humanFeedback` config block.
+
+The feedback provider is an async function accepting a `GenerationContext` and
+returning `FeedbackRecord[]`. Internally it:
+
+1. Extracts candidates from `loopResult.evaluated` (each with `id`,
+   `featureVector`, and optional `nicheId`).
+2. Calls `selectActiveLearningPairs()` to rank pairs by BALD acquisition score.
+3. Prompts the human for each selected pair (comparison or rating mode).
+4. Updates the preference model state held in a closure across generations.
+
+The snapshot provider returns the current preference model state as
+`PreferenceModelSnapshotRecord[]` for per-generation persistence.
+
+At each of the three CLI call sites (resume, `--seeds`, config-seeding), the
+runner options receive `feedback` and `preferenceModelSnapshots` from the
+provider. A `try/finally` block ensures `consoleIO.close()` runs on exit. On
+resume, the provider is initialized with `resumeState.preferenceModel` so the
+model continues from where it left off.
+
+The `humanFeedback` block is required in the runner config schema
+(`schemas/evolution-runner/runner-config.schema.json`) with `enabled` and `mode`
+as required fields. Setting `enabled: false` disables the feedback loop without
+removing the config block.
+
 ## Override Policy
 
 Defaults are sourced from the config files listed above at module load time.
 Function-level overrides (like prompt labels) may still be provided to callers.
-No CLI or per-run override mechanism is wired for these values yet.
+Per-run overrides are configured via the `humanFeedback` block in the runner
+config (see CLI Integration above).
 
 ## Use in Fitness
 
