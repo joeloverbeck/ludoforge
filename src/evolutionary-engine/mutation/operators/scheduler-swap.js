@@ -1,6 +1,6 @@
 import { getRandomIndex } from "../random.js";
 
-const SCHEDULER_TYPES = ["round_robin", "priority_queue", "token_holder"];
+const SCHEDULER_TYPES = ["round_robin", "priority_queue", "token_holder", "reactive"];
 
 /**
  * Collects per-player integer variables from the definition.

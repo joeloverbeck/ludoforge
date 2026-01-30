@@ -2,6 +2,7 @@ import {
   resolvePhaseAdvance,
   advanceRoundTracking,
 } from "./scheduler-phase-cycling.js";
+import { evaluateExpr, buildVariableIndex } from "./effects.js";
 
 export function advancePriorityQueue(definition, state) {
   const phaseResult = resolvePhaseAdvance(definition, state);
@@ -161,4 +162,58 @@ export function advanceSimultaneous(definition, state) {
   const nextRound = state.turn.round + 1;
 
   return { nextPhase: phases[0], nextPlayer: 1, nextTurn, nextRound };
+}
+
+export function findEligibleReactivePlayers(definition, state) {
+  const stepEffects = definition.turn.stepEffects ?? [];
+  const conditioned = stepEffects.filter((t) => t.condition);
+  const playerCount = definition.players.count;
+
+  if (conditioned.length === 0) {
+    return [];
+  }
+
+  const variableIndex = buildVariableIndex(definition);
+  const eligible = [];
+
+  for (let pid = 1; pid <= playerCount; pid++) {
+    for (const trigger of conditioned) {
+      const met = evaluateExpr(trigger.condition, {
+        state,
+        playerId: pid,
+        phase: state.turn.phase ?? null,
+        variableIndex,
+      });
+      if (met) {
+        eligible.push(pid);
+        break;
+      }
+    }
+  }
+
+  return eligible;
+}
+
+export function advanceReactive(definition, state) {
+  const phaseResult = resolvePhaseAdvance(definition, state);
+  if (phaseResult.cycling) {
+    return phaseResult.result;
+  }
+
+  const playerCount = definition.players.count;
+  const eligible = findEligibleReactivePlayers(definition, state);
+
+  const nextPlayer = eligible.length > 0 ? eligible[0] : 1;
+  const nextTurn = state.turn.turn + 1;
+
+  const { nextRound, nextActed } = advanceRoundTracking(state, playerCount);
+
+  return {
+    nextPhase: phaseResult.phases[0],
+    nextPlayer,
+    nextTurn,
+    nextRound,
+    _actedThisRound: nextActed,
+    _noEligible: eligible.length === 0,
+  };
 }

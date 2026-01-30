@@ -488,28 +488,28 @@ describe("mutation", () => {
       }
     });
 
-    it("swapping to round_robin removes orderBy, tokenType, and zone fields", () => {
+    it("swapping away from priority_queue removes orderBy, tokenType, and zone fields", () => {
       const definition = makePriorityQueueDefinition();
       const genome = { definition };
-      // No per_player zones with matching token types → only round_robin is a valid target
+      // Candidates: round_robin and reactive (no per_player zones → token_holder excluded)
       const rng = createSeededRng(1);
       const mutated = schedulerSwapMutation.mutate(genome, rng);
 
-      assert.equal(mutated.definition.turn.scheduler, "round_robin");
+      assert.notEqual(mutated.definition.turn.scheduler, "priority_queue");
       assert.equal(mutated.definition.turn.orderBy, undefined);
       assert.equal(mutated.definition.turn.tokenType, undefined);
       assert.equal(mutated.definition.turn.zone, undefined);
     });
 
-    it("returns unchanged genome when no valid swap target exists", () => {
+    it("swaps to reactive when it is the only valid target", () => {
       // round_robin with no per_player int vars and no per_player zones
-      // → only round_robin itself is valid, which is excluded → no candidates
+      // → priority_queue and token_holder excluded → only reactive is a candidate
       const definition = cloneDefinition(baseDefinition);
       const genome = { definition };
       const rng = createSeededRng(1);
       const mutated = schedulerSwapMutation.mutate(genome, rng);
 
-      assert.deepStrictEqual(mutated.definition, definition);
+      assert.equal(mutated.definition.turn.scheduler, "reactive");
     });
 
     it("is deterministic with seeded RNG", () => {

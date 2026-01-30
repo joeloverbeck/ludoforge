@@ -117,6 +117,11 @@ When `definition.turn.scheduler === "simultaneous"` the loop changes:
     each turn. RNG flows from `loop.js` → `advanceAndCheck` → `advanceTurnPhase`
     via `options.rng`. Round increments when every player has acted at least once
     (tracked via `_actedThisRound`).
+  - `reactive`: evaluates per-player conditions from `stepEffects` triggers each
+    turn and selects the first eligible player (lowest player ID). If no player
+    is eligible, falls back to player 1 with `_noEligible: true`. Round
+    increments when every player has acted at least once (tracked via
+    `_actedThisRound`).
 - Phase cycling is shared: within a multi-phase turn, phases advance sequentially
   before the scheduler picks the next player.
 - If `maxTurns` is exceeded, termination reason is `"max-turns"` and the outcome is computed

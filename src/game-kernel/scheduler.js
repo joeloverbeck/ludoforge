@@ -13,6 +13,7 @@ import {
   advanceSimultaneous,
   advanceRandomDraw,
   advanceRoundRobin,
+  advanceReactive,
 } from "./scheduler-strategies.js";
 
 export function advanceTurnPhase(definition, state, options = {}) {
@@ -22,7 +23,8 @@ export function advanceTurnPhase(definition, state, options = {}) {
     scheduler !== "priority_queue" &&
     scheduler !== "token_holder" &&
     scheduler !== "simultaneous" &&
-    scheduler !== "random_draw"
+    scheduler !== "random_draw" &&
+    scheduler !== "reactive"
   ) {
     return { ok: false, reason: "unsupported-scheduler" };
   }
@@ -55,7 +57,9 @@ export function advanceTurnPhase(definition, state, options = {}) {
         ? advanceSimultaneous(definition, state)
         : scheduler === "random_draw"
           ? advanceRandomDraw(definition, state, options.rng)
-          : advanceRoundRobin(definition, state);
+          : scheduler === "reactive"
+            ? advanceReactive(definition, state)
+            : advanceRoundRobin(definition, state);
   if (advanceResult.ok === false) {
     return advanceResult;
   }

@@ -408,7 +408,7 @@
       "properties": {
         "scheduler": {
           "type": "string",
-          "enum": ["round_robin", "priority_queue", "token_holder", "simultaneous", "random_draw", "custom"]
+          "enum": ["round_robin", "priority_queue", "token_holder", "simultaneous", "random_draw", "reactive", "custom"]
         },
         "resolution": {
           "type": "object",

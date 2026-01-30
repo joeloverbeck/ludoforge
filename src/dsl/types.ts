@@ -114,7 +114,7 @@ export interface TriggerDef {
 }
 
 export interface TurnDef {
-  scheduler: "round_robin" | "priority_queue" | "token_holder" | "simultaneous" | "random_draw" | "custom";
+  scheduler: "round_robin" | "priority_queue" | "token_holder" | "simultaneous" | "random_draw" | "reactive" | "custom";
   resolution?: { order: "by_player_id" | "random" };
   orderBy?: { variable: string; direction: "asc" | "desc" };
   tokenType?: string;
