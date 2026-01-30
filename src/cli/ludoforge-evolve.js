@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { writeSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -302,7 +303,12 @@ async function main() {
         parts.push("", createUsage());
       }
     }
-    process.stderr.write(`${parts.join("\n")}\n`);
+    const output = `${parts.join("\n")}\n`;
+    try {
+      writeSync(2, output);
+    } catch {
+      process.stderr.write(output);
+    }
     process.exitCode = 1;
   }
 }

@@ -23,6 +23,25 @@ describe("motifInjectMutation", () => {
   it("has the correct operator name", () => {
     assert.equal(motifInjectMutation.name, "motif-inject");
   });
+
+  it("resolves var_0 references to the genome's first variable ID", () => {
+    const definition = cloneDefinition(baseDefinition);
+    const genome = { definition };
+    const rng = createSeededRng(1);
+
+    const mutated = motifInjectMutation.mutate(genome, rng);
+
+    const injectedEffects = mutated.definition.actions[0].effects.slice(1);
+    for (const effect of injectedEffects) {
+      if (effect.target?.kind === "var") {
+        assert.equal(
+          effect.target.id,
+          "score",
+          `expected "score" but got "${effect.target.id}"`
+        );
+      }
+    }
+  });
 });
 
 describe("createMotifInjectMutation", () => {

@@ -162,6 +162,28 @@ function nameTarget(target) {
   return TARGET_NAMES[kind] ?? "target";
 }
 
+// ── Variable naming ────────────────────────────────────────────────
+
+const VARIABLE_NAMES = [
+  "tally", "score", "gauge", "meter", "count",
+  "points", "level", "rank", "power", "energy",
+  "health", "supply",
+];
+
+/**
+ * Derive a variable name from a pool of semantic words.
+ * @param {Set<string>} existingIds - Set of existing variable IDs.
+ * @returns {string}
+ */
+function nameVariable(existingIds) {
+  for (const name of VARIABLE_NAMES) {
+    if (!existingIds.has(`${name}-1`)) {
+      return name;
+    }
+  }
+  return "variable";
+}
+
 // ── Phase naming ───────────────────────────────────────────────────────
 
 const PHASE_ORDINALS = [
@@ -177,7 +199,7 @@ const PHASE_ORDINALS = [
  */
 function namePhase(existingIds) {
   for (const name of PHASE_ORDINALS) {
-    if (!existingIds.has(name)) {
+    if (!existingIds.has(`${name}-1`)) {
       return name;
     }
   }
@@ -188,16 +210,13 @@ function namePhase(existingIds) {
 // ── Collision resolution ───────────────────────────────────────────────
 
 /**
- * Return baseName if it is not in existingIds, otherwise append -2, -3, etc.
+ * Always append a numeric suffix: baseName-1, baseName-2, baseName-3, etc.
  * @param {string} baseName
  * @param {Set<string>} existingIds
  * @returns {string}
  */
 function ensureUnique(baseName, existingIds) {
-  if (!existingIds.has(baseName)) {
-    return baseName;
-  }
-  let counter = 2;
+  let counter = 1;
   while (existingIds.has(`${baseName}-${counter}`)) {
     counter += 1;
   }
@@ -230,6 +249,9 @@ export function generateSemanticId(elementType, elementData, existingIds) {
       break;
     case "target":
       baseName = nameTarget(elementData);
+      break;
+    case "variable":
+      baseName = nameVariable(ids);
       break;
     case "phase":
       baseName = namePhase(ids);

@@ -1,4 +1,5 @@
 import { resolveVarValue, writeVarValue } from "./ref-resolution.js";
+import { evaluateExpr } from "./expression-eval.js";
 import {
   applyTokenSpawn,
   applyTokenMove,
@@ -168,6 +169,28 @@ function applyRepeat(state, effect, context, options) {
   return { ok: true, appliedEffect: { kind: "repeat", count, applied: collected } };
 }
 
+function applyConditional(state, effect, context, options) {
+  const condition = effect.condition;
+  const thenEffects = Array.isArray(effect.then) ? effect.then : null;
+  const elseEffects = Array.isArray(effect.else) ? effect.else : [];
+  if (!condition || !thenEffects) {
+    return { ok: false, reason: "missing-conditional-params" };
+  }
+  const conditionMet = evaluateExpr(condition, context);
+  const branch = conditionMet ? thenEffects : elseEffects;
+  const applied = [];
+  for (const subEffect of branch) {
+    const result = applyEffect(state, subEffect, context, options);
+    if (!result.ok) {
+      return { ok: false, reason: result.reason };
+    }
+    if (result.appliedEffect) {
+      applied.push(result.appliedEffect);
+    }
+  }
+  return { ok: true, appliedEffect: { kind: "conditional", conditionMet, applied } };
+}
+
 function applySetFlag(state, effect, context) {
   const targetRef = effect.target;
   const flag = effect.flag;
@@ -208,6 +231,10 @@ export function applyEffect(state, effect, context, options) {
 
   if (effect.kind === "repeat") {
     return applyRepeat(state, effect, context, options);
+  }
+
+  if (effect.kind === "conditional") {
+    return applyConditional(state, effect, context, options);
   }
 
   if (effect.kind === "move_spatial") {

@@ -32,12 +32,28 @@ export function createMotifInjectMutation(motifEffects) {
         return { ...genome, definition };
       }
 
+      const clonedMotif = structuredClone(motif);
+
+      // Resolve placeholder var_0 references to the genome's actual first variable ID
+      const variables = definition.state?.variables;
+      if (Array.isArray(variables) && variables.length > 0) {
+        const firstVarId = variables[0].id;
+        for (const effect of clonedMotif) {
+          if (
+            effect?.target?.kind === "var" &&
+            effect.target.id === "var_0"
+          ) {
+            effect.target.id = firstVarId;
+          }
+        }
+      }
+
       const action = definition.actions[actionIndex];
       const existingEffects = Array.isArray(action.effects) ? action.effects : [];
 
       definition.actions[actionIndex] = {
         ...action,
-        effects: [...existingEffects, ...structuredClone(motif)],
+        effects: [...existingEffects, ...clonedMotif],
       };
 
       return { ...genome, definition };

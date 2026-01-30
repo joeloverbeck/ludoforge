@@ -195,9 +195,9 @@ Implemented in `src/evolutionary-engine/operator-selector.js`.
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
 
-- `EFFECT_KINDS`: canonical list of the 11 effect kinds dispatched by the game
-  kernel. See [simulation-engine.md](simulation-engine.md) for the full effect
-  dispatch reference.
+- `EFFECT_KINDS`: canonical list of the 12 effect kinds used by mutation helpers,
+  including `conditional` (see [simulation-engine.md](simulation-engine.md) for
+  the full effect dispatch reference).
 - `buildRandomEffect(definition, rng)`: generates a random effect with a valid
   target and properties drawn from the game definition.
 - `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for

@@ -221,6 +221,69 @@ describe("generateGameDefinition", () => {
     assert.ok(!generator.includes("node:fs"), "grammar-generator.js imports node:fs");
   });
 
+  it("all element IDs use hyphens not underscores", () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: defaultGrammar });
+      for (const v of def.state.variables) {
+        assert.ok(!v.id.includes("_"), `seed ${seed}: variable "${v.id}" contains underscore`);
+      }
+      for (const a of def.actions) {
+        assert.ok(!a.id.includes("_"), `seed ${seed}: action "${a.id}" contains underscore`);
+      }
+      if (def.state.tokenTypes) {
+        for (const t of def.state.tokenTypes) {
+          assert.ok(!t.id.includes("_"), `seed ${seed}: token "${t.id}" contains underscore`);
+        }
+      }
+      if (def.state.zones) {
+        for (const z of def.state.zones) {
+          assert.ok(!z.id.includes("_"), `seed ${seed}: zone "${z.id}" contains underscore`);
+        }
+      }
+    }
+  });
+
+  it("all element IDs have numeric suffix", () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: defaultGrammar });
+      const pattern = /-\d+$/;
+      for (const v of def.state.variables) {
+        assert.match(v.id, pattern, `seed ${seed}: variable "${v.id}" missing numeric suffix`);
+      }
+      for (const a of def.actions) {
+        assert.match(a.id, pattern, `seed ${seed}: action "${a.id}" missing numeric suffix`);
+      }
+      if (def.state.tokenTypes) {
+        for (const t of def.state.tokenTypes) {
+          assert.match(t.id, pattern, `seed ${seed}: token "${t.id}" missing numeric suffix`);
+        }
+      }
+      if (def.state.zones) {
+        for (const z of def.state.zones) {
+          assert.match(z.id, pattern, `seed ${seed}: zone "${z.id}" missing numeric suffix`);
+        }
+      }
+    }
+  });
+
+  it("no IDs match legacy indexed patterns", () => {
+    const legacyPatterns = [/^var_\d+$/, /^action_\d+$/, /^token_\d+$/, /^zone_\d+$/];
+    for (let seed = 0; seed < 50; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: defaultGrammar });
+      const allIds = [
+        ...def.state.variables.map((v) => v.id),
+        ...def.actions.map((a) => a.id),
+        ...(def.state.tokenTypes ?? []).map((t) => t.id),
+        ...(def.state.zones ?? []).map((z) => z.id),
+      ];
+      for (const id of allIds) {
+        for (const pattern of legacyPatterns) {
+          assert.ok(!pattern.test(id), `seed ${seed}: "${id}" matches legacy pattern ${pattern}`);
+        }
+      }
+    }
+  });
+
   it("default grammar used when limits/weights omitted", () => {
     const def = generateGameDefinition({ rng: makeRng(42), grammar: {} });
     assert.ok(def.state.variables.length >= 1 && def.state.variables.length <= 5);

@@ -89,6 +89,7 @@ export type Effect =
   | { kind: "destroy"; target: Ref }
   | { kind: "reveal"; target: Ref }
   | { kind: "hide"; target: Ref }
+  | { kind: "conditional"; condition: Expr; then: Effect[]; else?: Effect[] }
 ;
 
 export interface TriggerDef {

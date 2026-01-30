@@ -3,8 +3,10 @@ import { collectVariableTargets, collectZoneTargets, collectTokenTypeTargets } f
 
 export const EFFECT_KINDS = [
   "set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide",
-  "move_spatial", "repeat", "set_flag",
+  "move_spatial", "repeat", "set_flag", "conditional",
 ];
+
+const EFFECT_KIND_POOL = [...EFFECT_KINDS, "conditional"];
 
 const FLAG_NAMES = ["no_engage", "protected", "stunned", "hidden", "empowered", "slowed"];
 const FLAG_DURATIONS = ["action", "phase", "turn"];
@@ -59,6 +61,7 @@ export function buildRefForKind(kind, definition, rng) {
 
 export function buildEffectProps(kind, definition, rng) {
   const zones = collectZoneTargets(definition);
+  const variableKinds = ["inc", "dec", "set"];
 
   switch (kind) {
     case "inc":
@@ -97,6 +100,30 @@ export function buildEffectProps(kind, definition, rng) {
       const innerEffect = buildRandomEffect(definition, rng);
       return { count: countVal, effects: [innerEffect] };
     }
+    case "conditional": {
+      let target = null;
+      for (const variableKind of variableKinds) {
+        target = buildRefForKind(variableKind, definition, rng);
+        if (target) {
+          if (variableKind === "set") {
+            return {
+              condition: { kind: "value", value: true },
+              then: [{ kind: "set", target, value: 0 }],
+              else: [{ kind: "set", target, value: 1 }],
+            };
+          }
+          return {
+            condition: { kind: "value", value: true },
+            then: [{ kind: variableKind, target, amount: 1 }],
+            else: [{ kind: variableKind, target, amount: 2 }],
+          };
+        }
+      }
+      return {
+        condition: { kind: "value", value: true },
+        then: [],
+      };
+    }
     case "set_flag": {
       const flagIdx = getRandomIndex(FLAG_NAMES.length, rng);
       const durIdx = getRandomIndex(FLAG_DURATIONS.length, rng);
@@ -116,9 +143,9 @@ export function buildEffectProps(kind, definition, rng) {
 const VARIABLE_KINDS = ["set", "inc", "dec"];
 
 export function buildRandomEffect(definition, rng) {
-  const kindIndex = getRandomIndex(EFFECT_KINDS.length, rng);
-  let kind = EFFECT_KINDS[Math.max(0, kindIndex)];
-  if (kind === "repeat") {
+  const kindIndex = getRandomIndex(EFFECT_KIND_POOL.length, rng);
+  let kind = EFFECT_KIND_POOL[Math.max(0, kindIndex)];
+  if (kind === "repeat" || kind === "conditional") {
     const props = buildEffectProps(kind, definition, rng);
     return { kind, ...props };
   }

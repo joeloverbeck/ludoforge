@@ -311,6 +311,23 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["kind", "condition", "then"],
+          "properties": {
+            "kind": { "const": "conditional" },
+            "condition": { "$ref": "#/$defs/Expr" },
+            "then": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Effect" }
+            },
+            "else": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Effect" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": ["kind", "target", "flag"],
           "properties": {
             "kind": { "const": "set_flag" },

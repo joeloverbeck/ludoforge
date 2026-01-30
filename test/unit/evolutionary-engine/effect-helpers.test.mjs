@@ -10,8 +10,8 @@ function cloneDefinition(definition) {
 
 describe("effect-helpers", () => {
   describe("EFFECT_KINDS", () => {
-    it("contains all 11 valid effect kinds", () => {
-      assert.equal(EFFECT_KINDS.length, 11);
+    it("contains all 12 valid effect kinds", () => {
+      assert.equal(EFFECT_KINDS.length, 12);
       assert.ok(EFFECT_KINDS.includes("set"));
       assert.ok(EFFECT_KINDS.includes("inc"));
       assert.ok(EFFECT_KINDS.includes("dec"));
@@ -23,6 +23,7 @@ describe("effect-helpers", () => {
       assert.ok(EFFECT_KINDS.includes("move_spatial"));
       assert.ok(EFFECT_KINDS.includes("repeat"));
       assert.ok(EFFECT_KINDS.includes("set_flag"));
+      assert.ok(EFFECT_KINDS.includes("conditional"));
     });
   });
 
@@ -34,9 +35,11 @@ describe("effect-helpers", () => {
       const effect = buildRandomEffect(definition, rng);
 
       assert.ok(EFFECT_KINDS.includes(effect.kind));
-      assert.ok(effect.target);
-      assert.ok(typeof effect.target.kind === "string");
-      assert.ok(typeof effect.target.id === "string");
+      if (effect.kind !== "repeat" && effect.kind !== "conditional") {
+        assert.ok(effect.target);
+        assert.ok(typeof effect.target.kind === "string");
+        assert.ok(typeof effect.target.id === "string");
+      }
     });
 
     it("produces deterministic results with seeded RNG", () => {
@@ -79,6 +82,20 @@ describe("effect-helpers", () => {
       if (effect.kind === "move" || effect.kind === "spawn") {
         assert.equal(typeof effect.toZone, "string");
       }
+    });
+
+    it("builds conditional effects without targets", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = {
+        nextInt: (n) => n - 1,
+      };
+
+      const effect = buildRandomEffect(definition, rng);
+
+      assert.equal(effect.kind, "conditional");
+      assert.equal(effect.target, undefined);
+      assert.ok(effect.condition);
+      assert.ok(Array.isArray(effect.then));
     });
   });
 
@@ -142,6 +159,17 @@ describe("effect-helpers", () => {
 
       const props = buildEffectProps("destroy", definition, rng);
       assert.deepStrictEqual(props, {});
+    });
+
+    it("returns condition and branches for conditional", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const props = buildEffectProps("conditional", definition, rng);
+
+      assert.ok(props.condition);
+      assert.ok(Array.isArray(props.then));
+      assert.equal(props.then.length > 0, true);
     });
   });
 });

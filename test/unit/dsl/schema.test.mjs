@@ -59,6 +59,19 @@ describe("schema", () => {
       };
       assertValid(candidate);
     });
+
+    it("accepts conditional effects", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "conditional",
+          condition: { kind: "value", value: true },
+          then: [{ kind: "set", target: { kind: "var", id: "score" }, value: 1 }],
+          else: [{ kind: "set", target: { kind: "var", id: "score" }, value: 2 }],
+        },
+      ];
+      assertValid(candidate);
+    });
   });
 
   describe("rejected definitions", () => {
@@ -141,6 +154,28 @@ describe("schema", () => {
           kind: "foreach",
           target: { kind: "var", id: "score" },
           amount: 1,
+        },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects conditional effect missing condition", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "conditional",
+          then: [{ kind: "set", target: { kind: "var", id: "score" }, value: 1 }],
+        },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects conditional effect missing then", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "conditional",
+          condition: { kind: "value", value: true },
         },
       ];
       assertInvalid(candidate);

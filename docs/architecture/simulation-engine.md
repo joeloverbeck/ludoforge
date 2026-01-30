@@ -59,7 +59,8 @@ otherwise it falls back to `configs/simulation.json`.
 9. Apply action costs, then action effects (`applyEffect`). Effect dispatch
    handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
-   (`move_spatial`), repeat wrappers (`repeat`), and scoped flags (`set_flag`).
+   (`move_spatial`), repeat wrappers (`repeat`), conditional wrappers
+   (`conditional`), and scoped flags (`set_flag`).
    Failed effects are **skipped** rather than throwing — `applyAction` collects
    skipped effects with their reason and source (`"cost"` or `"effect"`) and
    returns them alongside applied effects. This allows structurally complex
@@ -181,12 +182,13 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
   flag?: string,          // for set_flag
   duration?: string,      // for set_flag ("action" | "phase" | "turn")
   count?: number,         // for repeat (iterations executed)
-  applied?: AppliedEffect[] // for repeat (nested applied effects)
+  conditionMet?: boolean, // for conditional (evaluated branch)
+  applied?: AppliedEffect[] // for repeat/conditional (nested applied effects)
 }
 ```
 
 Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
-`move_spatial`, `repeat`, `set_flag`.
+`move_spatial`, `repeat`, `conditional`, `set_flag`.
 
 ### Pass-Step Rules
 
@@ -218,6 +220,8 @@ When `actionId === null` (pass step):
   before updating `token.node`.
 - **Repeat wrapper** (`repeat`): executes sub-effects up to `count` times. Stops
   early on first sub-effect failure (up-to-N semantics).
+- **Conditional wrapper** (`conditional`): evaluates `condition` and applies the
+  `then` or `else` branch recursively.
 - **Scoped flags** (`set_flag`): attaches a flag with duration to a token or player.
 
 Expression evaluation (`evaluateExpr`) supports ref kinds: `var`, `token`

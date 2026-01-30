@@ -12,6 +12,7 @@ import {
   generateTrigger,
   andExpr,
 } from "./primitives.js";
+import { generateSemanticId } from "../evolutionary-engine/mutation/semantic-naming.js";
 
 const DEFAULT_LIMITS = {
   minVariables: 1,
@@ -54,8 +55,11 @@ function resolveWeights(grammar) {
 
 function generateVariables(rng, count) {
   const variables = [];
+  const usedIds = new Set();
   for (let i = 0; i < count; i++) {
-    variables.push(generateIntVariable({ rng, id: `var_${i}` }));
+    const id = generateSemanticId("variable", null, usedIds);
+    usedIds.add(id);
+    variables.push(generateIntVariable({ rng, id }));
   }
   return variables;
 }
@@ -91,6 +95,7 @@ function generateActions(rng, variables, actionCount, weights) {
   const assignments = assignVariablesToActions(rng, variables, actionCount);
   const variableMap = buildVariableMap(variables);
   const actions = [];
+  const usedIds = new Set();
 
   for (let i = 0; i < actionCount; i++) {
     const assignedVarIds = assignments.get(i);
@@ -104,11 +109,11 @@ function generateActions(rng, variables, actionCount, weights) {
       effectKinds.push(kind);
     }
 
-    const action = {
-      id: `action_${i}`,
-      actor: "player",
-      effects,
-    };
+    const actionBody = { actor: "player", effects };
+    const id = generateSemanticId("action", actionBody, usedIds);
+    usedIds.add(id);
+
+    const action = { id, ...actionBody };
 
     const preconditionParts = [];
     for (let j = 0; j < assignedVarIds.length; j++) {
@@ -160,16 +165,24 @@ function generateTerminations(rng, variables) {
  */
 function generateTokenTypes(rng, count) {
   const tokenTypes = [];
+  const usedIds = new Set();
   for (let i = 0; i < count; i++) {
-    tokenTypes.push(generateTokenType({ rng, id: `token_${i}` }));
+    const tokenData = generateTokenType({ rng, id: "__placeholder__" });
+    const id = generateSemanticId("token", tokenData, usedIds);
+    usedIds.add(id);
+    tokenTypes.push({ ...tokenData, id });
   }
   return tokenTypes;
 }
 
 function generateZones(rng, tokenTypes) {
-  return tokenTypes.map((tt, i) =>
-    generateZone({ rng, id: `zone_${i}`, tokenTypeId: tt.id })
-  );
+  const usedIds = new Set();
+  return tokenTypes.map((tt) => {
+    const zoneData = generateZone({ rng, id: "__placeholder__", tokenTypeId: tt.id });
+    const id = generateSemanticId("zone", zoneData, usedIds);
+    usedIds.add(id);
+    return { ...zoneData, id };
+  });
 }
 
 function generateTriggers(rng, variables, count) {
