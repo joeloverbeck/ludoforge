@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ludoforge.dev/schemas/shared/metric-id.schema.json",
+  "title": "MetricId",
+  "type": "string",
+  "enum": [
+    "agency",
+    "strategic_depth",
+    "seat_imbalance",
+    "variety",
+    "pacing_tension",
+    "turn_taking_rate",
+    "interaction_rate",
+    "structural_complexity",
+    "advantage_reversal_rate",
+    "policy_sensitivity"
+  ]
+}

@@ -24,5 +24,6 @@ export function computeComebackPotential(
 export function computeExtendedMetrics(
   definition: GameDefinition,
   summaries: ReadonlyArray<TrajectorySummary>,
-  options?: ExtendedMetricsOptions
+  options?: ExtendedMetricsOptions,
+  suiteResults?: Record<string, { results: ReadonlyArray<SimulationResult> }>
 ): MetricResults;

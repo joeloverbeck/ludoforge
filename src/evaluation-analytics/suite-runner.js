@@ -65,13 +65,14 @@ export function runSuites({
       });
 
       suiteResults[suite.id] = adapted.ok
-        ? { results: allResults, trajectorySummaries: adapted.value.trajectorySummaries }
-        : { results: allResults, trajectorySummaries: null, error: adapted.error };
+        ? { results: allResults, trajectorySummaries: adapted.value.trajectorySummaries, agents }
+        : { results: allResults, trajectorySummaries: null, error: adapted.error, agents };
     } catch (err) {
       suiteResults[suite.id] = {
         results: allResults,
         trajectorySummaries: null,
         error: err instanceof Error ? err.message : String(err),
+        agents,
       };
     }
   }

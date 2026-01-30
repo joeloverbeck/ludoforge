@@ -10,6 +10,7 @@ import {
   computeLengthVariance,
   computeOutcomeVariance,
 } from "../../../src/evaluation-analytics/metrics/extended.js";
+import { createInitialState } from "../../../src/game-kernel/index.js";
 
 function buildSummary({
   stepCount = 0,
@@ -37,6 +38,42 @@ function getMetric(metrics, id) {
   const found = metrics.find((metric) => metric.id === id);
   assert.ok(found, `Expected metric ${id}`);
   return found.value;
+}
+
+function createScoringDefinition() {
+  return {
+    version: "1.0",
+    players: { count: 2 },
+    state: {
+      variables: [{ id: "score", scope: "per_player", type: { kind: "int" }, initial: 0 }],
+    },
+    actions: [],
+    turn: { scheduler: "round_robin" },
+    termination: {
+      conditions: [],
+      scoring: {
+        perPlayer: { kind: "ref", ref: { kind: "var", id: "score" } },
+      },
+    },
+    triggers: [],
+  };
+}
+
+function makeState(definition, scoresByPlayer) {
+  const state = createInitialState(definition);
+  for (const [playerId, score] of Object.entries(scoresByPlayer)) {
+    state.variables.perPlayer[playerId].score = score;
+  }
+  return state;
+}
+
+function makeRun(steps) {
+  return {
+    trajectory: { steps },
+    outcome: { outcomes: {} },
+    terminationReason: "condition",
+    terminated: true,
+  };
 }
 
 describe("extended-metrics", () => {
@@ -136,6 +173,31 @@ describe("extended-metrics", () => {
       assert.equal(getMetric(metrics, "outcome_variance"), 0);
       assert.equal(getMetric(metrics, "coverage_actions"), 1);
       assert.equal(getMetric(metrics, "coverage_state"), 0);
+    });
+
+    it("uses suite results for advantage_reversal_rate when suiteId is provided", () => {
+      const definition = createScoringDefinition();
+      const summaries = [buildSummary({ stepCount: 2 })];
+      const suiteRun = makeRun([
+        { state: makeState(definition, { 1: 5, 2: 1 }) }, // leader: 1
+        { state: makeState(definition, { 1: 1, 2: 5 }) }, // leader: 2 (change)
+        { state: makeState(definition, { 1: 5, 2: 1 }) }, // leader: 1 (change)
+      ]);
+      const fallbackRun = makeRun([
+        { state: makeState(definition, { 1: 5, 2: 1 }) },
+        { state: makeState(definition, { 1: 6, 2: 2 }) },
+      ]);
+      const metrics = computeExtendedMetrics(
+        definition,
+        summaries,
+        {
+          simulations: [fallbackRun],
+          advantageReversal: { enabled: true, suiteId: "suite-a" },
+        },
+        { "suite-a": { results: [suiteRun] } }
+      );
+
+      assert.equal(getMetric(metrics, "advantage_reversal_rate"), 1);
     });
   });
 });

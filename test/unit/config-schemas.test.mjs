@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import Ajv from "ajv/dist/2020.js";
 
+const sharedSchemaJson = JSON.parse(
+  await readFile(
+    new URL("../../schemas/shared/metric-id.schema.json", import.meta.url),
+  ),
+);
+
 const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+ajv.addSchema(sharedSchemaJson);
 
 const entries = [
   {
@@ -84,7 +91,9 @@ describe("config-schemas", () => {
 
   describe("schema rejection", () => {
     function freshAjv() {
-      return new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+      const instance = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+      instance.addSchema(sharedSchemaJson);
+      return instance;
     }
 
     it("simulation schema rejects invalid maxTurns", async () => {

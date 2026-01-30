@@ -99,18 +99,10 @@
       "required": ["id", "min", "max", "bins"],
       "properties": {
         "id": {
-          "type": "string",
-          "enum": [
-            "agency",
-            "strategic_depth",
-            "seat_imbalance",
-            "variety",
-            "pacing_tension",
-            "turn_taking_rate",
-            "interaction_rate",
-            "structural_complexity",
-            "advantage_reversal_rate",
-            "policy_sensitivity"
+          "allOf": [
+            {
+              "$ref": "https://ludoforge.dev/schemas/shared/metric-id.schema.json"
+            }
           ]
         },
         "min": { "type": "number" },

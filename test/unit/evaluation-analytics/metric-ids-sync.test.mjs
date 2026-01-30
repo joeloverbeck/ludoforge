@@ -10,37 +10,53 @@ async function readJson(relativePath) {
   return JSON.parse(raw);
 }
 
-function extractEnum(schema, defsKey, propName) {
+function extractRef(schema, defsKey, propName) {
   const def = schema.$defs?.[defsKey];
-  return def?.properties?.[propName]?.enum ?? null;
+  const prop = def?.properties?.[propName];
+  if (!prop) {
+    return null;
+  }
+  if (typeof prop.$ref === "string") {
+    return prop.$ref;
+  }
+  if (Array.isArray(prop.allOf) && typeof prop.allOf[0]?.$ref === "string") {
+    return prop.allOf[0].$ref;
+  }
+  return null;
 }
 
 describe("metric-ids sync check", () => {
-  it("METRIC_IDS matches schemas/shared/metric-ids.json", async () => {
+  it("METRIC_IDS matches schemas/shared/metric-id.schema.json enum", async () => {
     const canonical = await readJson(
-      "../../../schemas/shared/metric-ids.json",
+      "../../../schemas/shared/metric-id.schema.json",
     );
-    assert.deepEqual([...METRIC_IDS], canonical);
+    assert.deepEqual([...METRIC_IDS], canonical.enum);
   });
 
-  it("map-elites schema enum matches canonical list", async () => {
+  it("map-elites schema references shared metric id schema", async () => {
     const schema = await readJson(
       "../../../schemas/config/map-elites.schema.json",
     );
-    const enumValues = extractEnum(schema, "DescriptorConfig", "id");
-    assert.deepEqual(enumValues, [...METRIC_IDS]);
+    const ref = extractRef(schema, "DescriptorConfig", "id");
+    assert.equal(
+      ref,
+      "https://ludoforge.dev/schemas/shared/metric-id.schema.json",
+    );
   });
 
-  it("runner-config schema enum matches canonical list", async () => {
+  it("runner-config schema references shared metric id schema", async () => {
     const schema = await readJson(
       "../../../schemas/evolution-runner/runner-config.schema.json",
     );
-    const enumValues = extractEnum(
+    const ref = extractRef(
       schema,
       "MapElitesDescriptorConfig",
       "id",
     );
-    assert.deepEqual(enumValues, [...METRIC_IDS]);
+    assert.equal(
+      ref,
+      "https://ludoforge.dev/schemas/shared/metric-id.schema.json",
+    );
   });
 
   it("metrics-core config enabled list matches canonical list", async () => {

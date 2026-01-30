@@ -3,6 +3,12 @@ import Ajv from "ajv/dist/2020.js";
 
 const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
 const validatorCache = new Map();
+let sharedSchemaPromise = null;
+
+const sharedMetricIdSchemaUrl = new URL(
+  "../../schemas/shared/metric-id.schema.json",
+  import.meta.url,
+);
 
 function formatPath(error) {
   const basePath = error.instancePath ?? "";
@@ -64,6 +70,16 @@ async function getValidator(schemaUrl) {
   if (validatorCache.has(key)) {
     return validatorCache.get(key);
   }
+  if (!sharedSchemaPromise) {
+    sharedSchemaPromise = (async () => {
+      const sharedSchema = await loadSchema(sharedMetricIdSchemaUrl);
+      const schemaId = sharedSchema.$id ?? sharedMetricIdSchemaUrl.toString();
+      if (!ajv.getSchema(schemaId)) {
+        ajv.addSchema(sharedSchema);
+      }
+    })();
+  }
+  await sharedSchemaPromise;
   const schemaJson = await loadSchema(schemaUrl);
   const validate = ajv.compile(schemaJson);
   validatorCache.set(key, validate);

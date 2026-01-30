@@ -19,7 +19,22 @@ function resolveEnabled(value, fallback) {
   return Boolean(fallback);
 }
 
-function computeExtendedMetrics(definition, summaries, options = {}) {
+function resolveSuiteResults(suiteResults, suiteId) {
+  if (!suiteResults || typeof suiteResults !== "object") {
+    return null;
+  }
+  if (typeof suiteId === "string" && suiteId.length > 0) {
+    const entry = suiteResults[suiteId];
+    return Array.isArray(entry?.results) ? entry.results : null;
+  }
+  const entries = Object.values(suiteResults);
+  if (entries.length === 1 && Array.isArray(entries[0]?.results)) {
+    return entries[0].results;
+  }
+  return null;
+}
+
+function computeExtendedMetrics(definition, summaries, options = {}, suiteResults = null) {
   const metrics = [
     { id: "length_mean", value: computeLengthMean(summaries) },
     { id: "length_variance", value: computeLengthVariance(summaries) },
@@ -74,9 +89,12 @@ function computeExtendedMetrics(definition, summaries, options = {}) {
     METRICS_EXTENDED_DEFAULTS.advantageReversal.enabled
   );
   if (advantageReversalEnabled) {
+    const advantageReversalSimulations =
+      resolveSuiteResults(suiteResults, options?.advantageReversal?.suiteId) ??
+      options.simulations;
     const value = computeAdvantageReversalRate(
       definition,
-      options.simulations,
+      advantageReversalSimulations,
       { ...options.advantageReversal, enabled: advantageReversalEnabled }
     );
     metrics.push({ id: "advantage_reversal_rate", value });
@@ -91,6 +109,7 @@ function computeExtendedMetrics(definition, summaries, options = {}) {
       ...METRICS_EXTENDED_DEFAULTS.policySensitivity,
       ...(options.policySensitivity ?? {}),
       enabled: policySensitivityEnabled,
+      suiteResults: suiteResults ?? options.policySensitivity?.suiteResults,
     };
     const value = computePolicySensitivity(definition, policySensitivityOptions);
     metrics.push({ id: "policy_sensitivity", value });

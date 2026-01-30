@@ -5,8 +5,14 @@ const schemaPath = new URL(
   "../../schemas/evolution-runner/runner-config.schema.json",
   import.meta.url,
 ).pathname;
+const sharedSchemaPath = new URL(
+  "../../schemas/shared/metric-id.schema.json",
+  import.meta.url,
+).pathname;
 const schemaJson = JSON.parse(readFileSync(schemaPath, "utf8"));
+const sharedSchemaJson = JSON.parse(readFileSync(sharedSchemaPath, "utf8"));
 const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+ajv.addSchema(sharedSchemaJson);
 const validate = ajv.compile(schemaJson);
 
 function formatPath(error) {

@@ -131,7 +131,7 @@ export function createEvaluator(options = {}) {
       ? computeExtendedMetrics(definition, trajectorySummaries, {
           ...extendedMetricsOptions,
           simulations: results,
-        })
+        }, suiteResults)
       : [];
 
     // Step 8: Concatenate metrics

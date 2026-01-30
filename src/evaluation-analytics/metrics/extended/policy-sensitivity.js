@@ -38,6 +38,78 @@ function clamp01(value) {
   return Math.min(1, Math.max(0, value));
 }
 
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  }
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+}
+
+function normalizeAgentDescriptor(agent) {
+  if (!agent) {
+    return null;
+  }
+  if (typeof agent === "string") {
+    return { key: `${agent}|null` };
+  }
+  if (typeof agent === "object") {
+    if (typeof agent.selectAction === "function") {
+      return null;
+    }
+    if (typeof agent.kind === "string") {
+      const optionsKey = stableStringify(agent.options ?? null);
+      return { key: `${agent.kind}|${optionsKey}` };
+    }
+  }
+  return null;
+}
+
+function normalizeAgentsForMatch(agents) {
+  if (!Array.isArray(agents) || agents.length === 0) {
+    return null;
+  }
+  const normalized = [];
+  for (const agent of agents) {
+    const entry = normalizeAgentDescriptor(agent);
+    if (!entry) {
+      return null;
+    }
+    normalized.push(entry.key);
+  }
+  return normalized;
+}
+
+function findSuiteResults(suiteResults, agents) {
+  if (!suiteResults || typeof suiteResults !== "object") {
+    return null;
+  }
+  const expected = normalizeAgentsForMatch(agents);
+  if (!expected) {
+    return null;
+  }
+  for (const suiteResult of Object.values(suiteResults)) {
+    const suiteAgents = normalizeAgentsForMatch(suiteResult?.agents);
+    if (!suiteAgents || suiteAgents.length !== expected.length) {
+      continue;
+    }
+    let matches = true;
+    for (let index = 0; index < expected.length; index += 1) {
+      if (suiteAgents[index] !== expected[index]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches && Array.isArray(suiteResult?.results)) {
+      return suiteResult.results;
+    }
+  }
+  return null;
+}
+
 function resolveTierAgent(tier) {
   if (!tier) {
     return null;
@@ -150,6 +222,7 @@ function computePolicySensitivity(definition, options = {}) {
 
   const matchesPerSeat = resolvedOptions.matchesPerSeat;
   const rng = Number.isInteger(resolvedOptions.seed) ? createSeededRng(resolvedOptions.seed) : null;
+  const suiteResults = options?.suiteResults;
 
   // Compute marginal win-rate deltas across the tier ladder
   const marginals = [];
@@ -164,26 +237,34 @@ function computePolicySensitivity(definition, options = {}) {
       // Lower tier in focal seat vs upper tier opponents (seat-bias cancellation)
       const baselineAgents = buildAgents(playerCount, lowerTier, upperTier, seatId, false);
 
-      const strongInputs = buildSimulationInputs(
-        definition,
-        strongAgents,
-        matchesPerSeat,
-        rng,
-        resolvedOptions
-      );
-      const baselineInputs = buildSimulationInputs(
-        definition,
-        baselineAgents,
-        matchesPerSeat,
-        rng,
-        resolvedOptions
-      );
+      const strongSuiteResults = findSuiteResults(suiteResults, strongAgents);
+      const baselineSuiteResults = findSuiteResults(suiteResults, baselineAgents);
 
-      const strongResults = runBatchSimulations(strongInputs);
-      const baselineResults = runBatchSimulations(baselineInputs);
+      const strongResults = strongSuiteResults
+        ? strongSuiteResults
+        : runBatchSimulations(
+            buildSimulationInputs(
+              definition,
+              strongAgents,
+              matchesPerSeat,
+              rng,
+              resolvedOptions
+            )
+          ).results;
+      const baselineResults = baselineSuiteResults
+        ? baselineSuiteResults
+        : runBatchSimulations(
+            buildSimulationInputs(
+              definition,
+              baselineAgents,
+              matchesPerSeat,
+              rng,
+              resolvedOptions
+            )
+          ).results;
 
-      const strongWinRate = computeWinRate(strongResults.results, seatId);
-      const baselineWinRate = computeWinRate(baselineResults.results, seatId);
+      const strongWinRate = computeWinRate(strongResults, seatId);
+      const baselineWinRate = computeWinRate(baselineResults, seatId);
       if (strongWinRate == null || baselineWinRate == null) {
         continue;
       }
