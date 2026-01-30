@@ -36,7 +36,7 @@ const baseDefinition = {
         scope: "global",
         order: "ordered",
         visibility: "public",
-        spatial: { nodes: ["A", "B", "C"], edges: [["A", "B"], ["B", "C"]] },
+        spatial: { nodes: ["A", "B", "C"], edges: [{ from: "A", to: "B" }, { from: "B", to: "C" }] },
       },
     ],
   },

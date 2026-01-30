@@ -268,8 +268,10 @@ When `actionId === null` (pass step):
   via `resolveVarValue`/`writeVarValue`, respects bounds mode (reject or clamp).
 - **Token lifecycle** (`spawn`/`move`/`destroy`/`reveal`/`hide`): target
   `{ kind: "token" }`. Delegated to `token-effects.js`.
-- **Spatial movement** (`move_spatial`): validates adjacency on zone's spatial graph
-  before updating `token.node`.
+- **Spatial movement** (`move_spatial`): moves a token along a zone's spatial graph.
+  Supports single-hop adjacency (default), multi-hop BFS pathfinding via optional
+  `distance` parameter, and directional edges (`forward`/`backward`/`both`, default
+  `both`). Delegated to `spatial-effects.js`.
 - **Repeat wrapper** (`repeat`): executes sub-effects up to `count` times. Stops
   early on first sub-effect failure (up-to-N semantics).
 - **Conditional wrapper** (`conditional`): evaluates `condition` and applies the

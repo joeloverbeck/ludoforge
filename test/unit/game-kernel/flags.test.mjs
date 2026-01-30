@@ -317,7 +317,7 @@ describe("move_spatial effect", () => {
           scope: "global",
           order: "ordered",
           visibility: "public",
-          spatial: { nodes: ["A", "B", "C"], edges: [["A", "B"], ["B", "C"]] },
+          spatial: { nodes: ["A", "B", "C"], edges: [{ from: "A", to: "B" }, { from: "B", to: "C" }] },
         },
       ],
     },
@@ -434,6 +434,260 @@ describe("move_spatial effect", () => {
 
     assert.equal(result.ok, false);
     assert.equal(result.reason, "zone-not-spatial");
+  });
+});
+
+describe("move_spatial multi-hop and directional edges", () => {
+  // Linear graph: A -> B -> C -> D -> E with forward-only edges
+  const forwardDef = {
+    ...baseDefinition,
+    state: {
+      ...baseDefinition.state,
+      zones: [
+        {
+          id: "track",
+          tokenType: "card",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+          spatial: {
+            nodes: ["A", "B", "C", "D", "E"],
+            edges: [
+              { from: "A", to: "B", direction: "forward" },
+              { from: "B", to: "C", direction: "forward" },
+              { from: "C", to: "D", direction: "forward" },
+              { from: "D", to: "E", direction: "forward" },
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  // Circular rondel: A -> B -> C -> D -> A with forward-only edges
+  const rondelDef = {
+    ...baseDefinition,
+    state: {
+      ...baseDefinition.state,
+      zones: [
+        {
+          id: "rondel",
+          tokenType: "card",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+          spatial: {
+            nodes: ["A", "B", "C", "D"],
+            edges: [
+              { from: "A", to: "B", direction: "forward" },
+              { from: "B", to: "C", direction: "forward" },
+              { from: "C", to: "D", direction: "forward" },
+              { from: "D", to: "A", direction: "forward" },
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  // Bidirectional graph (default): A - B - C - D
+  const bidiDef = {
+    ...baseDefinition,
+    state: {
+      ...baseDefinition.state,
+      zones: [
+        {
+          id: "map",
+          tokenType: "card",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+          spatial: {
+            nodes: ["A", "B", "C", "D"],
+            edges: [
+              { from: "A", to: "B" },
+              { from: "B", to: "C" },
+              { from: "C", to: "D" },
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  function spawnAt(state, def, zone, node) {
+    const ctx = { state, playerId: 1, definition: def, variableIndex: buildVariableIndex(def) };
+    const r = applyTokenSpawn(state, { kind: "spawn", target: { kind: "token", id: "card" }, toZone: zone }, ctx);
+    const id = r.appliedEffect.tokenId;
+    state.tokens[id].node = node;
+    return { id, ctx };
+  }
+
+  it("distance:1 with toNode works like single-hop adjacency", () => {
+    const state = createInitialState(bidiDef);
+    const { id, ctx } = spawnAt(state, bidiDef, "map", "A");
+
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "map",
+      toNode: "B",
+      distance: 1,
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "B");
+  });
+
+  it("distance:3 moves token 3 hops along shortest path", () => {
+    const state = createInitialState(bidiDef);
+    const { id, ctx } = spawnAt(state, bidiDef, "map", "A");
+
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "map",
+      toNode: "D",
+      distance: 3,
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "D");
+    assert.equal(result.appliedEffect.distance, 3);
+    assert.equal(result.appliedEffect.fromNode, "A");
+  });
+
+  it("forward-only edges prevent backward movement", () => {
+    const state = createInitialState(forwardDef);
+    const { id, ctx } = spawnAt(state, forwardDef, "track", "C");
+
+    // Try to move backward from C to A (2 hops backward)
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "track",
+      toNode: "A",
+      distance: 2,
+    }, ctx);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "no-path");
+    assert.equal(state.tokens[id].node, "C");
+  });
+
+  it("forward-only single hop backward is blocked", () => {
+    const state = createInitialState(forwardDef);
+    const { id, ctx } = spawnAt(state, forwardDef, "track", "B");
+
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "track",
+      toNode: "A",
+    }, ctx);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "not-adjacent");
+  });
+
+  it("circular topology wraps correctly (last node to first node)", () => {
+    const state = createInitialState(rondelDef);
+    const { id, ctx } = spawnAt(state, rondelDef, "rondel", "C");
+
+    // Move 3 hops forward: C -> D -> A -> B
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "rondel",
+      toNode: "B",
+      distance: 3,
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "B");
+  });
+
+  it("multi-hop with no valid path of that distance fails gracefully", () => {
+    const state = createInitialState(forwardDef);
+    const { id, ctx } = spawnAt(state, forwardDef, "track", "D");
+
+    // From D, only 1 hop forward (E) is possible; distance 3 has no reachable node
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "track",
+      distance: 3,
+    }, ctx);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "no-path");
+    assert.equal(state.tokens[id].node, "D");
+  });
+
+  it("bidirectional edges (default) work as before", () => {
+    const state = createInitialState(bidiDef);
+    const { id, ctx } = spawnAt(state, bidiDef, "map", "C");
+
+    // Move backward from C to B (no direction specified = both)
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "map",
+      toNode: "B",
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "B");
+  });
+
+  it("object-format edges with no direction field default to bidirectional", () => {
+    const state = createInitialState(bidiDef);
+    const { id, ctx } = spawnAt(state, bidiDef, "map", "D");
+
+    // Move 2 hops backward: D -> C -> B
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "map",
+      toNode: "B",
+      distance: 2,
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "B");
+  });
+
+  it("token is on exactly one node after move", () => {
+    const state = createInitialState(rondelDef);
+    const { id, ctx } = spawnAt(state, rondelDef, "rondel", "A");
+
+    applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "rondel",
+      toNode: "C",
+      distance: 2,
+    }, ctx);
+
+    assert.equal(typeof state.tokens[id].node, "string");
+    assert.equal(state.tokens[id].node, "C");
+  });
+
+  it("distance without toNode moves to deterministic reachable node", () => {
+    const state = createInitialState(forwardDef);
+    const { id, ctx } = spawnAt(state, forwardDef, "track", "A");
+
+    // Distance 2 from A forward: B -> C; only C is at distance 2
+    const result = applyEffect(state, {
+      kind: "move_spatial",
+      target: { kind: "token", id },
+      zone: "track",
+      distance: 2,
+    }, ctx);
+
+    assert.equal(result.ok, true);
+    assert.equal(state.tokens[id].node, "C");
+    assert.equal(result.appliedEffect.toNode, "C");
   });
 });
 

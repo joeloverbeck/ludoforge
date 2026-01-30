@@ -49,7 +49,7 @@ const definition: GameDefinition = {
         visibility: "public",
         spatial: {
           nodes: ["a", "b"],
-          edges: [["a", "b"]],
+          edges: [{ from: "a", to: "b" }],
         },
       },
     ],

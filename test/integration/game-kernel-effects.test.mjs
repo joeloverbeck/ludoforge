@@ -52,7 +52,7 @@ function spatialDefinition() {
           visibility: "public",
           spatial: {
             nodes: ["A", "B", "C"],
-            edges: [["A", "B"], ["B", "C"]],
+            edges: [{ from: "A", to: "B" }, { from: "B", to: "C" }],
           },
         },
       ],

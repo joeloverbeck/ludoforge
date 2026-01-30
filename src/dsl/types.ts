@@ -39,6 +39,12 @@ export interface TokenTypeDef {
   attributes: VariableDef[];
 }
 
+export interface SpatialEdge {
+  from: string;
+  to: string;
+  direction?: "forward" | "backward" | "both";
+}
+
 export interface ZoneDef {
   id: string;
   tokenType: string;
@@ -47,7 +53,7 @@ export interface ZoneDef {
   visibility: "public" | "private";
   spatial?: {
     nodes: string[];
-    edges: [string, string][];
+    edges: SpatialEdge[];
   };
 }
 
@@ -89,7 +95,7 @@ export type Effect =
   | { kind: "destroy"; target: Ref }
   | { kind: "reveal"; target: Ref }
   | { kind: "hide"; target: Ref }
-  | { kind: "move_spatial"; target: Ref; zone: string; toNode: string }
+  | { kind: "move_spatial"; target: Ref; zone: string; toNode?: string; distance?: number }
   | { kind: "repeat"; effects: Effect[]; count: number }
   | { kind: "conditional"; condition: Expr; then: Effect[]; else?: Effect[] }
   | { kind: "set_flag"; target: Ref; flag: string; duration?: "action" | "phase" | "turn" | "round" }

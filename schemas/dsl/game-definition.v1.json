@@ -141,10 +141,18 @@
             "edges": {
               "type": "array",
               "items": {
-                "type": "array",
-                "items": { "type": "string" },
-                "minItems": 2,
-                "maxItems": 2
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["from", "to"],
+                "properties": {
+                  "from": { "type": "string" },
+                  "to": { "type": "string" },
+                  "direction": {
+                    "type": "string",
+                    "enum": ["forward", "backward", "both"],
+                    "default": "both"
+                  }
+                }
               }
             }
           }
@@ -292,7 +300,8 @@
             "kind": { "const": "move_spatial" },
             "target": { "$ref": "#/$defs/Ref" },
             "zone": { "type": "string" },
-            "toNode": { "type": "string" }
+            "toNode": { "type": "string" },
+            "distance": { "type": "integer", "minimum": 1 }
           }
         },
         {

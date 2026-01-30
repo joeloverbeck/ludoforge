@@ -246,7 +246,7 @@ Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
   to re-roll or skip the mutation.
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
   `{ amount: 1 }` for inc/dec, `{ toZone, toPlayer? }` for move, `{ toZone }` for
-  spawn, `{ zone, toNode }` for move_spatial, `{ flag, duration }` for set_flag,
+  spawn, `{ zone, toNode, distance? }` for move_spatial, `{ flag, duration }` for set_flag,
   `{ count, effects }` for repeat).
 
 ## Crossover Operators
