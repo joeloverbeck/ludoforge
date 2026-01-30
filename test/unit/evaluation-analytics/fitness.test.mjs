@@ -98,6 +98,89 @@ describe("fitness", () => {
     });
   });
 
+  describe("uncertainty-damped fitness blending", () => {
+    it("damps preference toward zero when ensemble uncertainty is high", () => {
+      const featureVector = Object.freeze({ agency: 1 });
+      // Ensemble with deliberately split weights → high uncertainty
+      const preferenceModelState = Object.freeze({
+        models: [
+          { weights: { agency: 5 }, bias: 0, sampleCount: 20 },
+          { weights: { agency: -5 }, bias: 0, sampleCount: 20 },
+        ],
+        ensemble: { size: 2, method: "online-bagging" },
+        version: 1,
+      });
+
+      const result = computePreferenceAwareFitness(featureVector, {
+        compositeScore: { score: 0, components: {} },
+        preferenceModelState,
+        preferenceCap: 1,
+        preferenceBootstrapSamples: 0,
+      });
+
+      assert.ok(result.diagnostics.preferenceUncertainty > 0.5,
+        `uncertainty should be high, got ${result.diagnostics.preferenceUncertainty}`);
+      // With high uncertainty, preference contribution should be damped
+      assert.ok(Math.abs(result.diagnostics.blend.preference) < 0.5,
+        `preference should be damped, got ${result.diagnostics.blend.preference}`);
+    });
+
+    it("preserves full preference when ensemble uncertainty is zero", () => {
+      const featureVector = Object.freeze({ agency: 1 });
+      // All identical models → zero uncertainty
+      const preferenceModelState = Object.freeze({
+        models: [
+          { weights: { agency: 2 }, bias: 0, sampleCount: 20 },
+          { weights: { agency: 2 }, bias: 0, sampleCount: 20 },
+          { weights: { agency: 2 }, bias: 0, sampleCount: 20 },
+        ],
+        ensemble: { size: 3, method: "online-bagging" },
+        version: 1,
+      });
+
+      const result = computePreferenceAwareFitness(featureVector, {
+        compositeScore: { score: 0, components: {} },
+        preferenceModelState,
+        preferenceCap: 1,
+        preferenceBootstrapSamples: 0,
+      });
+
+      assert.equal(result.diagnostics.preferenceUncertainty, 0);
+      // pMean = sigmoid(2*1 + 0) ≈ 0.88 → centered ≈ 0.76 → full contribution
+      assert.ok(result.diagnostics.blend.preference > 0.5,
+        `preference should be significant, got ${result.diagnostics.blend.preference}`);
+    });
+
+    it("includes preferenceUncertainty in diagnostics", () => {
+      const featureVector = { agency: 0.5 };
+      const preferenceModelState = {
+        models: [
+          { weights: { agency: 1 }, bias: 0, sampleCount: 10 },
+          { weights: { agency: -1 }, bias: 0, sampleCount: 10 },
+        ],
+        ensemble: { size: 2, method: "online-bagging" },
+        version: 1,
+      };
+
+      const result = computePreferenceAwareFitness(featureVector, {
+        compositeScore: { score: 0, components: {} },
+        preferenceModelState,
+      });
+
+      assert.ok(Number.isFinite(result.diagnostics.preferenceUncertainty));
+      assert.ok(result.diagnostics.preferenceUncertainty >= 0);
+      assert.ok(result.diagnostics.preferenceUncertainty <= 1);
+    });
+
+    it("reports null preferenceUncertainty when no model state", () => {
+      const result = computePreferenceAwareFitness({ agency: 1 }, {
+        compositeScore: { score: 1, components: {} },
+      });
+
+      assert.equal(result.diagnostics.preferenceUncertainty, null);
+    });
+  });
+
   describe("degeneracy penalty integration", () => {
     it("subtracts degeneracy penalty when report provided", () => {
       const featureVector = Object.freeze({ agency: 1 });

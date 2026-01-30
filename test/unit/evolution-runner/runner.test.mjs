@@ -16,16 +16,21 @@ async function loadMinimalDefinition() {
 }
 
 function createBaseConfig(overrides = {}) {
+  const baseRunner = {
+    generations: 1,
+    shortlistSize: 0,
+    maxRetainedGenerations: 100,
+  };
+  const runner = { ...baseRunner, ...(overrides.runner ?? {}) };
+
   return {
     version: "v1",
-    runner: {
-      generations: 1,
-      shortlistSize: 0,
-    },
+    runner,
     mapElites: {
       descriptors: [{ id: "axis", min: 0, max: 1, bins: 2 }],
     },
     ...overrides,
+    runner,
   };
 }
 

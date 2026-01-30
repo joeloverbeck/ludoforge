@@ -41,8 +41,9 @@ function computePreferenceContribution(preferenceScore, options = {}) {
   if (cap <= 0 || weight === 0) {
     return { contribution: 0, cap };
   }
+  const uncertainty = clamp(safeNumber(options.preferenceUncertainty), 0, 1);
   const centered = (preferenceScore - 0.5) * 2;
-  const weighted = centered * weight;
+  const weighted = centered * weight * (1 - uncertainty);
   return { contribution: clamp(weighted, -cap, cap), cap };
 }
 

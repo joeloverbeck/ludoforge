@@ -13,7 +13,7 @@ const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
 const validate = ajv.compile(schemaJson);
 
 const baseConfig = {
-  runner: { generations: 2 },
+  runner: { generations: 2, maxRetainedGenerations: 30 },
   mapElites: {
     descriptors: [{ id: "agency", min: 0, max: 1, bins: 4 }],
   },
@@ -142,10 +142,10 @@ describe("schema", () => {
       assertInvalid(candidate);
     });
 
-    it("accepts config without maxRetainedGenerations (backward compat)", () => {
+    it("rejects config without maxRetainedGenerations", () => {
       const candidate = cloneConfig(baseConfig);
-      assert.equal(candidate.runner.maxRetainedGenerations, undefined);
-      assertValid(candidate);
+      delete candidate.runner.maxRetainedGenerations;
+      assertInvalid(candidate);
     });
 
     it("rejects non-integer maxRetainedGenerations", () => {

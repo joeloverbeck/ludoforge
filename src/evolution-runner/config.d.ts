@@ -13,6 +13,7 @@ export interface ValidationResult {
 
 export interface RunnerLoopConfig {
   generations: number;
+  maxRetainedGenerations: number;
   shortlistSize?: number;
   saveEvery?: number;
 }

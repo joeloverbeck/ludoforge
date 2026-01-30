@@ -117,5 +117,65 @@ describe("scoring", () => {
       assert.equal(result.components.degeneracyPenalty, 0);
       assert.equal(result.score, 1);
     });
+
+    it("damps preference contribution by (1 - uncertainty)", () => {
+      const opts = {
+        preferenceCap: 0.5,
+        preferenceBootstrapSamples: 0,
+      };
+      // preferenceScore=1 → centered=1, weight=1, no uncertainty → contribution = cap
+      const confident = combineFitnessScores(0, 1, 0, {
+        ...opts,
+        preferenceUncertainty: 0,
+      });
+      assert.equal(confident.components.preference, 0.5);
+
+      // Same inputs but full uncertainty → contribution = 0
+      const uncertain = combineFitnessScores(0, 1, 0, {
+        ...opts,
+        preferenceUncertainty: 1,
+      });
+      assert.equal(uncertain.components.preference, 0);
+    });
+
+    it("partially damps preference at intermediate uncertainty", () => {
+      // preferenceScore=1 → centered=(1-0.5)*2=1, weight=1, uncertainty=0.5
+      // weighted = 1 * 1 * (1 - 0.5) = 0.5 → clamped to min(0.5, cap=1) = 0.5
+      const result = combineFitnessScores(0, 1, 0, {
+        preferenceCap: 1,
+        preferenceBootstrapSamples: 0,
+        preferenceUncertainty: 0.5,
+      });
+      assert.ok(Math.abs(result.components.preference - 0.5) < 1e-9);
+    });
+
+    it("clamps uncertainty to [0, 1] range", () => {
+      const opts = {
+        preferenceCap: 0.5,
+        preferenceBootstrapSamples: 0,
+      };
+      // Negative uncertainty treated as 0 → full contribution
+      const negativeUncertainty = combineFitnessScores(0, 1, 0, {
+        ...opts,
+        preferenceUncertainty: -0.5,
+      });
+      assert.equal(negativeUncertainty.components.preference, 0.5);
+
+      // Uncertainty > 1 treated as 1 → zero contribution
+      const overUncertainty = combineFitnessScores(0, 1, 0, {
+        ...opts,
+        preferenceUncertainty: 2,
+      });
+      assert.equal(overUncertainty.components.preference, 0);
+    });
+
+    it("preserves old behavior when preferenceUncertainty is absent", () => {
+      // No preferenceUncertainty option → defaults to 0 → no damping
+      const result = combineFitnessScores(0, 1, 0, {
+        preferenceCap: 0.5,
+        preferenceBootstrapSamples: 0,
+      });
+      assert.equal(result.components.preference, 0.5);
+    });
   });
 });

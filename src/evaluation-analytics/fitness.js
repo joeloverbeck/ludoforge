@@ -85,6 +85,8 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
     ? computeDegeneracyPenalty(options.degeneracyReport, options.degeneracyPenaltyConfig)
     : 0;
 
+  const preferenceUncertainty = preferenceScore?.uncertainty;
+
   const blend = combineFitnessScores(
     compositeScore.score,
     preferenceScore?.score,
@@ -96,6 +98,7 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
       preferenceCap,
       preferenceBootstrapSamples,
       preferenceBootstrapCap,
+      preferenceUncertainty,
       diversityWeight,
       degeneracyPenalty: degeneracyPenaltyValue,
     }
@@ -108,6 +111,7 @@ function computePreferenceAwareFitness(featureVector, options = {}) {
     diagnostics: {
       preferenceScore: preferenceScore?.score ?? null,
       preferenceConfidence: preferenceScore?.confidence ?? null,
+      preferenceUncertainty: preferenceScore?.uncertainty ?? null,
       blend: blend.components,
       degeneracyPenalty: degeneracyPenaltyValue,
     },

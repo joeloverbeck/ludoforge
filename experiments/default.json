@@ -2,6 +2,7 @@
   "seed": 42,
   "runner": {
     "generations": 1000,
+    "maxRetainedGenerations": 30,
     "shortlistSize": 8,
     "saveEvery": 5
   },

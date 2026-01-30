@@ -18,7 +18,7 @@
     "RunnerLoopConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["generations"],
+      "required": ["generations", "maxRetainedGenerations"],
       "properties": {
         "generations": { "type": "integer", "minimum": 1 },
         "shortlistSize": { "type": "integer", "minimum": 0 },

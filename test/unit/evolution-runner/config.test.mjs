@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { validateRunnerConfig } from "../../../src/evolution-runner/config.js";
 
 const baseConfig = {
-  runner: { generations: 3 },
+  runner: { generations: 3, maxRetainedGenerations: 30 },
   mapElites: {
     descriptors: [{ id: "agency", min: 0, max: 1, bins: 5 }],
   },
