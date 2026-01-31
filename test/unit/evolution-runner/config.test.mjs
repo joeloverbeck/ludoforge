@@ -19,6 +19,15 @@ const baseConfig = {
       grammar: {},
     },
   },
+  evolution: {
+    motifMining: {
+      enabled: false,
+      eliteSelection: { perNicheTopK: 3, globalTopK: 10 },
+      minSupport: 2,
+      maxMotifLength: 5,
+      ngramSizes: [2, 3],
+    },
+  },
 };
 
 function cloneConfig(config) {

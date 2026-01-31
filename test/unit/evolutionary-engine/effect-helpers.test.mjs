@@ -10,8 +10,8 @@ function cloneDefinition(definition) {
 
 describe("effect-helpers", () => {
   describe("EFFECT_KINDS", () => {
-    it("contains all 12 valid effect kinds", () => {
-      assert.equal(EFFECT_KINDS.length, 12);
+    it("contains all 15 valid effect kinds", () => {
+      assert.equal(EFFECT_KINDS.length, 15);
       assert.ok(EFFECT_KINDS.includes("set"));
       assert.ok(EFFECT_KINDS.includes("inc"));
       assert.ok(EFFECT_KINDS.includes("dec"));
@@ -24,6 +24,9 @@ describe("effect-helpers", () => {
       assert.ok(EFFECT_KINDS.includes("repeat"));
       assert.ok(EFFECT_KINDS.includes("set_flag"));
       assert.ok(EFFECT_KINDS.includes("conditional"));
+      assert.ok(EFFECT_KINDS.includes("shuffle"));
+      assert.ok(EFFECT_KINDS.includes("queue_push"));
+      assert.ok(EFFECT_KINDS.includes("queue_pop"));
     });
   });
 
@@ -126,6 +129,32 @@ describe("effect-helpers", () => {
       assert.equal(ref.kind, "zone");
       assert.equal(ref.id, "board");
     });
+
+    it("returns zone ref for shuffle", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const ref = buildRefForKind("shuffle", definition, rng);
+      assert.equal(ref.kind, "zone");
+      assert.equal(ref.id, "board");
+    });
+
+    it("returns token ref for queue_push", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const ref = buildRefForKind("queue_push", definition, rng);
+      assert.equal(ref.kind, "token");
+      assert.equal(ref.id, "pawn");
+    });
+
+    it("returns null for queue_pop", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const ref = buildRefForKind("queue_pop", definition, rng);
+      assert.equal(ref, null);
+    });
   });
 
   describe("buildEffectProps", () => {
@@ -170,6 +199,30 @@ describe("effect-helpers", () => {
       assert.ok(props.condition);
       assert.ok(Array.isArray(props.then));
       assert.equal(props.then.length > 0, true);
+    });
+
+    it("returns empty object for shuffle", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const props = buildEffectProps("shuffle", definition, rng);
+      assert.deepStrictEqual(props, {});
+    });
+
+    it("returns toZone for queue_push", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const props = buildEffectProps("queue_push", definition, rng);
+      assert.equal(typeof props.toZone, "string");
+    });
+
+    it("returns fromZone for queue_pop", () => {
+      const definition = cloneDefinition(baseDefinition);
+      const rng = { nextInt: () => 0 };
+
+      const props = buildEffectProps("queue_pop", definition, rng);
+      assert.equal(typeof props.fromZone, "string");
     });
   });
 });

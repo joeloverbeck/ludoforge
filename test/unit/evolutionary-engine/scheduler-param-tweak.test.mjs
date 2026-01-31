@@ -226,6 +226,49 @@ describe("schedulerParamTweakMutation", () => {
     });
   });
 
+  describe("simultaneous", () => {
+    it("flips resolution order from by_player_id to random", () => {
+      const definition = makePriorityQueueDef();
+      definition.turn = {
+        scheduler: "simultaneous",
+        resolution: { order: "by_player_id" },
+      };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = schedulerParamTweakMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "simultaneous");
+      assert.equal(mutated.definition.turn.resolution.order, "random");
+    });
+
+    it("flips resolution order from random to by_player_id", () => {
+      const definition = makePriorityQueueDef();
+      definition.turn = {
+        scheduler: "simultaneous",
+        resolution: { order: "random" },
+      };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = schedulerParamTweakMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.resolution.order, "by_player_id");
+    });
+
+    it("is a no-op when resolution is missing", () => {
+      const definition = makePriorityQueueDef();
+      definition.turn = { scheduler: "simultaneous" };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = schedulerParamTweakMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "simultaneous");
+      assert.equal(mutated.definition.turn.resolution, undefined);
+    });
+  });
+
   describe("round_robin", () => {
     it("returns unchanged genome (no-op)", () => {
       const definition = makeRoundRobinDef();
@@ -236,6 +279,30 @@ describe("schedulerParamTweakMutation", () => {
 
       assert.equal(mutated.definition.turn.scheduler, "round_robin");
       assert.deepStrictEqual(mutated.definition.turn, definition.turn);
+    });
+  });
+
+  describe("reactive and random_draw", () => {
+    it("reactive is a no-op", () => {
+      const definition = makeRoundRobinDef();
+      definition.turn.scheduler = "reactive";
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = schedulerParamTweakMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "reactive");
+    });
+
+    it("random_draw is a no-op", () => {
+      const definition = makeRoundRobinDef();
+      definition.turn.scheduler = "random_draw";
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = schedulerParamTweakMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.turn.scheduler, "random_draw");
     });
   });
 

@@ -92,13 +92,33 @@ export function repairEffect(effect, definition, depth, idContext) {
     }
   }
 
-  if ((effect.kind === "move" || effect.kind === "spawn") && effect.toZone) {
+  if ((effect.kind === "move" || effect.kind === "spawn" || effect.kind === "queue_push") && effect.toZone) {
     if (!zoneIds.has(effect.toZone)) {
       const validZones = [...zoneIds];
       if (validZones.length === 0) {
         return null;
       }
       nextEffect = { ...nextEffect, toZone: validZones[0] };
+    }
+  }
+
+  if (effect.kind === "queue_pop" && effect.fromZone) {
+    if (!zoneIds.has(effect.fromZone)) {
+      const validZones = [...zoneIds];
+      if (validZones.length === 0) {
+        return null;
+      }
+      nextEffect = { ...nextEffect, fromZone: validZones[0] };
+    }
+  }
+
+  if (effect.kind === "shuffle" && effect.target && effect.target.kind === "zone") {
+    if (!zoneIds.has(effect.target.id)) {
+      const validZones = [...zoneIds];
+      if (validZones.length === 0) {
+        return null;
+      }
+      nextEffect = { ...nextEffect, target: { ...effect.target, id: validZones[0] } };
     }
   }
 

@@ -162,4 +162,56 @@ describe("repairGenome", () => {
     assert.deepEqual(repaired.definition.actions[0].effects, definition.actions[0].effects);
     assert.deepEqual(repaired.definition.state, definition.state);
   });
+
+  it("repairs shuffle effects that reference missing zones", () => {
+    const definition = cloneDefinition(baseDefinition);
+    definition.actions[0].effects.push({
+      kind: "shuffle",
+      target: { kind: "zone", id: "missing-zone" },
+    });
+
+    const repaired = repairGenome({ definition });
+
+    assert.ok(repaired);
+    const shuffleEffect = repaired.definition.actions[0].effects.find(
+      (effect) => effect.kind === "shuffle"
+    );
+    assert.ok(shuffleEffect);
+    assert.equal(shuffleEffect.target.id, "board");
+  });
+
+  it("repairs queue_push effects that reference missing toZone", () => {
+    const definition = cloneDefinition(baseDefinition);
+    definition.actions[0].effects.push({
+      kind: "queue_push",
+      target: { kind: "token", id: "pawn" },
+      toZone: "missing-zone",
+    });
+
+    const repaired = repairGenome({ definition });
+
+    assert.ok(repaired);
+    const pushEffect = repaired.definition.actions[0].effects.find(
+      (effect) => effect.kind === "queue_push"
+    );
+    assert.ok(pushEffect);
+    assert.equal(pushEffect.toZone, "board");
+  });
+
+  it("repairs queue_pop effects that reference missing fromZone", () => {
+    const definition = cloneDefinition(baseDefinition);
+    definition.actions[0].effects.push({
+      kind: "queue_pop",
+      fromZone: "missing-zone",
+    });
+
+    const repaired = repairGenome({ definition });
+
+    assert.ok(repaired);
+    const popEffect = repaired.definition.actions[0].effects.find(
+      (effect) => effect.kind === "queue_pop"
+    );
+    assert.ok(popEffect);
+    assert.equal(popEffect.fromZone, "board");
+  });
 });

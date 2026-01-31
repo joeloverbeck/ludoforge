@@ -110,11 +110,13 @@ then repeats.
      full operator catalogue, effect helpers, and configuration.
 
 9. Motif mining (optional between generations)
-   - Elite trajectories are converted into an LTS and mined for recurring
-     effect-sequence motifs, which feed the `motif-inject` mutation operator.
+   - When `evolution.motifMining.enabled` is `true`, elite genomes are re-simulated,
+     trajectories are converted into an LTS, and recurring effect-sequence motifs are
+     mined and converted to DSL effects. The `motif-inject` mutation operator is
+     dynamically recreated each generation with the mined motif library.
    - See [metrics-and-fitness.md](metrics-and-fitness.md) for LTS/motif algorithms
-     and [evolution-runner.md](evolution-runner.md) for runner-level motif orchestration
-     and configuration.
+     and effect conversion, and [evolution-runner.md](evolution-runner.md) for the
+     full pipeline flow, configuration, and relevant code.
 
 10. Run orchestration
     - The runner manages run directories, artifact persistence, and resume compatibility.

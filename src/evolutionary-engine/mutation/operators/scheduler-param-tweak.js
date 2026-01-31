@@ -129,6 +129,21 @@ function tweakTokenHolder(turn, definition, rng) {
   };
 }
 
+/**
+ * Flips simultaneous resolution order between by_player_id and random.
+ * Returns null if no resolution exists.
+ */
+function tweakSimultaneous(turn) {
+  const resolution = turn.resolution;
+  if (!resolution || typeof resolution.order !== "string") return null;
+
+  const newOrder = resolution.order === "by_player_id" ? "random" : "by_player_id";
+  return {
+    ...turn,
+    resolution: { ...resolution, order: newOrder },
+  };
+}
+
 export const schedulerParamTweakMutation = {
   name: "scheduler-param-tweak",
   mutate(genome, rng) {
@@ -142,8 +157,10 @@ export const schedulerParamTweakMutation = {
       tweaked = tweakPriorityQueue(turn, definition, rng);
     } else if (scheduler === "token_holder") {
       tweaked = tweakTokenHolder(turn, definition, rng);
+    } else if (scheduler === "simultaneous") {
+      tweaked = tweakSimultaneous(turn);
     }
-    // round_robin and anything else: no-op
+    // round_robin, reactive, random_draw: no-op
 
     if (tweaked === null) {
       return { ...genome, definition };

@@ -158,15 +158,16 @@ or `"exhausted"`.
 
 ## Motif Mining
 
-The runner supports optional motif mining between generations. When enabled,
-elite trajectories are analyzed to discover recurring effect-sequence patterns
-(motifs) that can be injected back into the population by the `motif-inject`
-mutation operator.
+The runner integrates motif mining into the generation loop. When enabled,
+elite genomes are re-simulated to extract trajectory data, an LTS is built,
+motifs are mined and converted to DSL effects, and the `motif-inject` mutation
+operator is dynamically recreated with the mined motifs each generation.
 
 ### Configuration
 
 Motif mining is configured via `evolution.motifMining` in the runner config
-(`schemas/evolution-runner/runner-config.schema.json`):
+(`schemas/evolution-runner/runner-config.schema.json`). The `evolution` block
+and `motifMining` within it are both required (set `enabled: false` to disable).
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -176,19 +177,37 @@ Motif mining is configured via `evolution.motifMining` in the runner config
 | `minSupport` | integer | Minimum occurrence count for a pattern to qualify as a motif |
 | `maxMotifLength` | integer | Maximum n-gram length to mine |
 | `ngramSizes` | integer[] | Which n-gram sizes to enumerate |
-| `seed` | integer | RNG seed for deterministic mining |
+| `seed` | integer | RNG seed for deterministic re-simulation and mining |
 
 ### Pipeline Flow
 
-1. Select elite genomes from the MAP-Elites grid using `eliteSelection` criteria.
-2. Extract trajectory steps from elite simulations.
-3. Build a Labelled Transition System via `buildLts(trajectories)` from
-   `src/evaluation-analytics/lts-builder.js`.
-4. Mine recurring n-gram motifs via `mineMotifs(lts, config)` from
-   `src/evaluation-analytics/motif-miner.js`.
-5. Persist results to `motifs.jsonl` via `writeMotifJsonl()` from
+Orchestrated by `runMotifMiningPipeline()` from `src/evolution-runner/motif-pipeline.js`:
+
+1. **Elite selection**: `selectElitesForMining()` from `src/evolution-runner/elite-selector.js`
+   groups MAP-Elites placements by niche, takes per-niche top-K and global top-K
+   by fitness, and deduplicates by genome ID.
+2. **Re-simulation**: `extractEliteTrajectories()` from `src/evolution-runner/elite-resimulator.js`
+   re-simulates each elite genome using `createSimulationEngine()` with
+   `createSeededRng(seed + eliteIndex)` for deterministic results. Each elite
+   produces 3 simulation runs, yielding trajectory step arrays.
+3. **Effect map**: `buildEffectMap()` from `src/evaluation-analytics/motif-effect-converter.js`
+   creates a `Map<canonicalLabel, AppliedEffect[]>` from trajectory steps, mapping
+   each canonical edge label to the actual applied effects that produced it.
+4. **LTS construction**: `buildLts(trajectories)` from `src/evaluation-analytics/lts-builder.js`.
+5. **Motif mining**: `mineMotifs(lts, config)` from `src/evaluation-analytics/motif-miner.js`.
+6. **Effect conversion**: `convertMotifsToEffects()` from `src/evaluation-analytics/motif-effect-converter.js`
+   looks up each motif path label in the effect map, converts applied effects to
+   DSL-compatible effects via `toDslEffect()` (strips runtime fields like `source`,
+   `scope`, `clamped`, `tokenId`), and returns effect sequences.
+7. **Persistence**: writes motif records to `motifs.jsonl` via `writeMotifJsonl()` from
    `src/data-persistence/motif-store.js`.
-6. Optionally feed mined motif sequences to the `motif-inject` mutation operator.
+8. **Operator swapping**: if mining produced motif effects and the `motif-inject` operator
+   is in the mutation operator list, the runner replaces it with a fresh instance via
+   `createMotifInjectMutation(motifEffects)`. The mutation operators array is cloned
+   at runner startup to allow per-generation replacement without affecting the original.
+
+Returns `null` when mining is disabled, no elites are available, or no motifs
+meet the support threshold.
 
 ### Artifacts
 
@@ -196,6 +215,16 @@ Per-generation directory includes `motifs.jsonl` when motif mining is enabled.
 Each record uses the JSONL envelope pattern (`{ type: "motif", payload }`) with
 required metadata fields (`id`, `version`, `createdAt`) and domain fields
 (`signature`, `support`).
+
+### Relevant Code
+
+- `src/evolution-runner/motif-pipeline.js` — pipeline orchestrator
+- `src/evolution-runner/elite-selector.js` — elite selection from MAP-Elites grid
+- `src/evolution-runner/elite-resimulator.js` — deterministic re-simulation
+- `src/evaluation-analytics/motif-effect-converter.js` — effect map, DSL conversion
+- `src/evaluation-analytics/lts-builder.js` — LTS construction
+- `src/evaluation-analytics/motif-miner.js` — n-gram motif mining
+- `src/data-persistence/motif-store.js` — JSONL persistence
 
 ## Seeding
 

@@ -47,7 +47,7 @@ Mutate → Validate → Repair → Validate → Evaluate. Repair operators resto
 
 ### Operator Configuration
 
-Mutation and crossover operators are toggled via `configs/evolution-operators.json`. There are 26 mutation operators including value tweaks (numeric-tweak, boolean-toggle, enum-cycle), structural operators (zone-add, token-type-add, trigger-add, phase-add/remove, zone-remove, token-type-remove, scheduler-swap), effect operators (effect-insert, effect-delete, effect-kind-swap, effect-param-tweak, effect-reorder, conditional-effect-insert), action operators (action-add-small, action-duplicate, action-remove), and motif-inject.
+Mutation and crossover operators are toggled via `configs/evolution-operators.json`. There are 35 mutation operators including value tweaks (numeric-tweak, boolean-toggle, enum-cycle), structural operators (zone-add, token-type-add, trigger-add, trigger-remove, trigger-edit, phase-add/remove, zone-remove, token-type-remove, scheduler-swap, scheduler-param-tweak), effect operators (effect-insert, effect-delete, effect-kind-swap, effect-param-tweak, effect-reorder, conditional-effect-insert, turn-order-effect-insert, choose-effect-insert, worker-count-tweak), action operators (action-add-small, action-duplicate, action-remove, action-cost-tweak, action-effect-magnitude, precondition-negation), variable operators (variable-add, variable-remove, variable-scope-toggle), termination operators (termination-threshold, termination-outcome, termination-add, termination-remove, termination-condition-mutate), and motif-inject.
 
 ## Key Conventions
 

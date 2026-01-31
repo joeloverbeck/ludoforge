@@ -23,6 +23,17 @@ function createBaseConfig(overrides = {}) {
   };
   const runner = { ...baseRunner, ...(overrides.runner ?? {}) };
 
+  const baseEvolution = {
+    motifMining: {
+      enabled: false,
+      eliteSelection: { perNicheTopK: 3, globalTopK: 10 },
+      minSupport: 2,
+      maxMotifLength: 5,
+      ngramSizes: [2, 3],
+    },
+    ...(overrides.evolution ?? {}),
+  };
+
   return {
     version: "v1",
     runner,
@@ -31,6 +42,7 @@ function createBaseConfig(overrides = {}) {
     },
     ...overrides,
     runner,
+    evolution: baseEvolution,
   };
 }
 

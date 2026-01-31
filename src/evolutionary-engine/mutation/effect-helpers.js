@@ -4,6 +4,7 @@ import { collectVariableTargets, collectZoneTargets, collectTokenTypeTargets } f
 export const EFFECT_KINDS = [
   "set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide",
   "move_spatial", "repeat", "set_flag", "conditional",
+  "shuffle", "queue_push", "queue_pop",
 ];
 
 const EFFECT_KIND_POOL = [...EFFECT_KINDS, "conditional"];
@@ -54,6 +55,24 @@ export function buildRefForKind(kind, definition, rng) {
       return { kind: "token", id: tokenTypes[clampIndex(index, tokenTypes.length)].id };
     }
     return { kind: "player", id: "self" };
+  }
+
+  if (kind === "shuffle") {
+    if (zones.length > 0) {
+      const index = getRandomIndex(zones.length, rng);
+      return { kind: "zone", id: zones[clampIndex(index, zones.length)].id };
+    }
+  }
+
+  if (kind === "queue_push") {
+    if (tokenTypes.length > 0) {
+      const index = getRandomIndex(tokenTypes.length, rng);
+      return { kind: "token", id: tokenTypes[clampIndex(index, tokenTypes.length)].id };
+    }
+  }
+
+  if (kind === "queue_pop") {
+    return null;
   }
 
   return null;
@@ -132,6 +151,22 @@ export function buildEffectProps(kind, definition, rng) {
         duration: FLAG_DURATIONS[clampIndex(durIdx, FLAG_DURATIONS.length)],
       };
     }
+    case "shuffle":
+      return {};
+    case "queue_push": {
+      if (zones.length > 0) {
+        const index = getRandomIndex(zones.length, rng);
+        return { toZone: zones[clampIndex(index, zones.length)].id };
+      }
+      return { toZone: "default" };
+    }
+    case "queue_pop": {
+      if (zones.length > 0) {
+        const index = getRandomIndex(zones.length, rng);
+        return { fromZone: zones[clampIndex(index, zones.length)].id };
+      }
+      return { fromZone: "default" };
+    }
     default:
       return {};
   }
@@ -142,10 +177,12 @@ export function buildEffectProps(kind, definition, rng) {
  */
 const VARIABLE_KINDS = ["set", "inc", "dec"];
 
+const TARGET_OPTIONAL_KINDS = new Set(["repeat", "conditional", "queue_pop"]);
+
 export function buildRandomEffect(definition, rng) {
   const kindIndex = getRandomIndex(EFFECT_KIND_POOL.length, rng);
   let kind = EFFECT_KIND_POOL[Math.max(0, kindIndex)];
-  if (kind === "repeat" || kind === "conditional") {
+  if (TARGET_OPTIONAL_KINDS.has(kind)) {
     const props = buildEffectProps(kind, definition, rng);
     return { kind, ...props };
   }

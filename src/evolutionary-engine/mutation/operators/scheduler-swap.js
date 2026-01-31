@@ -1,6 +1,6 @@
 import { getRandomIndex } from "../random.js";
 
-const SCHEDULER_TYPES = ["round_robin", "priority_queue", "token_holder", "reactive"];
+const SCHEDULER_TYPES = ["round_robin", "priority_queue", "token_holder", "reactive", "simultaneous", "random_draw"];
 
 /**
  * Collects per-player integer variables from the definition.
@@ -97,6 +97,14 @@ function buildSchedulerFields(scheduler, definition, rng) {
     };
   }
 
+  if (scheduler === "simultaneous") {
+    const orders = ["by_player_id", "random"];
+    const orderIdx = getRandomIndex(orders.length, rng);
+    return {
+      resolution: { order: orders[Math.max(0, orderIdx)] },
+    };
+  }
+
   return {};
 }
 
@@ -104,7 +112,7 @@ function buildSchedulerFields(scheduler, definition, rng) {
  * Removes scheduler-specific fields that are no longer relevant.
  */
 function stripSchedulerFields(turn) {
-  const { orderBy, tokenType, zone, ...rest } = turn;
+  const { orderBy, tokenType, zone, resolution, ...rest } = turn;
   return rest;
 }
 

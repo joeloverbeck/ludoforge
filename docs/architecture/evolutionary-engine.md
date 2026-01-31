@@ -144,12 +144,20 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `effect-reorder`: swaps two effects within a random action's effects list.
 - `action-add-small`: creates a new action with 1-2 random effects and a unique id.
 - `action-cost-tweak`: tweaks a `dec` cost amount by +/-1 or +/-2 (clamped to min 1).
-- `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns); can also use mined motifs when motif mining is enabled.
+- `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns). When motif mining is enabled, the runner dynamically replaces this operator each generation with a fresh instance created via `createMotifInjectMutation(minedMotifEffects)`, using DSL effect sequences discovered from elite trajectory analysis.
 - `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
 - `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
-- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`) and 1-2 random effects. No-op if no variables, token types, or zones exist.
-- `scheduler-swap`: changes `turn.scheduler` to a different type (`round_robin`, `priority_queue`, `token_holder`, `reactive`). Generates required auxiliary fields (`orderBy` for priority_queue; `tokenType` + `zone` for token_holder) from existing definition state, and strips fields that are no longer relevant. `reactive` and `round_robin` require no auxiliary fields. No-op only when no valid swap target exists (e.g., the only excluded candidates are priority_queue without per-player int vars, or token_holder without matching per-player zones).
-- `scheduler-param-tweak`: tweaks parameters of the current scheduler without changing type. For `priority_queue`: flips `direction` (`asc`/`desc`) or swaps `variable` to a different per-player int variable. For `token_holder`: swaps `tokenType` or `zone` to a different valid option. No-op for `round_robin` (no parameters to tweak).
+- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`, `state_change`, `threshold`) and 1-2 random effects. `threshold` triggers include a condition expression comparing a variable to a threshold value. No-op if no variables, token types, or zones exist.
+- `trigger-remove`: removes a random trigger from the definition. No-op when no triggers exist.
+- `trigger-edit`: picks a random trigger and applies one of: event swap (to any of the 9 DSL-supported events), condition add/remove/mutate, or effect insert/delete/reorder. No-op when no triggers exist.
+- `variable-add`: adds a new state variable with a unique id (via `generateSemanticId`), random scope (`global` or `per_player`), and random type/initial value. Biases toward `per_player` int when a `priority_queue` scheduler is present.
+- `variable-remove`: removes one variable (preserving at least 1). Rewrites all dangling variable refs in action effects, preconditions, trigger conditions, termination conditions, and `turn.orderBy.variable`. Redirects refs to a compatible remaining variable; replaces unrewritable expression subtrees with `{ kind: "value", value: false }`. No-op with ≤1 variables.
+- `variable-scope-toggle`: flips a random variable's scope between `global` and `per_player`. No-op with 0 variables.
+- `termination-add`: generates a new termination condition referencing an existing int variable with a reachable threshold (greater than initial, within bounds), plus a random outcome (`win`/`lose`/`draw`). Creates the `termination` section if missing. No-op when no int variables exist.
+- `termination-remove`: removes one termination condition, never reducing below 1. No-op with exactly 1 or 0 conditions.
+- `termination-condition-mutate`: applies one of: comparator swap, variable ref swap, constant adjustment (+/-1 within bounds), wrap with `not`, or unwrap existing `not`. No-op when no termination conditions exist.
+- `scheduler-swap`: changes `turn.scheduler` to a different type (`round_robin`, `priority_queue`, `token_holder`, `reactive`, `simultaneous`, `random_draw`). Generates required auxiliary fields (`orderBy` for priority_queue; `tokenType` + `zone` for token_holder; `resolution.order` for simultaneous) from existing definition state, and strips fields that are no longer relevant. `reactive`, `round_robin`, and `random_draw` require no auxiliary fields. No-op only when no valid swap target exists (e.g., the only excluded candidates are priority_queue without per-player int vars, or token_holder without matching per-player zones).
+- `scheduler-param-tweak`: tweaks parameters of the current scheduler without changing type. For `priority_queue`: flips `direction` (`asc`/`desc`) or swaps `variable` to a different per-player int variable. For `token_holder`: swaps `tokenType` or `zone` to a different valid option. For `simultaneous`: flips `resolution.order` between `by_player_id` and `random`. No-op for `round_robin`, `reactive`, and `random_draw` (no parameters to tweak).
 - `conditional-effect-insert`: wraps an existing effect from a random action in a `conditional` block. The `then` branch contains the original effect, and the condition is a `cmp` expression comparing a random game variable to a random threshold. No-op when no actions have effects or no variables exist for condition generation.
 - `turn-order-effect-insert`: inserts a `set_turn_order` effect into an `end_round` trigger. Creates the trigger if none exists. References a random per-player integer variable with random direction (`asc`/`desc`). No-op when no per-player integer variables exist.
 - `choose-effect-insert`: wraps an existing action effect in an `rng_choose` block with two options: the original effect and a randomly generated alternative. No-op when no actions have effects.
@@ -172,16 +180,10 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 | Tier | Weight | Operators |
 |------|--------|-----------|
 | Conservative | 3 | `numeric-tweak`, `boolean-toggle`, `enum-cycle`, `action-effect-magnitude`, `precondition-negation`, `termination-threshold`, `termination-outcome`, `effect-param-tweak`, `zone-add`, `token-type-add`, `trigger-add` |
-| Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `action-cost-tweak`, `motif-inject` |
-| Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove` |
+| Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `action-cost-tweak`, `motif-inject`, `termination-condition-mutate`, `worker-count-tweak` |
+| Structural | 1–1.5 | `scheduler-swap` (1), `scheduler-param-tweak` (1.5), `conditional-effect-insert` (1.5), `turn-order-effect-insert` (1.5), `choose-effect-insert` (1.5), `trigger-edit` (1.5), `effect-delete` (1), `variable-add` (1), `variable-scope-toggle` (1), `termination-add` (1) |
+| Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove`, `trigger-remove`, `variable-remove`, `termination-remove` |
 
-`effect-delete` is weighted at 1 (between destructive and moderate).
-`scheduler-swap` is weighted at 1 (structural change with validation guards).
-`scheduler-param-tweak` is weighted at 1.5 (parameter variation within existing scheduler).
-`conditional-effect-insert` is weighted at 1.5 (adds conditional branching to existing effects).
-`turn-order-effect-insert` is weighted at 1.5 (inserts turn-order effect into end-round trigger).
-`choose-effect-insert` is weighted at 1.5 (wraps effect in RNG-branching block).
-`worker-count-tweak` is weighted at 2 (moderate spawn-count adjustment).
 The tiering ensures destructive removal mutations fire less frequently than
 conservative value tweaks, reducing invalid-offspring rates.
 
@@ -195,6 +197,9 @@ empty definitions:
 - `effect-delete`: no-op when the target action has fewer than 2 effects.
 - `token-type-remove`: rewrites all references to a remaining token type.
 - `zone-remove`: rewrites all references to a remaining zone.
+- `trigger-remove`: no-op when no triggers exist.
+- `variable-remove`: no-op when `state.variables.length <= 1`. Rewrites all dangling refs.
+- `termination-remove`: no-op when `termination.conditions.length <= 1`.
 
 These guards are inline within each operator, not in a separate validation pass.
 
@@ -234,20 +239,23 @@ at startup; missing or invalid operator weights cause an immediate startup error
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
 
-- `EFFECT_KINDS`: canonical list of the 12 effect kinds used by mutation helpers,
-  including `conditional` (see [simulation-engine.md](simulation-engine.md) for
-  the full effect dispatch reference).
+- `EFFECT_KINDS`: canonical list of the 15 effect kinds used by mutation helpers:
+  `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
+  `move_spatial`, `repeat`, `set_flag`, `conditional`,
+  `shuffle`, `queue_push`, `queue_pop`.
+  See [simulation-engine.md](simulation-engine.md) for the full effect dispatch reference.
 - `buildRandomEffect(definition, rng)`: generates a random effect with a valid
   target and properties drawn from the game definition.
 - `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
   the given effect kind (variable for set/inc/dec, token for move/spawn/destroy/
-  move_spatial/set_flag, zone for reveal/hide). Returns `null` when the required
+  move_spatial/set_flag, zone for reveal/hide/shuffle, token for queue_push).
+  Returns `null` for queue_pop (uses `fromZone` prop instead) and when the required
   structures are absent (e.g., no token types for a `move` kind), allowing callers
   to re-roll or skip the mutation.
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
   `{ amount: 1 }` for inc/dec, `{ toZone, toPlayer? }` for move, `{ toZone }` for
   spawn, `{ zone, toNode, distance? }` for move_spatial, `{ flag, duration }` for set_flag,
-  `{ count, effects }` for repeat).
+  `{ count, effects }` for repeat, `{ toZone }` for queue_push, `{ fromZone }` for queue_pop).
 
 ## Crossover Operators
 

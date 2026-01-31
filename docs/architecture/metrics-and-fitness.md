@@ -421,6 +421,23 @@ Implemented in `src/evaluation-analytics/motif-miner.js`.
   by descending support then lexicographic signature. Each `exampleOccurrence` contains
   `{ fromNode, path }`.
 
+### Motif Effect Converter
+
+Implemented in `src/evaluation-analytics/motif-effect-converter.js`.
+
+Three functions convert mined motifs into DSL-compatible effect sequences:
+
+- `buildEffectMap(trajectories)`: creates a `Map<canonicalLabel, AppliedEffect[]>`
+  from trajectory step arrays. For each step with non-empty `appliedEffects`, computes
+  the canonical label and stores the first-seen effects for that label.
+- `toDslEffect(appliedEffect)`: strips runtime fields (`source`, `scope` from target,
+  `clamped`, `tokenId`) and keeps only DSL-compatible fields: `kind`, `target` (with
+  `kind` and `id` only), `amount`, `value`, `toZone`, `tokenType`, `count`,
+  `condition`, `then`, `else`.
+- `convertMotifsToEffects(motifs, effectMap)`: for each motif, looks up path labels
+  in the effect map, converts each matched effect via `toDslEffect`, and returns an
+  array of effect sequences. Motifs with any unresolvable label are skipped.
+
 ### Motif Persistence
 
 Implemented in `src/data-persistence/motif-store.js`.

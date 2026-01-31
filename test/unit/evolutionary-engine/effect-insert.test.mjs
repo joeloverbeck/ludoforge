@@ -39,9 +39,12 @@ describe("effectInsertMutation", () => {
     const mutated = effectInsertMutation.mutate(genome, rng);
     const newEffect = mutated.definition.actions[0].effects[1];
 
-    const validKinds = ["set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide"];
-    assert.ok(validKinds.includes(newEffect.kind));
-    assert.ok(newEffect.target);
+    const validKinds = [
+      "set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide",
+      "move_spatial", "repeat", "set_flag", "conditional",
+      "shuffle", "queue_push", "queue_pop",
+    ];
+    assert.ok(validKinds.includes(newEffect.kind), `unexpected kind: ${newEffect.kind}`);
   });
 
   it("returns clone when no actions exist", () => {

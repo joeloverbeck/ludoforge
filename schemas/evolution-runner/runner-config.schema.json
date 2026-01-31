@@ -4,7 +4,7 @@
   "title": "EvolutionRunnerConfig",
   "type": "object",
   "additionalProperties": false,
-  "required": ["runner", "mapElites", "seeding", "humanFeedback"],
+  "required": ["runner", "mapElites", "seeding", "humanFeedback", "evolution"],
   "properties": {
     "seed": { "type": "integer" },
     "runner": { "$ref": "#/$defs/RunnerLoopConfig" },
@@ -59,6 +59,7 @@
     "EvolutionConfig": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["motifMining"],
       "properties": {
         "mutation": { "type": "object", "additionalProperties": true },
         "crossover": { "type": "object", "additionalProperties": true },

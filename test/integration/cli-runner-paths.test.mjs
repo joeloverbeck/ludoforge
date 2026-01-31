@@ -17,6 +17,7 @@ function createRunnerConfig() {
     mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
     humanFeedback: { enabled: false, mode: "comparison" },
     seeding: { mode: "folder", populationSize: 1, folder: { path: "./seeds" } },
+    evolution: { motifMining: { enabled: false, eliteSelection: { perNicheTopK: 3, globalTopK: 10 }, minSupport: 2, maxMotifLength: 5, ngramSizes: [2, 3] } },
   };
 }
 

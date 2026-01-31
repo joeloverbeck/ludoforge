@@ -41,6 +41,15 @@ const baseConfig = {
       grammar: {},
     },
   },
+  evolution: {
+    motifMining: {
+      enabled: false,
+      eliteSelection: { perNicheTopK: 3, globalTopK: 10 },
+      minSupport: 2,
+      maxMotifLength: 5,
+      ngramSizes: [2, 3],
+    },
+  },
 };
 
 function cloneConfig(config) {
@@ -217,14 +226,16 @@ describe("schema", () => {
       assertValid(candidate);
     });
 
-    it("accepts evolution without motifMining", () => {
+    it("rejects evolution without motifMining", () => {
       const candidate = cloneConfig(baseConfig);
       candidate.evolution = { mutation: {} };
-      assertValid(candidate);
+      assertInvalid(candidate);
     });
 
-    it("accepts config without evolution block entirely", () => {
-      assertValid(cloneConfig(baseConfig));
+    it("rejects config without evolution block entirely", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.evolution;
+      assertInvalid(candidate);
     });
 
     it("rejects unknown properties inside motifMining", () => {

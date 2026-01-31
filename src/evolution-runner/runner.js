@@ -27,6 +27,9 @@ import { applyEvolution } from "./evolution-applicator.js";
 import { assembleDeterminism } from "./determinism-assembly.js";
 import { checkPopulationExtinction, checkHighRejectionHalt } from "./termination-checks.js";
 import { buildGenerationContext } from "./generation-context.js";
+import { runMotifMiningPipeline } from "./motif-pipeline.js";
+import { createMotifInjectMutation } from "../evolutionary-engine/mutation/operators/motif-inject.js";
+import { resolveRunDir, resolveRunPath } from "./run-layout.js";
 
 export async function runEvolutionRunner(options) {
   if (!options || typeof options !== "object") {
@@ -90,6 +93,10 @@ export async function runEvolutionRunner(options) {
   const mutationConfig = isPlainObject(evolutionConfig.mutation) ? evolutionConfig.mutation : {};
   const crossoverConfig = isPlainObject(evolutionConfig.crossover) ? evolutionConfig.crossover : {};
 
+  const motifMiningConfig = isPlainObject(evolutionConfig.motifMining)
+    ? evolutionConfig.motifMining
+    : { enabled: false };
+
   const mutationRate = resolveRate(mutationConfig.rate, "evolution.mutation.rate");
   const crossoverRate = resolveRate(crossoverConfig.rate, "evolution.crossover.rate");
   const maxMutationRetries = Number.isInteger(mutationConfig.maxMutationRetries)
@@ -97,8 +104,9 @@ export async function runEvolutionRunner(options) {
     : undefined;
 
   const mutationOperators = Array.isArray(options.mutationOperators)
-    ? options.mutationOperators
-    : defaultMutationOperators;
+    ? [...options.mutationOperators]
+    : [...defaultMutationOperators];
+  const motifInjectIndex = mutationOperators.findIndex((op) => op.name === "motif-inject");
   const mutationSelector = options.mutationSelector ?? createMutationSelector(mutationOperators);
   const operatorNames = mutationOperators.map((operator) => operator.name);
   const telemetry =
@@ -173,6 +181,19 @@ export async function runEvolutionRunner(options) {
     if (extinctionResult) {
       haltedReason = extinctionResult.haltedReason;
       break;
+    }
+
+    const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
+    const miningResult = await runMotifMiningPipeline({
+      mapElitesResult: loopResult.mapElites,
+      motifMiningConfig,
+      simulationConfig: evaluation.simulationConfig ?? {},
+      generationDir: genDir,
+      seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
+    });
+
+    if (miningResult && miningResult.motifEffects.length > 0 && motifInjectIndex >= 0) {
+      mutationOperators[motifInjectIndex] = createMotifInjectMutation(miningResult.motifEffects);
     }
 
     const evolutionResult = applyEvolution(loopResult.nextGeneration, {

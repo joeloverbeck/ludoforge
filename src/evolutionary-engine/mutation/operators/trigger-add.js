@@ -9,7 +9,31 @@ const TRIGGER_EVENTS = [
   "start_round",
   "end_round",
   "after_action",
+  "state_change",
+  "threshold",
 ];
+
+function buildThresholdCondition(definition, rng) {
+  const variables = Array.isArray(definition?.state?.variables) ? definition.state.variables : [];
+  const intVars = variables.filter((v) => v.type?.kind === "int");
+  if (intVars.length === 0) return null;
+
+  const varIdx = rng.nextInt(intVars.length);
+  const variable = intVars[varIdx];
+  const ops = [">=", "<=", ">", "<", "=="];
+  const op = ops[rng.nextInt(ops.length)];
+  const min = typeof variable.type.min === "number" ? variable.type.min : 0;
+  const max = typeof variable.type.max === "number" ? variable.type.max : 10;
+  const range = max - min;
+  const value = range > 0 ? min + rng.nextInt(range) + 1 : min;
+
+  return {
+    kind: "cmp",
+    op,
+    left: { kind: "ref", ref: { kind: "var", id: variable.id } },
+    right: { kind: "value", value },
+  };
+}
 
 export const triggerAddMutation = {
   name: "trigger-add",
@@ -31,6 +55,13 @@ export const triggerAddMutation = {
     }
 
     const newTrigger = { event, effects };
+
+    if (event === "threshold") {
+      const condition = buildThresholdCondition(definition, rng);
+      if (condition) {
+        newTrigger.condition = condition;
+      }
+    }
 
     const existingTriggers = Array.isArray(definition.triggers)
       ? definition.triggers

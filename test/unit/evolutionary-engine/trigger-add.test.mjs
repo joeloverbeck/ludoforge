@@ -32,7 +32,7 @@ describe("triggerAddMutation", () => {
     const mutated = triggerAddMutation.mutate(genome, rng);
     const newTrigger = mutated.definition.triggers.at(-1);
 
-    const validEvents = ["start_turn", "end_turn", "start_phase", "end_phase", "start_round", "end_round", "after_action"];
+    const validEvents = ["start_turn", "end_turn", "start_phase", "end_phase", "start_round", "end_round", "after_action", "state_change", "threshold"];
     assert.ok(validEvents.includes(newTrigger.event));
   });
 
@@ -90,10 +90,10 @@ describe("triggerAddMutation", () => {
     }
   });
 
-  it("can produce a start_round trigger (seed 866)", () => {
+  it("can produce a start_round trigger (seed 538)", () => {
     const definition = cloneDefinition(baseDefinition);
     const genome = { definition };
-    const rng = createSeededRng(866);
+    const rng = createSeededRng(538);
 
     const mutated = triggerAddMutation.mutate(genome, rng);
     const newTrigger = mutated.definition.triggers.at(-1);
@@ -102,10 +102,10 @@ describe("triggerAddMutation", () => {
     assert.ok(newTrigger.effects.length >= 1);
   });
 
-  it("can produce an end_round trigger (seed 1234)", () => {
+  it("can produce an end_round trigger (seed 825)", () => {
     const definition = cloneDefinition(baseDefinition);
     const genome = { definition };
-    const rng = createSeededRng(1234);
+    const rng = createSeededRng(825);
 
     const mutated = triggerAddMutation.mutate(genome, rng);
     const newTrigger = mutated.definition.triggers.at(-1);
@@ -117,7 +117,7 @@ describe("triggerAddMutation", () => {
   it("round triggers reference valid game definition elements", () => {
     const definition = cloneDefinition(baseDefinition);
     const genome = { definition };
-    const rng = createSeededRng(866);
+    const rng = createSeededRng(538);
 
     const mutated = triggerAddMutation.mutate(genome, rng);
     const newTrigger = mutated.definition.triggers.at(-1);
@@ -142,12 +142,49 @@ describe("triggerAddMutation", () => {
       { event: "start_turn", effects: [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }] },
     ];
     const genome = { definition };
-    const rng = createSeededRng(866);
+    const rng = createSeededRng(538);
 
     const mutated = triggerAddMutation.mutate(genome, rng);
 
     assert.equal(mutated.definition.triggers.length, 2);
     assert.equal(mutated.definition.triggers[0].event, "start_turn");
     assert.equal(mutated.definition.triggers[1].event, "start_round");
+  });
+
+  it("can produce state_change and threshold events", () => {
+    const definition = cloneDefinition(baseDefinition);
+    const events = new Set();
+    for (let seed = 0; seed < 5000; seed++) {
+      const genome = { definition: structuredClone(definition) };
+      const rng = createSeededRng(seed);
+      const mutated = triggerAddMutation.mutate(genome, rng);
+      const triggers = mutated.definition.triggers ?? [];
+      if (triggers.length > 0) {
+        events.add(triggers.at(-1).event);
+      }
+    }
+    assert.ok(events.has("state_change"), "state_change should be reachable");
+    assert.ok(events.has("threshold"), "threshold should be reachable");
+  });
+
+  it("threshold triggers include a condition expression", () => {
+    const definition = cloneDefinition(baseDefinition);
+    let found = false;
+    for (let seed = 0; seed < 5000; seed++) {
+      const genome = { definition: structuredClone(definition) };
+      const rng = createSeededRng(seed);
+      const mutated = triggerAddMutation.mutate(genome, rng);
+      const triggers = mutated.definition.triggers ?? [];
+      const thresholdTrigger = triggers.find((t) => t.event === "threshold");
+      if (thresholdTrigger) {
+        assert.ok(thresholdTrigger.condition, "threshold trigger should have a condition");
+        assert.equal(thresholdTrigger.condition.kind, "cmp");
+        assert.ok(thresholdTrigger.condition.left);
+        assert.ok(thresholdTrigger.condition.right);
+        found = true;
+        break;
+      }
+    }
+    assert.ok(found, "Should find at least one threshold trigger in 5000 seeds");
   });
 });

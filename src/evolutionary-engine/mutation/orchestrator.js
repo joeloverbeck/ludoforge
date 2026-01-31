@@ -28,6 +28,14 @@ import { motifInjectMutation } from "./operators/motif-inject.js";
 import { zoneAddMutation } from "./operators/zone-add.js";
 import { tokenTypeAddMutation } from "./operators/token-type-add.js";
 import { triggerAddMutation } from "./operators/trigger-add.js";
+import { triggerRemoveMutation } from "./operators/trigger-remove.js";
+import { triggerEditMutation } from "./operators/trigger-edit.js";
+import { variableAddMutation } from "./operators/variable-add.js";
+import { variableRemoveMutation } from "./operators/variable-remove.js";
+import { variableScopeToggleMutation } from "./operators/variable-scope-toggle.js";
+import { terminationAddMutation } from "./operators/termination-add.js";
+import { terminationRemoveMutation } from "./operators/termination-remove.js";
+import { terminationConditionMutateMutation } from "./operators/termination-condition-mutate.js";
 import { schedulerSwapMutation } from "./operators/scheduler-swap.js";
 import { schedulerParamTweakMutation } from "./operators/scheduler-param-tweak.js";
 import { conditionalEffectInsertMutation } from "./operators/conditional-effect-insert.js";
@@ -61,6 +69,14 @@ const ALL_MUTATION_OPERATORS = [
   zoneAddMutation,
   tokenTypeAddMutation,
   triggerAddMutation,
+  triggerRemoveMutation,
+  triggerEditMutation,
+  variableAddMutation,
+  variableRemoveMutation,
+  variableScopeToggleMutation,
+  terminationAddMutation,
+  terminationRemoveMutation,
+  terminationConditionMutateMutation,
   schedulerSwapMutation,
   schedulerParamTweakMutation,
   conditionalEffectInsertMutation,
