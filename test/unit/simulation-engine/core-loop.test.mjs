@@ -97,6 +97,28 @@ describe("core-loop", () => {
     });
   });
 
+  describe("scheduler failure graceful handling", () => {
+    it("unsupported scheduler returns graceful draw instead of throwing", async () => {
+      const definition = createBaseDefinition();
+      definition.turn.scheduler = "bogus_scheduler";
+      definition.actions = [createIncrementAction()];
+      definition.termination.conditions = [];
+
+      const engine = createSimulationEngine({
+        definition,
+        agents: [createFirstActionAgent()],
+      });
+
+      const result = await engine.run();
+
+      assert.equal(result.terminationReason, "scheduler-error");
+      assert.equal(result.terminated, false);
+      assert.ok(result.outcome.outcomes);
+      assert.equal(result.outcome.outcomes["1"], "draw");
+      assert.ok(result.terminationDetail);
+    });
+  });
+
   describe("no-legal-actions policies", () => {
     it("terminate policy uses default outcome", async () => {
       const definition = createBaseDefinition();

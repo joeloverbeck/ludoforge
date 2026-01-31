@@ -60,5 +60,21 @@ export function advanceAndCheck(definition, state, { maxTurns, events, trajector
     };
   }
 
-  throw new Error(`Scheduler failed: ${advanceResult.reason ?? "unknown"}`);
+  const reason = advanceResult.reason ?? "unknown";
+  const terminationReason =
+    reason === "trigger-loop" ? "trigger-loop"
+    : reason === "trigger-recursion" ? "trigger-recursion"
+    : "scheduler-error";
+  const outcome = buildDrawOutcome(definition);
+  recordTermination(events, outcome);
+  return {
+    done: true,
+    result: {
+      trajectory,
+      outcome: buildSimulationOutcome(outcome),
+      terminationReason,
+      terminationDetail: `Scheduler halted: ${reason}`,
+      terminated: false,
+    },
+  };
 }

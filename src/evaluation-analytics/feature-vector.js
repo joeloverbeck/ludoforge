@@ -47,6 +47,12 @@ const FALLBACK_DEGENERACY_ORDER = [
   "trivial-win",
   "no-choices",
   "non-terminating",
+  "high-skipped-effects",
+  "any-cost-abort",
+  "high-skipped-triggers",
+  "high-pass-rate",
+  "high-no-legal-actions-termination",
+  "non-finite-metrics",
 ];
 
 const DEFAULT_FEATURE_ORDER = Array.isArray(DEFAULT_METRICS_CORE_CONFIG?.featureOrder)
@@ -58,6 +64,22 @@ const DEFAULT_DEGENERACY_ORDER = Array.isArray(DEFAULT_DEGENERACY_CONFIG?.enable
   : FALLBACK_DEGENERACY_ORDER;
 
 const NON_FINITE_POLICY = DEFAULT_METRICS_CORE_CONFIG?.normalization?.nonFinite ?? "zero";
+
+const NON_FINITE_POLICY_MODE = DEFAULT_METRICS_CORE_CONFIG?.normalization?.nonFinitePolicy ?? "penalize";
+const NON_FINITE_PER_KEY_PENALTY = DEFAULT_METRICS_CORE_CONFIG?.normalization?.nonFinitePenalty?.perKeyPenalty ?? 0.05;
+const NON_FINITE_MAX_PENALTY = DEFAULT_METRICS_CORE_CONFIG?.normalization?.nonFinitePenalty?.maxPenalty ?? 0.50;
+
+/**
+ * @param {number} nonFiniteCount - Number of non-finite metric keys
+ * @param {number} perKeyPenalty
+ * @param {number} maxPenalty
+ * @returns {number} Multiplier in [0, 1]
+ */
+function computeNonFinitePenaltyMultiplier(nonFiniteCount, perKeyPenalty, maxPenalty) {
+  if (nonFiniteCount <= 0) return 1;
+  const penalty = Math.min(maxPenalty, nonFiniteCount * perKeyPenalty);
+  return Math.max(0, 1 - penalty);
+}
 
 function safeNumber(value) {
   return Number.isFinite(value) ? value : 0;
@@ -133,4 +155,12 @@ function assembleFeatureVector(metrics, degeneracy, options = {}) {
   return { vector, nonFiniteKeys };
 }
 
-export { DEFAULT_FEATURE_ORDER, DEFAULT_DEGENERACY_ORDER, assembleFeatureVector };
+export {
+  DEFAULT_FEATURE_ORDER,
+  DEFAULT_DEGENERACY_ORDER,
+  NON_FINITE_POLICY_MODE,
+  NON_FINITE_PER_KEY_PENALTY,
+  NON_FINITE_MAX_PENALTY,
+  computeNonFinitePenaltyMultiplier,
+  assembleFeatureVector,
+};

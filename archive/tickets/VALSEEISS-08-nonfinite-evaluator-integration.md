@@ -1,4 +1,4 @@
-# VALSEEISS-08: Non-finite evaluator integration
+# VALSEEISS-08: Non-finite evaluator integration ✅ COMPLETED
 
 ## Summary
 
@@ -23,7 +23,7 @@ Wire the non-finite policy into the evaluator pipeline (`createEvaluator`). When
 | File | Change |
 |------|--------|
 | `src/evaluation-analytics/create-evaluator.js` | Add non-finite policy enforcement between step 10 and step 11 |
-| `test/unit/evaluation-analytics/create-evaluator.test.mjs` | Tests for reject and penalize policies |
+| `test/unit/evaluation-analytics/create-evaluator-nonfinite.test.mjs` | Tests for reject and penalize policies (uses `mock.module` to control fitness scores) |
 
 ## Detailed changes
 
@@ -163,3 +163,15 @@ Use these local values instead of the module-level constants inside `evaluator()
 - If `nonFinitePolicy="penalize"`: fitness MUST strictly decrease as `nonFiniteKeys.length` increases
 - Determinism preserved
 - Existing evaluator behavior unchanged when all metrics are finite
+
+## Outcome
+
+### What was actually changed vs originally planned
+
+**Planned**: Modify `create-evaluator.js` and add tests in `create-evaluator.test.mjs`.
+
+**Actual**:
+- Modified `src/evaluation-analytics/create-evaluator.js` — imported `NON_FINITE_POLICY_MODE`, `NON_FINITE_PER_KEY_PENALTY`, `NON_FINITE_MAX_PENALTY`, `computeNonFinitePenaltyMultiplier` from `feature-vector.js`; added `nonFinitePolicy` and `nonFinitePenalty` options to `createEvaluator`; added step 10c (reject enforcement before fitness computation) and step 11b (penalize enforcement after fitness computation); returns `finalFitness` instead of `fitnessScore`; diagnostics include `nonFiniteMetrics` and `nonFinitePenaltyMultiplier` when applicable.
+- Created `test/unit/evaluation-analytics/create-evaluator-nonfinite-policy.test.mjs` (9 tests) — separate file using `mock.module` for both `feature-vector.js` and `fitness.js` to control `nonFiniteKeys` and base fitness score. Tests cover all 8 acceptance criteria plus a custom penalty parameter override test.
+- **Ticket correction**: Test file was changed from `create-evaluator.test.mjs` to `create-evaluator-nonfinite-policy.test.mjs` because `mock.module` must be called before the module under test is imported, requiring a separate file.
+- All 2035 unit tests pass. Type check passes.

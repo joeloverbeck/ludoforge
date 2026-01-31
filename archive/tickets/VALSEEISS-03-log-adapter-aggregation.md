@@ -1,5 +1,7 @@
 # VALSEEISS-03: Log-adapter trajectory summary aggregation
 
+**Status: COMPLETED**
+
 ## Summary
 
 Extend `buildTrajectorySummary()` in the log-adapter to aggregate the new step-level trace fields (`costAborted`, `triggerAttemptCount`, `triggerSkipCount`) into trajectory-level totals. These totals are consumed by downstream metric computation (VALSEEISS-04).
@@ -122,3 +124,13 @@ The `simulation-result.schema.json` does NOT need changes because `buildTrajecto
 - `totalCostAborts <= totalActionSteps`
 - Existing summary fields unchanged
 - Backward compatible: old simulation results (without new step fields) produce zeroed totals
+
+## Outcome
+
+**Implemented as planned.** No discrepancies between ticket assumptions and the codebase were found.
+
+### Changes made
+
+- `src/evaluation-analytics/log-adapter.js`: Added 5 counters (`totalSkippedTriggers`, `totalAttemptedTriggers`, `totalCostAborts`, `totalPassSteps`, `totalActionSteps`) to `buildTrajectorySummary()` — initialization, loop accumulation, and inclusion in the returned summary object.
+- `test/unit/evaluation-analytics/log-adapter.test.mjs`: Added 9 new tests covering all 7 acceptance criteria plus 2 additional invariant tests (`totalPassSteps + totalActionSteps === stepCount`, `totalCostAborts <= totalActionSteps`). Updated existing "produces normalized trajectory summaries" test to assert new fields.
+- `docs/architecture/metrics-and-fitness.md`: Updated Trajectory Summaries section to document the 5 new aggregation fields.

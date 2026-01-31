@@ -4,7 +4,13 @@ import { LOG_ADAPTER_VERSION, adaptSimulationLog } from "./log-adapter.js";
 import { computeCoreMetrics } from "./metrics/core.js";
 import { computeExtendedMetrics } from "./metrics/extended.js";
 import { detectDegeneracy } from "./degeneracy.js";
-import { assembleFeatureVector } from "./feature-vector.js";
+import {
+  assembleFeatureVector,
+  NON_FINITE_POLICY_MODE,
+  NON_FINITE_PER_KEY_PENALTY,
+  NON_FINITE_MAX_PENALTY,
+  computeNonFinitePenaltyMultiplier,
+} from "./feature-vector.js";
 import { computePreferenceAwareFitness } from "./fitness.js";
 import { createRunCache } from "../simulation-engine/run-cache.js";
 import { runSuites } from "./suite-runner.js";
@@ -35,6 +41,8 @@ function defaultAgentFactory(definition, playerCount) {
  * @param {import("./agent-suite.js").AgentSuite[]} [options.agentSuites]
  * @param {Record<string, number>} [options.agentSuiteRuns]
  * @param {{ enabled?: boolean }} [options.portfolioMetrics]
+ * @param {string} [options.nonFinitePolicy]
+ * @param {{ perKeyPenalty?: number, maxPenalty?: number }} [options.nonFinitePenalty]
  * @returns {{ evaluator: function }}
  */
 export function createEvaluator(options = {}) {
@@ -52,6 +60,11 @@ export function createEvaluator(options = {}) {
     agentSuites = [],
     agentSuiteRuns = {},
     portfolioMetrics = {},
+    nonFinitePolicy = NON_FINITE_POLICY_MODE,
+    nonFinitePenalty = {
+      perKeyPenalty: NON_FINITE_PER_KEY_PENALTY,
+      maxPenalty: NON_FINITE_MAX_PENALTY,
+    },
   } = options;
 
   async function evaluator(genome) {
@@ -135,11 +148,18 @@ export function createEvaluator(options = {}) {
     // Step 8: Concatenate metrics
     const allMetrics = [...coreMetrics, ...extendedMetrics];
 
-    // Step 9: Detect degeneracy
-    const degeneracyReport = detectDegeneracy(trajectorySummaries, degeneracyThresholds);
+    // Step 9: Identify non-finite metric keys (cheap scan before degeneracy + feature vector)
+    const nonFiniteKeys = allMetrics
+      .filter((m) => m && typeof m.id === "string" && !Number.isFinite(m.value))
+      .map((m) => m.id);
 
-    // Step 10: Assemble feature vector
-    const { vector: featureVector, nonFiniteKeys } = assembleFeatureVector(allMetrics, degeneracyReport);
+    // Step 10: Detect degeneracy (with non-finite keys for non-finite-metrics flag)
+    const degeneracyReport = detectDegeneracy(trajectorySummaries, degeneracyThresholds, {
+      nonFiniteKeys,
+    });
+
+    // Step 11: Assemble feature vector
+    const { vector: featureVector } = assembleFeatureVector(allMetrics, degeneracyReport);
 
     // Step 10b: Inject structural complexity descriptor
     const tokenTypeCount = Array.isArray(definition.state?.tokenTypes) ? definition.state.tokenTypes.length : 0;
@@ -154,6 +174,25 @@ export function createEvaluator(options = {}) {
       }
     }
     featureVector.structural_complexity = tokenTypeCount + zoneCount + triggerCount + effectKinds.size;
+
+    // Step 10c: Non-finite metric policy enforcement (reject)
+    if (nonFiniteKeys.length > 0 && nonFinitePolicy === "reject") {
+      return {
+        fitness: null,
+        descriptors: null,
+        diagnostics: {
+          coreMetrics,
+          extendedMetrics: includeExtendedMetrics ? extendedMetrics : null,
+          degeneracy: degeneracyReport,
+          featureVector,
+          simulationCount: results.length,
+          logAdapterOk: true,
+          nonFiniteMetrics: nonFiniteKeys,
+          nonFinitePolicy: "reject",
+          ...(suiteResults != null ? { suiteResults } : {}),
+        },
+      };
+    }
 
     // Step 11: Compute fitness
     const fitnessResult = computePreferenceAwareFitness(featureVector, {
@@ -181,6 +220,39 @@ export function createEvaluator(options = {}) {
       };
     }
 
+    // Step 11b: Non-finite metric policy enforcement (penalize)
+    let finalFitness = fitnessScore;
+    let nonFinitePenaltyMultiplier = 1;
+
+    if (nonFinitePolicy === "penalize" && nonFiniteKeys.length > 0) {
+      nonFinitePenaltyMultiplier = computeNonFinitePenaltyMultiplier(
+        nonFiniteKeys.length,
+        nonFinitePenalty.perKeyPenalty ?? NON_FINITE_PER_KEY_PENALTY,
+        nonFinitePenalty.maxPenalty ?? NON_FINITE_MAX_PENALTY,
+      );
+      finalFitness = fitnessScore * nonFinitePenaltyMultiplier;
+    }
+
+    if (!Number.isFinite(finalFitness)) {
+      return {
+        fitness: null,
+        descriptors: null,
+        diagnostics: {
+          coreMetrics,
+          extendedMetrics: includeExtendedMetrics ? extendedMetrics : null,
+          degeneracy: degeneracyReport,
+          featureVector,
+          fitnessResult,
+          simulationCount: results.length,
+          logAdapterOk: true,
+          nonFiniteFitness: true,
+          ...(nonFiniteKeys.length > 0 ? { nonFiniteMetrics: nonFiniteKeys } : {}),
+          ...(nonFinitePenaltyMultiplier < 1 ? { nonFinitePenaltyMultiplier } : {}),
+          ...(suiteResults != null ? { suiteResults } : {}),
+        },
+      };
+    }
+
     // Step 12: Extract descriptors
     const nonFiniteSet = new Set(nonFiniteKeys);
     const descriptors = Object.fromEntries(
@@ -189,7 +261,7 @@ export function createEvaluator(options = {}) {
 
     // Step 13: Return result
     return {
-      fitness: fitnessScore,
+      fitness: finalFitness,
       descriptors,
       diagnostics: {
         coreMetrics,
@@ -199,6 +271,8 @@ export function createEvaluator(options = {}) {
         fitnessResult,
         simulationCount: results.length,
         logAdapterOk: true,
+        ...(nonFiniteKeys.length > 0 ? { nonFiniteMetrics: nonFiniteKeys } : {}),
+        ...(nonFinitePenaltyMultiplier < 1 ? { nonFinitePenaltyMultiplier } : {}),
         ...(suiteResults != null ? { suiteResults } : {}),
       },
     };

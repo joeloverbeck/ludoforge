@@ -127,6 +127,11 @@ function buildTrajectorySummary(result, index) {
   let turnCount = 0;
   let totalSkippedEffects = 0;
   let totalAppliedEffects = 0;
+  let totalSkippedTriggers = 0;
+  let totalAttemptedTriggers = 0;
+  let totalCostAborts = 0;
+  let totalPassSteps = 0;
+  let totalActionSteps = 0;
 
   for (const step of steps) {
     if (!isRecord(step) || !isRecord(step.state)) {
@@ -150,6 +155,20 @@ function buildTrajectorySummary(result, index) {
     if (Array.isArray(step.appliedEffects)) {
       totalAppliedEffects += step.appliedEffects.length;
     }
+    if (typeof step.triggerSkipCount === "number") {
+      totalSkippedTriggers += step.triggerSkipCount;
+    }
+    if (typeof step.triggerAttemptCount === "number") {
+      totalAttemptedTriggers += step.triggerAttemptCount;
+    }
+    if (step.costAborted === true) {
+      totalCostAborts += 1;
+    }
+    if (step.actionId == null) {
+      totalPassSteps += 1;
+    } else {
+      totalActionSteps += 1;
+    }
   }
 
   const summary = {
@@ -162,6 +181,11 @@ function buildTrajectorySummary(result, index) {
     uniqueStateCount: stateHashes.size,
     totalSkippedEffects,
     totalAppliedEffects,
+    totalSkippedTriggers,
+    totalAttemptedTriggers,
+    totalCostAborts,
+    totalPassSteps,
+    totalActionSteps,
     keySteps: steps.map((step) => ({
       turn: step.turn,
       phase: step.phase ?? null,

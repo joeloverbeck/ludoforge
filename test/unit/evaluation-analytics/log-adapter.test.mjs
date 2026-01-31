@@ -118,6 +118,11 @@ describe("log-adapter", () => {
       assert.equal(summary.keySteps[0].affectedGlobal, false);
       assert.deepEqual(summary.keySteps[1].affectedPlayerIds, [2]);
       assert.equal(summary.keySteps[1].affectedGlobal, false);
+      assert.equal(summary.totalSkippedTriggers, 0);
+      assert.equal(summary.totalAttemptedTriggers, 0);
+      assert.equal(summary.totalCostAborts, 0);
+      assert.equal(summary.totalPassSteps, 0);
+      assert.equal(summary.totalActionSteps, 2);
     });
 
     it("does not mutate the input log", () => {
@@ -125,6 +130,132 @@ describe("log-adapter", () => {
       const result = adaptSimulationLog({ version: LOG_ADAPTER_VERSION, log });
       assert.equal(result.ok, true);
       assert.equal(JSON.stringify(log), snapshot);
+    });
+  });
+
+  describe("trajectory summary aggregation fields", () => {
+    function makeStep(overrides) {
+      return {
+        turn: 1,
+        phase: null,
+        playerId: 1,
+        actionId: "move",
+        legalActionCount: 2,
+        affectedPlayerIds: [],
+        affectedGlobal: false,
+        state: baseState,
+        ...overrides,
+      };
+    }
+
+    function makeSummary(steps) {
+      const simResult = {
+        trajectory: { steps, events: [] },
+        outcome: { outcomes: { 1: "draw", 2: "draw" } },
+        terminationReason: "condition",
+        terminated: true,
+      };
+      const adaptedLog = {
+        definition,
+        results: [simResult],
+        metadata: { candidateId: "test" },
+      };
+      const result = adaptSimulationLog({ version: LOG_ADAPTER_VERSION, log: adaptedLog });
+      assert.equal(result.ok, true);
+      return result.value.trajectorySummaries[0];
+    }
+
+    it("totalCostAborts counts steps with costAborted=true", () => {
+      const steps = [
+        makeStep({ costAborted: true }),
+        makeStep({ costAborted: false }),
+        makeStep({ costAborted: true }),
+        makeStep({}),
+        makeStep({ costAborted: false }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalCostAborts, 2);
+    });
+
+    it("totalSkippedTriggers sums triggerSkipCount across steps", () => {
+      const steps = [
+        makeStep({ triggerSkipCount: 0, triggerAttemptCount: 1 }),
+        makeStep({ triggerSkipCount: 1, triggerAttemptCount: 2 }),
+        makeStep({ triggerSkipCount: 2, triggerAttemptCount: 3 }),
+        makeStep({ triggerSkipCount: 0, triggerAttemptCount: 0 }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalSkippedTriggers, 3);
+    });
+
+    it("totalAttemptedTriggers sums triggerAttemptCount across steps", () => {
+      const steps = [
+        makeStep({ triggerAttemptCount: 2, triggerSkipCount: 0 }),
+        makeStep({ triggerAttemptCount: 3, triggerSkipCount: 1 }),
+        makeStep({ triggerAttemptCount: 1, triggerSkipCount: 0 }),
+        makeStep({ triggerAttemptCount: 0, triggerSkipCount: 0 }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalAttemptedTriggers, 6);
+    });
+
+    it("totalPassSteps counts steps where actionId is null", () => {
+      const steps = [
+        makeStep({ actionId: null }),
+        makeStep({ actionId: "move" }),
+        makeStep({ actionId: null }),
+        makeStep({ actionId: "attack" }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalPassSteps, 2);
+    });
+
+    it("totalActionSteps counts steps where actionId is non-null", () => {
+      const steps = [
+        makeStep({ actionId: null }),
+        makeStep({ actionId: "move" }),
+        makeStep({ actionId: null }),
+        makeStep({ actionId: "attack" }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalActionSteps, 2);
+    });
+
+    it("fields default to 0 when step-level fields absent (backward compat)", () => {
+      const steps = [makeStep({}), makeStep({})];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalSkippedTriggers, 0);
+      assert.equal(summary.totalAttemptedTriggers, 0);
+      assert.equal(summary.totalCostAborts, 0);
+    });
+
+    it("totalSkippedTriggers <= totalAttemptedTriggers invariant holds", () => {
+      const steps = [
+        makeStep({ triggerAttemptCount: 5, triggerSkipCount: 2 }),
+        makeStep({ triggerAttemptCount: 3, triggerSkipCount: 1 }),
+      ];
+      const summary = makeSummary(steps);
+      assert.ok(summary.totalSkippedTriggers <= summary.totalAttemptedTriggers);
+    });
+
+    it("totalPassSteps + totalActionSteps === stepCount", () => {
+      const steps = [
+        makeStep({ actionId: null }),
+        makeStep({ actionId: "move" }),
+        makeStep({ actionId: null }),
+      ];
+      const summary = makeSummary(steps);
+      assert.equal(summary.totalPassSteps + summary.totalActionSteps, summary.stepCount);
+    });
+
+    it("totalCostAborts <= totalActionSteps when costAborted only on action steps", () => {
+      const steps = [
+        makeStep({ actionId: "move", costAborted: true }),
+        makeStep({ actionId: "attack", costAborted: true }),
+        makeStep({ actionId: "heal" }),
+      ];
+      const summary = makeSummary(steps);
+      assert.ok(summary.totalCostAborts <= summary.totalActionSteps);
     });
   });
 

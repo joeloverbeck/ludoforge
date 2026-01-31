@@ -102,6 +102,75 @@ describe("buildStep", () => {
     assert.equal(step.decisionSpaceRaw, undefined);
     assert.equal(step.decisionSpaceCapped, undefined);
   });
+
+  it("includes costAborted when trace.costAborted is true", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+      costAborted: true,
+    });
+    assert.equal(step.costAborted, true);
+  });
+
+  it("omits costAborted when trace.costAborted is falsy or absent", () => {
+    const stepNoField = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+    });
+    assert.equal(Object.hasOwn(stepNoField, "costAborted"), false);
+
+    const stepFalse = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+      costAborted: false,
+    });
+    assert.equal(Object.hasOwn(stepFalse, "costAborted"), false);
+  });
+
+  it("includes triggerAttemptCount and triggerSkipCount when provided", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+      triggerAttemptCount: 5,
+      triggerSkipCount: 2,
+    });
+    assert.equal(step.triggerAttemptCount, 5);
+    assert.equal(step.triggerSkipCount, 2);
+  });
+
+  it("omits trigger counts when absent from trace", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+    });
+    assert.equal(Object.hasOwn(step, "triggerAttemptCount"), false);
+    assert.equal(Object.hasOwn(step, "triggerSkipCount"), false);
+  });
+
+  it("includes triggerAttemptCount zero (edge case)", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+      triggerAttemptCount: 0,
+      triggerSkipCount: 0,
+    });
+    assert.equal(step.triggerAttemptCount, 0);
+    assert.equal(step.triggerSkipCount, 0);
+  });
+
+  it("returns a new object (immutability)", () => {
+    const state = makeState();
+    const trace = { stateHash: "h1", bindings: {}, appliedEffects: [], costAborted: true, triggerAttemptCount: 3, triggerSkipCount: 1 };
+    const step = buildStep(state, "attack", 5, undefined, trace);
+    assert.notEqual(step, state);
+    assert.notEqual(step, trace);
+  });
 });
 
 describe("applyAction", () => {
@@ -199,5 +268,59 @@ describe("applyAfterActionTriggers", () => {
     const definition = { state: { variables: [] }, turn: {} };
     const state = { variables: {}, tokens: [], zones: [] };
     assert.doesNotThrow(() => applyAfterActionTriggers(definition, state, {}));
+  });
+
+  it("returns triggerAttemptCount of 0 when no after_action triggers exist", () => {
+    const definition = { state: { variables: [] }, turn: {}, triggers: [] };
+    const state = { variables: {}, tokens: [], zones: [] };
+    const result = applyAfterActionTriggers(definition, state, {});
+    assert.equal(result.triggerAttemptCount, 0);
+  });
+
+  it("returns triggerAttemptCount matching after_action trigger count", () => {
+    const definition = {
+      state: { variables: [{ id: "x", scope: "global", type: { kind: "int" }, initial: 0 }] },
+      turn: {},
+      triggers: [
+        { event: "after_action", effects: [{ kind: "inc", target: { kind: "var", id: "x" }, amount: 1 }] },
+        { event: "after_action", effects: [{ kind: "inc", target: { kind: "var", id: "x" }, amount: 1 }] },
+        { event: "end_turn", effects: [] },
+      ],
+    };
+    const state = { variables: { global: { x: 0 } }, tokens: {}, zones: {} };
+    const result = applyAfterActionTriggers(definition, state, {});
+    assert.equal(result.triggerAttemptCount, 2);
+  });
+
+  it("returns triggerAttemptCount including stepEffects with after_action event", () => {
+    const definition = {
+      state: { variables: [{ id: "x", scope: "global", type: { kind: "int" }, initial: 0 }] },
+      turn: {
+        stepEffects: [
+          { event: "after_action", effects: [{ kind: "inc", target: { kind: "var", id: "x" }, amount: 1 }] },
+        ],
+      },
+      triggers: [
+        { event: "after_action", effects: [{ kind: "inc", target: { kind: "var", id: "x" }, amount: 1 }] },
+      ],
+    };
+    const state = { variables: { global: { x: 0 } }, tokens: {}, zones: {} };
+    const result = applyAfterActionTriggers(definition, state, {});
+    assert.equal(result.triggerAttemptCount, 2);
+  });
+
+  it("includes triggerAttemptCount in failure result with skippedTrigger", () => {
+    const definition = {
+      state: { variables: [{ id: "x", scope: "global", type: { kind: "int" }, initial: 0 }] },
+      turn: {},
+      triggers: [
+        // Empty effects on a condition-less trigger: fires but no state change → trigger-loop → ok:false
+        { event: "after_action", effects: [] },
+      ],
+    };
+    const state = { variables: { global: { x: 0 } }, tokens: {}, zones: {} };
+    const result = applyAfterActionTriggers(definition, state, {});
+    assert.ok(result.skippedTrigger);
+    assert.equal(result.triggerAttemptCount, 1);
   });
 });

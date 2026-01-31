@@ -20,6 +20,12 @@ function makeBaseStats(overrides = {}) {
     totalActions: 0,
     skippedEffectsTotal: 0,
     appliedEffectsTotal: 0,
+    totalCostAborts: 0,
+    totalSkippedTriggers: 0,
+    totalAttemptedTriggers: 0,
+    totalPassSteps: 0,
+    totalSteps: 0,
+    noLegalActionsTerminationCount: 0,
     winCounts: new Map(),
     winSamples: 0,
     winStepTotal: 0,
@@ -41,6 +47,13 @@ function makeBaseThresholds(overrides = {}) {
     minStepsForNoChoices: 10,
     highSkippedEffectsRate: 0.1,
     highSkippedEffectsMinAttempts: 50,
+    anyCostAbortMinCount: 1,
+    highSkippedTriggersRate: 0.1,
+    highSkippedTriggersMinAttempts: 20,
+    highPassRateRate: 0.3,
+    highPassRateMinSteps: 20,
+    highNoLegalActionsTerminationRate: 0.25,
+    highNoLegalActionsTerminationMinRuns: 10,
     ...overrides,
   };
 }
@@ -250,6 +263,181 @@ describe("checkFlags", () => {
       const thresholds = makeBaseThresholds({ highSkippedEffectsMinAttempts: 50 });
       const result = checkFlags(stats, thresholds, 5);
       assert.equal(result.flags.has("high-skipped-effects"), false);
+    });
+  });
+
+  describe("any-cost-abort flag", () => {
+    it("fires when totalCostAborts >= minCount", () => {
+      const stats = makeBaseStats({ totalCostAborts: 1 });
+      const result = checkFlags(stats, makeBaseThresholds({ anyCostAbortMinCount: 1 }), 5);
+      assert.ok(result.flags.has("any-cost-abort"));
+      assert.ok(result.details["any-cost-abort"].includes("cost_aborts=1"));
+    });
+
+    it("does not fire when totalCostAborts is 0", () => {
+      const stats = makeBaseStats({ totalCostAborts: 0 });
+      const result = checkFlags(stats, makeBaseThresholds(), 5);
+      assert.equal(result.flags.has("any-cost-abort"), false);
+    });
+
+    it("fires when totalCostAborts exceeds minCount", () => {
+      const stats = makeBaseStats({ totalCostAborts: 5 });
+      const result = checkFlags(stats, makeBaseThresholds({ anyCostAbortMinCount: 3 }), 5);
+      assert.ok(result.flags.has("any-cost-abort"));
+    });
+  });
+
+  describe("high-skipped-triggers flag", () => {
+    it("fires when rate above threshold and minAttempts met", () => {
+      const stats = makeBaseStats({
+        totalSkippedTriggers: 5,
+        totalAttemptedTriggers: 20,
+      });
+      const thresholds = makeBaseThresholds({
+        highSkippedTriggersRate: 0.10,
+        highSkippedTriggersMinAttempts: 20,
+      });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.ok(result.flags.has("high-skipped-triggers"));
+      assert.equal(result.ratios["high-skipped-triggers"], 0.25);
+    });
+
+    it("does not fire when below minAttempts", () => {
+      const stats = makeBaseStats({
+        totalSkippedTriggers: 5,
+        totalAttemptedTriggers: 5,
+      });
+      const thresholds = makeBaseThresholds({ highSkippedTriggersMinAttempts: 20 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("high-skipped-triggers"), false);
+    });
+
+    it("does not fire when rate below threshold", () => {
+      const stats = makeBaseStats({
+        totalSkippedTriggers: 1,
+        totalAttemptedTriggers: 100,
+      });
+      const thresholds = makeBaseThresholds({ highSkippedTriggersMinAttempts: 20 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("high-skipped-triggers"), false);
+      assert.equal(result.ratios["high-skipped-triggers"], 0.01);
+    });
+  });
+
+  describe("high-pass-rate flag", () => {
+    it("fires when pass rate above threshold", () => {
+      const stats = makeBaseStats({
+        totalPassSteps: 40,
+        totalSteps: 100,
+      });
+      const thresholds = makeBaseThresholds({
+        highPassRateRate: 0.30,
+        highPassRateMinSteps: 20,
+      });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.ok(result.flags.has("high-pass-rate"));
+      assert.equal(result.ratios["high-pass-rate"], 0.4);
+    });
+
+    it("does not fire when below minSteps", () => {
+      const stats = makeBaseStats({
+        totalPassSteps: 10,
+        totalSteps: 15,
+      });
+      const thresholds = makeBaseThresholds({ highPassRateMinSteps: 20 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("high-pass-rate"), false);
+    });
+
+    it("does not fire when pass rate below threshold", () => {
+      const stats = makeBaseStats({
+        totalPassSteps: 5,
+        totalSteps: 100,
+      });
+      const thresholds = makeBaseThresholds({ highPassRateMinSteps: 20 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("high-pass-rate"), false);
+      assert.equal(result.ratios["high-pass-rate"], 0.05);
+    });
+  });
+
+  describe("high-no-legal-actions-termination flag", () => {
+    it("fires when termination rate above threshold", () => {
+      const stats = makeBaseStats({ noLegalActionsTerminationCount: 3 });
+      const thresholds = makeBaseThresholds({
+        highNoLegalActionsTerminationRate: 0.25,
+        highNoLegalActionsTerminationMinRuns: 10,
+      });
+      const result = checkFlags(stats, thresholds, 10);
+      assert.ok(result.flags.has("high-no-legal-actions-termination"));
+      assert.equal(result.ratios["high-no-legal-actions-termination"], 0.3);
+    });
+
+    it("does not fire when below minRuns", () => {
+      const stats = makeBaseStats({ noLegalActionsTerminationCount: 3 });
+      const thresholds = makeBaseThresholds({ highNoLegalActionsTerminationMinRuns: 10 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("high-no-legal-actions-termination"), false);
+    });
+
+    it("does not fire when rate below threshold", () => {
+      const stats = makeBaseStats({ noLegalActionsTerminationCount: 1 });
+      const thresholds = makeBaseThresholds({
+        highNoLegalActionsTerminationRate: 0.25,
+        highNoLegalActionsTerminationMinRuns: 10,
+      });
+      const result = checkFlags(stats, thresholds, 10);
+      assert.equal(result.flags.has("high-no-legal-actions-termination"), false);
+      assert.equal(result.ratios["high-no-legal-actions-termination"], 0.1);
+    });
+  });
+
+  describe("non-finite-metrics flag", () => {
+    it("fires when nonFiniteKeys length >= minKeys", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 1 });
+      const result = checkFlags(stats, thresholds, 5, { nonFiniteKeys: ["agency", "variety"] });
+      assert.ok(result.flags.has("non-finite-metrics"));
+      assert.ok(result.details["non-finite-metrics"].includes("count=2"));
+      assert.ok(result.details["non-finite-metrics"].includes("threshold=1"));
+    });
+
+    it("does not fire when nonFiniteKeys is empty", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 1 });
+      const result = checkFlags(stats, thresholds, 5, { nonFiniteKeys: [] });
+      assert.equal(result.flags.has("non-finite-metrics"), false);
+    });
+
+    it("does not fire when nonFiniteKeys is undefined (no extraOptions)", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 1 });
+      const result = checkFlags(stats, thresholds, 5);
+      assert.equal(result.flags.has("non-finite-metrics"), false);
+    });
+
+    it("respects minKeys threshold > 1", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 3 });
+      const result = checkFlags(stats, thresholds, 5, { nonFiniteKeys: ["agency", "variety"] });
+      assert.equal(result.flags.has("non-finite-metrics"), false);
+    });
+
+    it("fires when nonFiniteKeys length exactly equals minKeys", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 2 });
+      const result = checkFlags(stats, thresholds, 5, { nonFiniteKeys: ["agency", "variety"] });
+      assert.ok(result.flags.has("non-finite-metrics"));
+    });
+
+    it("truncates key list in details to 5", () => {
+      const stats = makeBaseStats();
+      const thresholds = makeBaseThresholds({ nonFiniteMetricsMinKeys: 1 });
+      const keys = ["a", "b", "c", "d", "e", "f", "g"];
+      const result = checkFlags(stats, thresholds, 5, { nonFiniteKeys: keys });
+      assert.ok(result.flags.has("non-finite-metrics"));
+      assert.ok(result.details["non-finite-metrics"].includes("keys=a,b,c,d,e"));
+      assert.ok(!result.details["non-finite-metrics"].includes("f"));
     });
   });
 

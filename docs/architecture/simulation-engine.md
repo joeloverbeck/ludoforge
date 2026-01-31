@@ -107,7 +107,11 @@ otherwise it falls back to `configs/simulation.json`.
     successfully applied trigger effects are still returned.
 12. Record state update in the event stream.
 13. Persist the step snapshot (turn, phase, player, action, legalActionCount,
-    decisionSpaceRaw, decisionSpaceCapped).
+    decisionSpaceRaw, decisionSpaceCapped, costAborted, triggerAttemptCount,
+    triggerSkipCount). `costAborted` is extracted from the action result;
+    `triggerAttemptCount` is the count of `after_action` triggers defined
+    (including `stepEffects`); `triggerSkipCount` is the number of skipped
+    triggers in this step.
 
 No-legal-actions handling never prompts the agent. The pass policy does not run
 after-action triggers because no action occurred.
@@ -243,6 +247,12 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
   object. Present only when non-empty.
 - `skippedTriggers` (SkippedTrigger[], optional): triggers that failed during
   this step. Each entry has a `reason` string. Present only when non-empty.
+- `costAborted` (boolean, optional): true when the action's cost effects caused
+  an abort. Only set when true; absent otherwise.
+- `triggerAttemptCount` (integer >= 0, optional): number of triggers evaluated
+  during this step. Only set when present in the trace.
+- `triggerSkipCount` (integer >= 0, optional): number of triggers that were
+  skipped (failed) during this step. Only set when present in the trace.
 
 ### AppliedEffect Type
 
@@ -417,6 +427,9 @@ Optional fields:
 - `skippedTriggers?`: per-step skipped triggers with reasons (see Trace Fields above).
 - `decisionSpaceRaw?`: per-step raw (uncapped) decision-space total.
 - `decisionSpaceCapped?`: per-step boolean, true when the `maxDecisionSpace` cap was applied.
+- `costAborted?`: per-step boolean, true when cost effects caused an abort (see Trace Fields above).
+- `triggerAttemptCount?`: per-step integer, triggers evaluated (see Trace Fields above).
+- `triggerSkipCount?`: per-step integer, triggers skipped (see Trace Fields above).
 
 Hard rules:
 

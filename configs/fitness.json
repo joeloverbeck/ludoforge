@@ -26,7 +26,13 @@
     "degeneracy.dominant-action": 0,
     "degeneracy.trivial-win": 0,
     "degeneracy.no-choices": 0,
-    "degeneracy.non-terminating": 0
+    "degeneracy.non-terminating": 0,
+    "degeneracy.high-skipped-effects": 0,
+    "degeneracy.any-cost-abort": 0,
+    "degeneracy.high-skipped-triggers": 0,
+    "degeneracy.high-pass-rate": 0,
+    "degeneracy.high-no-legal-actions-termination": 0,
+    "degeneracy.non-finite-metrics": 0
   },
   "weightNormalization": true,
   "preferenceWeight": 1,

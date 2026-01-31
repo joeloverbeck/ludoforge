@@ -187,6 +187,9 @@ export type SimulationTerminationReason =
   | "max-steps"
   | "loop-detected"
   | "stalemate"
-  | "no-legal-actions";
+  | "no-legal-actions"
+  | "trigger-loop"
+  | "trigger-recursion"
+  | "scheduler-error";
 
 export type RolloutTerminationReason = SimulationTerminationReason | "max-steps";

@@ -57,6 +57,49 @@
             "rate": { "type": "number", "minimum": 0, "maximum": 1 },
             "minAttempts": { "type": "integer", "minimum": 1 }
           }
+        },
+        "anyCostAbort": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minCount"],
+          "properties": {
+            "minCount": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "highSkippedTriggers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rate", "minAttempts"],
+          "properties": {
+            "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minAttempts": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "highPassRate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rate", "minSteps"],
+          "properties": {
+            "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minSteps": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "highNoLegalActionsTermination": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rate", "minRuns"],
+          "properties": {
+            "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minRuns": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "nonFiniteMetrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minKeys"],
+          "properties": {
+            "minKeys": { "type": "integer", "minimum": 1 }
+          }
         }
       }
     },
@@ -75,7 +118,12 @@
         "trivial-win": { "$ref": "#/$defs/DegeneracyPolicy" },
         "no-choices": { "$ref": "#/$defs/DegeneracyPolicy" },
         "non-terminating": { "$ref": "#/$defs/DegeneracyPolicy" },
-        "high-skipped-effects": { "$ref": "#/$defs/DegeneracyPolicy" }
+        "high-skipped-effects": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "any-cost-abort": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "high-skipped-triggers": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "high-pass-rate": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "high-no-legal-actions-termination": { "$ref": "#/$defs/DegeneracyPolicy" },
+        "non-finite-metrics": { "$ref": "#/$defs/DegeneracyPolicy" }
       }
     },
     "penalties": {
@@ -130,6 +178,38 @@
           "properties": {
             "weight": { "type": "number", "minimum": 0 }
           }
+        },
+        "high-skipped-triggers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "high-pass-rate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "high-no-legal-actions-termination": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
+        },
+        "non-finite-metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weight"],
+          "properties": {
+            "weight": { "type": "number", "minimum": 0 }
+          }
         }
       }
     },
@@ -159,7 +239,12 @@
         "trivial-win",
         "no-choices",
         "non-terminating",
-        "high-skipped-effects"
+        "high-skipped-effects",
+        "any-cost-abort",
+        "high-skipped-triggers",
+        "high-pass-rate",
+        "high-no-legal-actions-termination",
+        "non-finite-metrics"
       ]
     },
     "DegeneracyPolicy": {

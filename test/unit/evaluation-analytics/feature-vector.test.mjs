@@ -5,6 +5,10 @@ import { readFile } from "node:fs/promises";
 import {
   DEFAULT_DEGENERACY_ORDER,
   DEFAULT_FEATURE_ORDER,
+  NON_FINITE_POLICY_MODE,
+  NON_FINITE_PER_KEY_PENALTY,
+  NON_FINITE_MAX_PENALTY,
+  computeNonFinitePenaltyMultiplier,
   assembleFeatureVector,
 } from "../../../src/evaluation-analytics/feature-vector.js";
 import { METRIC_IDS } from "../../../src/evaluation-analytics/metric-ids.js";
@@ -157,6 +161,114 @@ describe("feature-vector", () => {
 
       assert.equal(fitnessConfig.weights.advantage_reversal_rate, 0);
       assert.equal(fitnessConfig.weights.policy_sensitivity, 0);
+    });
+
+    it("includes all 13 degeneracy flags in feature vector", () => {
+      const metrics = [{ id: "agency", value: 0.5 }];
+      const degeneracy = {
+        flags: ["any-cost-abort", "high-skipped-triggers", "high-pass-rate", "high-no-legal-actions-termination"],
+      };
+      const { vector } = assembleFeatureVector(metrics, degeneracy);
+
+      const degeneracyKeys = Object.keys(vector).filter((k) => k.startsWith("degeneracy."));
+      assert.equal(degeneracyKeys.length, 13, `Expected 13 degeneracy keys, got ${degeneracyKeys.length}`);
+
+      assert.equal(vector["degeneracy.any-cost-abort"], 1);
+      assert.equal(vector["degeneracy.high-skipped-triggers"], 1);
+      assert.equal(vector["degeneracy.high-pass-rate"], 1);
+      assert.equal(vector["degeneracy.high-no-legal-actions-termination"], 1);
+      assert.equal(vector["degeneracy.high-skipped-effects"], 0);
+      assert.equal(vector["degeneracy.loop"], 0);
+    });
+
+    it("new degeneracy fitness weights exist in fitness config", async () => {
+      const fitnessConfig = await readJson("../../../configs/fitness.json");
+
+      assert.equal(typeof fitnessConfig.weights["degeneracy.high-skipped-effects"], "number");
+      assert.equal(typeof fitnessConfig.weights["degeneracy.any-cost-abort"], "number");
+      assert.equal(typeof fitnessConfig.weights["degeneracy.high-skipped-triggers"], "number");
+      assert.equal(typeof fitnessConfig.weights["degeneracy.high-pass-rate"], "number");
+      assert.equal(typeof fitnessConfig.weights["degeneracy.high-no-legal-actions-termination"], "number");
+      assert.equal(typeof fitnessConfig.weights["degeneracy.non-finite-metrics"], "number");
+    });
+
+    it("non-finite-metrics flag appears in feature vector when present in degeneracy report", () => {
+      const metrics = [{ id: "agency", value: 0.5 }];
+      const degeneracy = { flags: ["non-finite-metrics"] };
+      const { vector } = assembleFeatureVector(metrics, degeneracy);
+
+      assert.equal(vector["degeneracy.non-finite-metrics"], 1);
+    });
+
+    it("non-finite-metrics flag is 0 when absent from degeneracy report", () => {
+      const metrics = [{ id: "agency", value: 0.5 }];
+      const degeneracy = { flags: [] };
+      const { vector } = assembleFeatureVector(metrics, degeneracy);
+
+      assert.equal(vector["degeneracy.non-finite-metrics"], 0);
+    });
+
+    it("exports policy constants with expected types", () => {
+      assert.equal(typeof NON_FINITE_POLICY_MODE, "string");
+      assert.ok(["penalize", "reject"].includes(NON_FINITE_POLICY_MODE));
+      assert.equal(typeof NON_FINITE_PER_KEY_PENALTY, "number");
+      assert.equal(typeof NON_FINITE_MAX_PENALTY, "number");
+    });
+
+    it("DEFAULT_DEGENERACY_ORDER contains all 13 flags", () => {
+      assert.equal(DEFAULT_DEGENERACY_ORDER.length, 13);
+      const expected = [
+        "loop", "stalemate", "forced-move", "dominant-action", "trivial-win",
+        "no-choices", "non-terminating", "high-skipped-effects", "any-cost-abort",
+        "high-skipped-triggers", "high-pass-rate", "high-no-legal-actions-termination",
+        "non-finite-metrics",
+      ];
+      assert.deepEqual(DEFAULT_DEGENERACY_ORDER, expected);
+    });
+  });
+
+  describe("computeNonFinitePenaltyMultiplier", () => {
+    it("returns 1 when count is 0", () => {
+      assert.equal(computeNonFinitePenaltyMultiplier(0, 0.05, 0.50), 1);
+    });
+
+    it("applies per-key penalty", () => {
+      assert.equal(computeNonFinitePenaltyMultiplier(3, 0.05, 0.50), 0.85);
+    });
+
+    it("clamps at maxPenalty", () => {
+      assert.equal(computeNonFinitePenaltyMultiplier(20, 0.05, 0.50), 0.50);
+    });
+
+    it("never returns negative", () => {
+      assert.equal(computeNonFinitePenaltyMultiplier(100, 0.5, 1.0), 0);
+    });
+
+    it("decreases monotonically with nonFiniteCount", () => {
+      let prev = computeNonFinitePenaltyMultiplier(0, 0.05, 0.50);
+      for (let i = 1; i <= 10; i++) {
+        const curr = computeNonFinitePenaltyMultiplier(i, 0.05, 0.50);
+        assert.ok(curr <= prev, `multiplier at count=${i} (${curr}) should be <= at count=${i - 1} (${prev})`);
+        prev = curr;
+      }
+    });
+
+    it("returns 1 for negative count", () => {
+      assert.equal(computeNonFinitePenaltyMultiplier(-5, 0.05, 0.50), 1);
+    });
+  });
+
+  describe("config validation", () => {
+    it("configs/metrics-core.json validates against updated schema", async () => {
+      const config = await readJson("../../../configs/metrics-core.json");
+      assert.equal(typeof config.normalization.nonFinitePolicy, "string");
+      assert.ok(["penalize", "reject"].includes(config.normalization.nonFinitePolicy));
+      assert.equal(typeof config.normalization.nonFinitePenalty.perKeyPenalty, "number");
+      assert.equal(typeof config.normalization.nonFinitePenalty.maxPenalty, "number");
+      assert.ok(config.normalization.nonFinitePenalty.perKeyPenalty >= 0);
+      assert.ok(config.normalization.nonFinitePenalty.perKeyPenalty <= 1);
+      assert.ok(config.normalization.nonFinitePenalty.maxPenalty >= 0);
+      assert.ok(config.normalization.nonFinitePenalty.maxPenalty <= 1);
     });
   });
 });

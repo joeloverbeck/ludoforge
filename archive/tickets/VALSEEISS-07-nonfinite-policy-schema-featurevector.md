@@ -1,4 +1,4 @@
-# VALSEEISS-07: Non-finite policy — schema + feature-vector
+# VALSEEISS-07: Non-finite policy — schema + feature-vector ✅ COMPLETED
 
 ## Summary
 
@@ -165,3 +165,17 @@ export function computeNonFinitePenaltyMultiplier(nonFiniteCount, perKeyPenalty,
 - Existing metric normalization ("zero") unchanged
 - `computeNonFinitePenaltyMultiplier` is a pure function
 - Config backward-compatible: old configs without new fields still validate (new fields have defaults)
+
+## Outcome
+
+### What was changed (vs originally planned)
+
+Implementation matched the ticket exactly. No discrepancies required corrections.
+
+**Files modified:**
+- `schemas/config/metrics-core.schema.json` — Added `nonFinitePolicy` and `nonFinitePenalty` properties to the `normalization` object, as specified.
+- `configs/metrics-core.json` — Added `nonFinitePolicy: "penalize"` and `nonFinitePenalty: { perKeyPenalty: 0.05, maxPenalty: 0.50 }`. Version was already 2 (ticket said "bump to 2" but it was already there).
+- `src/evaluation-analytics/feature-vector.js` — Added three module-level constants (`NON_FINITE_POLICY_MODE`, `NON_FINITE_PER_KEY_PENALTY`, `NON_FINITE_MAX_PENALTY`) read from config with defaults, added `computeNonFinitePenaltyMultiplier()` pure function, and exported all four new symbols. `assembleFeatureVector()` behavior unchanged.
+- `test/unit/evaluation-analytics/feature-vector.test.mjs` — Added 8 new tests covering all 7 acceptance criteria plus a negative-count edge case.
+
+**All 2026 unit tests pass. TypeScript type check clean.**

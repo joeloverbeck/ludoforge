@@ -1,5 +1,7 @@
 # VALSEEISS-04: New core metrics
 
+## Status: COMPLETED
+
 ## Summary
 
 Add four new metric IDs (`skipped_trigger_rate`, `cost_abort_rate`, `pass_step_rate`, `no_legal_actions_termination_rate`) and implement their computation from trajectory summaries. These metrics quantify simulation pathologies that evolution can exploit.
@@ -27,7 +29,7 @@ Add four new metric IDs (`skipped_trigger_rate`, `cost_abort_rate`, `pass_step_r
 | `src/evaluation-analytics/metrics/core.js` | Implement computation for the 4 new metrics |
 | `configs/metrics-core.json` | Add 4 new IDs to `enabled` and `featureOrder` arrays |
 | `schemas/config/metrics-core.schema.json` | No change needed (items are `{ type: "string" }`, not enum-constrained) |
-| `test/unit/evaluation-analytics/metrics-core.test.mjs` | Tests for new metric computation |
+| `test/unit/evaluation-analytics/core-metrics.test.mjs` | Tests for new metric computation |
 
 ## Detailed changes
 
@@ -146,5 +148,18 @@ Add the 4 new IDs to `enabled` and `featureOrder`. Bump `version` to 2.
 
 - All four metrics are in range [0, 1]
 - Metric computation is deterministic (pure function of summaries)
-- Existing 11 metrics are unchanged
+- Existing 7 core metrics returned by `computeCoreMetrics` are unchanged (the other 4 IDs in the schema—structural_complexity, advantage_reversal_rate, policy_sensitivity, skipped_effect_rate—are computed by extended metrics, not core)
 - `METRIC_IDS` array contains all 15 IDs after schema update
+- `computeCoreMetrics` returns 11 entries (7 existing + 4 new)
+
+## Outcome
+
+### What changed vs originally planned
+
+- **Test file name corrected**: Ticket referenced `metrics-core.test.mjs` but actual file is `core-metrics.test.mjs`.
+- **Metric count clarified**: Ticket claimed "existing 11 metrics" — actually `computeCoreMetrics` returned 7 (the other 4 are extended). Ticket corrected to reflect this.
+- **All planned code changes implemented as specified**: 4 new IDs in schema, 4 new computation functions in core.js, config updated with version bump.
+- **No changes needed to `metric-ids.js`** (loads dynamically from schema, as ticket predicted).
+- **No changes needed to `schemas/config/metrics-core.schema.json`** (items are `{ type: "string" }`, as ticket predicted).
+- **VALSEEISS-03 dependency confirmed satisfied**: log-adapter already aggregates all required summary fields.
+- **22 core-metrics tests pass** (14 existing + 8 new), **5 metric-ids-sync tests pass**, **no regressions** in feature-vector or extended-metrics tests.

@@ -4,7 +4,7 @@ function formatDetail(values) {
     .join(" ");
 }
 
-function checkFlags(stats, resolvedThresholds, summaryCount) {
+function checkFlags(stats, resolvedThresholds, summaryCount, extraOptions) {
   const flags = new Set();
   const details = {};
   const ratios = {};
@@ -25,6 +25,12 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
     totalActions,
     skippedEffectsTotal,
     appliedEffectsTotal,
+    totalCostAborts,
+    totalSkippedTriggers,
+    totalAttemptedTriggers,
+    totalPassSteps,
+    totalSteps,
+    noLegalActionsTerminationCount,
     winCounts,
     winSamples,
     winStepTotal,
@@ -43,6 +49,14 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
     minStepsForNoChoices,
     highSkippedEffectsRate,
     highSkippedEffectsMinAttempts,
+    anyCostAbortMinCount,
+    highSkippedTriggersRate,
+    highSkippedTriggersMinAttempts,
+    highPassRateRate,
+    highPassRateMinSteps,
+    highNoLegalActionsTerminationRate,
+    highNoLegalActionsTerminationMinRuns,
+    nonFiniteMetricsMinKeys,
   } = resolvedThresholds;
 
   if (loopDetectedCount > 0 || (maxRepeatRatio >= loopRepeatRatio && maxRepeatedStates >= minRepeatedStates)) {
@@ -157,6 +171,66 @@ function checkFlags(stats, resolvedThresholds, summaryCount) {
         attempts: effectAttempts,
       });
     }
+  }
+
+  if (totalCostAborts >= anyCostAbortMinCount) {
+    flags.add("any-cost-abort");
+    details["any-cost-abort"] = formatDetail({
+      cost_aborts: totalCostAborts,
+      threshold: anyCostAbortMinCount,
+    });
+  }
+
+  if (totalAttemptedTriggers >= highSkippedTriggersMinAttempts) {
+    const rate = totalSkippedTriggers / totalAttemptedTriggers;
+    ratios["high-skipped-triggers"] = rate;
+    if (rate >= highSkippedTriggersRate) {
+      flags.add("high-skipped-triggers");
+      details["high-skipped-triggers"] = formatDetail({
+        skip_rate: rate,
+        threshold: highSkippedTriggersRate,
+        skipped: totalSkippedTriggers,
+        attempted: totalAttemptedTriggers,
+      });
+    }
+  }
+
+  if (totalSteps >= highPassRateMinSteps) {
+    const rate = totalPassSteps / totalSteps;
+    ratios["high-pass-rate"] = rate;
+    if (rate >= highPassRateRate) {
+      flags.add("high-pass-rate");
+      details["high-pass-rate"] = formatDetail({
+        pass_rate: rate,
+        threshold: highPassRateRate,
+        pass_steps: totalPassSteps,
+        total_steps: totalSteps,
+      });
+    }
+  }
+
+  if (summaryCount >= highNoLegalActionsTerminationMinRuns) {
+    const rate = noLegalActionsTerminationCount / summaryCount;
+    ratios["high-no-legal-actions-termination"] = rate;
+    if (rate >= highNoLegalActionsTerminationRate) {
+      flags.add("high-no-legal-actions-termination");
+      details["high-no-legal-actions-termination"] = formatDetail({
+        termination_rate: rate,
+        threshold: highNoLegalActionsTerminationRate,
+        count: noLegalActionsTerminationCount,
+        runs: summaryCount,
+      });
+    }
+  }
+
+  const nonFiniteKeys = extraOptions?.nonFiniteKeys ?? [];
+  if (nonFiniteKeys.length >= (nonFiniteMetricsMinKeys ?? 1)) {
+    flags.add("non-finite-metrics");
+    details["non-finite-metrics"] = formatDetail({
+      count: nonFiniteKeys.length,
+      keys: nonFiniteKeys.slice(0, 5).join(","),
+      threshold: nonFiniteMetricsMinKeys ?? 1,
+    });
   }
 
   return { flags, details, ratios };

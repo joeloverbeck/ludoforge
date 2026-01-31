@@ -41,6 +41,14 @@ const FALLBACK_DEGENERACY_THRESHOLDS = {
   minStepsForNoChoices: 10,
   highSkippedEffectsRate: 0.10,
   highSkippedEffectsMinAttempts: 50,
+  anyCostAbortMinCount: 1,
+  highSkippedTriggersRate: 0.10,
+  highSkippedTriggersMinAttempts: 20,
+  highPassRateRate: 0.30,
+  highPassRateMinSteps: 20,
+  highNoLegalActionsTerminationRate: 0.25,
+  highNoLegalActionsTerminationMinRuns: 10,
+  nonFiniteMetricsMinKeys: 1,
 };
 
 const FALLBACK_DEGENERACY_FLAGS = [
@@ -52,6 +60,11 @@ const FALLBACK_DEGENERACY_FLAGS = [
   "no-choices",
   "non-terminating",
   "high-skipped-effects",
+  "any-cost-abort",
+  "high-skipped-triggers",
+  "high-pass-rate",
+  "high-no-legal-actions-termination",
+  "non-finite-metrics",
 ];
 
 function resolveFiniteNumber(value, fallback) {
@@ -102,6 +115,38 @@ const DEFAULT_DEGENERACY_THRESHOLDS = {
   highSkippedEffectsMinAttempts: resolveFiniteNumber(
     DEFAULT_DEGENERACY_CONFIG?.thresholds?.highSkippedEffects?.minAttempts,
     FALLBACK_DEGENERACY_THRESHOLDS.highSkippedEffectsMinAttempts
+  ),
+  anyCostAbortMinCount: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.anyCostAbort?.minCount,
+    FALLBACK_DEGENERACY_THRESHOLDS.anyCostAbortMinCount
+  ),
+  highSkippedTriggersRate: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highSkippedTriggers?.rate,
+    FALLBACK_DEGENERACY_THRESHOLDS.highSkippedTriggersRate
+  ),
+  highSkippedTriggersMinAttempts: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highSkippedTriggers?.minAttempts,
+    FALLBACK_DEGENERACY_THRESHOLDS.highSkippedTriggersMinAttempts
+  ),
+  highPassRateRate: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highPassRate?.rate,
+    FALLBACK_DEGENERACY_THRESHOLDS.highPassRateRate
+  ),
+  highPassRateMinSteps: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highPassRate?.minSteps,
+    FALLBACK_DEGENERACY_THRESHOLDS.highPassRateMinSteps
+  ),
+  highNoLegalActionsTerminationRate: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highNoLegalActionsTermination?.rate,
+    FALLBACK_DEGENERACY_THRESHOLDS.highNoLegalActionsTerminationRate
+  ),
+  highNoLegalActionsTerminationMinRuns: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.highNoLegalActionsTermination?.minRuns,
+    FALLBACK_DEGENERACY_THRESHOLDS.highNoLegalActionsTerminationMinRuns
+  ),
+  nonFiniteMetricsMinKeys: resolveFiniteNumber(
+    DEFAULT_DEGENERACY_CONFIG?.thresholds?.nonFiniteMetrics?.minKeys,
+    FALLBACK_DEGENERACY_THRESHOLDS.nonFiniteMetricsMinKeys
   ),
 };
 

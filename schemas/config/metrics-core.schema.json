@@ -17,7 +17,30 @@
       "additionalProperties": false,
       "required": ["nonFinite"],
       "properties": {
-        "nonFinite": { "type": "string", "enum": ["zero"] }
+        "nonFinite": { "type": "string", "enum": ["zero"] },
+        "nonFinitePolicy": {
+          "type": "string",
+          "enum": ["penalize", "reject"],
+          "default": "penalize"
+        },
+        "nonFinitePenalty": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "perKeyPenalty": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.05
+            },
+            "maxPenalty": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.50
+            }
+          }
+        }
       }
     },
     "featureOrder": {

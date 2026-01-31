@@ -1,4 +1,4 @@
-# VALSEEISS-01: Trace schema + buildStep additions
+# VALSEEISS-01: Trace schema + buildStep additions ✅ COMPLETED
 
 ## Summary
 
@@ -102,3 +102,17 @@ These are NOT required — existing steps remain valid.
 - `buildStep()` return value is a new object (immutability preserved)
 - No existing tests break
 - `triggerAttemptCount >= triggerSkipCount >= 0` is enforced by the caller, not by `buildStep()` (buildStep just stores what it receives)
+
+## Outcome
+
+### What changed vs originally planned
+
+Implementation matched the ticket exactly — no discrepancies found between ticket assumptions and actual code.
+
+**Code changes (3 files modified, 0 new):**
+- `src/simulation-engine/step-execution.js` — Added 9 lines in `buildStep()` (lines 129-137) handling `costAborted`, `triggerAttemptCount`, `triggerSkipCount` using the same "only-set-when-present" pattern as existing trace fields.
+- `schemas/simulation-engine/simulation-result.schema.json` — Added 3 optional properties to `TrajectoryStep`: `costAborted` (boolean), `triggerAttemptCount` (integer, min 0), `triggerSkipCount` (integer, min 0).
+- `test/unit/simulation-engine/step-execution.test.mjs` — Added 7 new tests covering all 6 acceptance criteria plus an edge case.
+- `test/unit/simulation-engine/trace-schema.test.mjs` — Added 6 schema validation tests (positive and negative) for the new fields.
+
+**All 1942 unit tests pass. No existing tests broken.**

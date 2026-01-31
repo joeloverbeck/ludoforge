@@ -322,6 +322,77 @@ describe("trace-schema", () => {
     });
   });
 
+  describe("costAborted, triggerAttemptCount, triggerSkipCount fields", () => {
+    it("validates step with all three new fields", () => {
+      assertValid(
+        buildMinimalResult({
+          costAborted: true,
+          triggerAttemptCount: 5,
+          triggerSkipCount: 2,
+        })
+      );
+    });
+
+    it("validates step without any of the three new fields (backward compat)", () => {
+      assertValid(buildMinimalResult());
+    });
+
+    it("rejects costAborted with wrong type", () => {
+      assertInvalid(buildMinimalResult({ costAborted: "yes" }));
+    });
+
+    it("rejects triggerAttemptCount with wrong type", () => {
+      assertInvalid(buildMinimalResult({ triggerAttemptCount: "five" }));
+    });
+
+    it("rejects triggerSkipCount with negative value", () => {
+      assertInvalid(buildMinimalResult({ triggerSkipCount: -1 }));
+    });
+
+    it("accepts triggerAttemptCount and triggerSkipCount at zero", () => {
+      assertValid(
+        buildMinimalResult({
+          triggerAttemptCount: 0,
+          triggerSkipCount: 0,
+        })
+      );
+    });
+  });
+
+  describe("scheduler failure termination reasons", () => {
+    it("accepts trigger-loop with terminated:false", () => {
+      assertValid({
+        ...buildMinimalResult(),
+        terminationReason: "trigger-loop",
+        terminated: false,
+      });
+    });
+
+    it("accepts trigger-recursion with terminated:false", () => {
+      assertValid({
+        ...buildMinimalResult(),
+        terminationReason: "trigger-recursion",
+        terminated: false,
+      });
+    });
+
+    it("accepts scheduler-error with terminated:false", () => {
+      assertValid({
+        ...buildMinimalResult(),
+        terminationReason: "scheduler-error",
+        terminated: false,
+      });
+    });
+
+    it("rejects trigger-loop with terminated:true", () => {
+      assertInvalid({
+        ...buildMinimalResult(),
+        terminationReason: "trigger-loop",
+        terminated: true,
+      });
+    });
+  });
+
   describe("multiple appliedEffects ordering", () => {
     it("accepts multiple effects in sequence", () => {
       assertValid(

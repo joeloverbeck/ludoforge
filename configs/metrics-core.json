@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-01-28T00:00:00Z",
+  "version": 2,
+  "updatedAt": "2026-01-31T00:00:00Z",
   "enabled": [
     "agency",
     "strategic_depth",
@@ -12,10 +12,19 @@
     "structural_complexity",
     "advantage_reversal_rate",
     "policy_sensitivity",
-    "skipped_effect_rate"
+    "skipped_effect_rate",
+    "skipped_trigger_rate",
+    "cost_abort_rate",
+    "pass_step_rate",
+    "no_legal_actions_termination_rate"
   ],
   "normalization": {
-    "nonFinite": "zero"
+    "nonFinite": "zero",
+    "nonFinitePolicy": "penalize",
+    "nonFinitePenalty": {
+      "perKeyPenalty": 0.05,
+      "maxPenalty": 0.50
+    }
   },
   "featureOrder": [
     "agency",
@@ -28,6 +37,10 @@
     "structural_complexity",
     "advantage_reversal_rate",
     "policy_sensitivity",
-    "skipped_effect_rate"
+    "skipped_effect_rate",
+    "skipped_trigger_rate",
+    "cost_abort_rate",
+    "pass_step_rate",
+    "no_legal_actions_termination_rate"
   ]
 }

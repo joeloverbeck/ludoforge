@@ -59,14 +59,17 @@ export function applyAction(definition, state, action, context, args) {
  * @param {object} context
  */
 export function applyAfterActionTriggers(definition, state, context) {
+  const allTriggers = [...(definition.triggers ?? []), ...(definition.turn?.stepEffects ?? [])];
+  const triggerAttemptCount = allTriggers.filter(t => t.event === "after_action").length;
   const result = applyTriggers(definition, state, "after_action", context);
   if (!result.ok) {
     return {
       appliedEffects: result.appliedEffects ?? [],
       skippedTrigger: { reason: result.reason ?? "unknown" },
+      triggerAttemptCount,
     };
   }
-  return { appliedEffects: result.appliedEffects ?? [] };
+  return { appliedEffects: result.appliedEffects ?? [], triggerAttemptCount };
 }
 
 /**
@@ -125,6 +128,15 @@ export function buildStep(state, actionId, legalActionCount, impact, trace) {
     }
     if (typeof trace.decisionSpaceCapped === "boolean") {
       step.decisionSpaceCapped = trace.decisionSpaceCapped;
+    }
+    if (trace.costAborted === true) {
+      step.costAborted = true;
+    }
+    if (typeof trace.triggerAttemptCount === "number") {
+      step.triggerAttemptCount = trace.triggerAttemptCount;
+    }
+    if (typeof trace.triggerSkipCount === "number") {
+      step.triggerSkipCount = trace.triggerSkipCount;
     }
   }
   return step;

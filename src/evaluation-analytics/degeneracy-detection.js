@@ -6,7 +6,7 @@ import {
 import { accumulateStatistics } from "./degeneracy-statistics.js";
 import { checkFlags } from "./degeneracy-flags.js";
 
-function detectDegeneracy(summaries, thresholds = {}) {
+function detectDegeneracy(summaries, thresholds = {}, options = {}) {
   const resolvedThresholds = {
     loopRepeatRatio: clampNumber(
       thresholds.loopRepeatRatio ?? DEFAULT_DEGENERACY_THRESHOLDS.loopRepeatRatio
@@ -42,10 +42,38 @@ function detectDegeneracy(summaries, thresholds = {}) {
     highSkippedEffectsMinAttempts: clampNumber(
       thresholds.highSkippedEffectsMinAttempts ?? DEFAULT_DEGENERACY_THRESHOLDS.highSkippedEffectsMinAttempts
     ),
+    anyCostAbortMinCount: clampNumber(
+      thresholds.anyCostAbortMinCount ?? DEFAULT_DEGENERACY_THRESHOLDS.anyCostAbortMinCount
+    ),
+    highSkippedTriggersRate: clampNumber(
+      thresholds.highSkippedTriggersRate ?? DEFAULT_DEGENERACY_THRESHOLDS.highSkippedTriggersRate
+    ),
+    highSkippedTriggersMinAttempts: clampNumber(
+      thresholds.highSkippedTriggersMinAttempts ?? DEFAULT_DEGENERACY_THRESHOLDS.highSkippedTriggersMinAttempts
+    ),
+    highPassRateRate: clampNumber(
+      thresholds.highPassRateRate ?? DEFAULT_DEGENERACY_THRESHOLDS.highPassRateRate
+    ),
+    highPassRateMinSteps: clampNumber(
+      thresholds.highPassRateMinSteps ?? DEFAULT_DEGENERACY_THRESHOLDS.highPassRateMinSteps
+    ),
+    highNoLegalActionsTerminationRate: clampNumber(
+      thresholds.highNoLegalActionsTerminationRate ?? DEFAULT_DEGENERACY_THRESHOLDS.highNoLegalActionsTerminationRate
+    ),
+    highNoLegalActionsTerminationMinRuns: clampNumber(
+      thresholds.highNoLegalActionsTerminationMinRuns ?? DEFAULT_DEGENERACY_THRESHOLDS.highNoLegalActionsTerminationMinRuns
+    ),
+    nonFiniteMetricsMinKeys: clampNumber(
+      thresholds.nonFiniteMetricsMinKeys ?? DEFAULT_DEGENERACY_THRESHOLDS.nonFiniteMetricsMinKeys
+    ),
+  };
+
+  const resolvedOptions = {
+    nonFiniteKeys: options.nonFiniteKeys,
   };
 
   const stats = accumulateStatistics(summaries);
-  const { flags, details, ratios } = checkFlags(stats, resolvedThresholds, summaries.length);
+  const { flags, details, ratios } = checkFlags(stats, resolvedThresholds, summaries.length, resolvedOptions);
 
   const enabledFlags = new Set(DEFAULT_DEGENERACY_FLAGS);
   const filteredFlags = Array.from(flags).filter((flag) => enabledFlags.has(flag));

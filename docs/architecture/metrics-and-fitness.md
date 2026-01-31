@@ -11,6 +11,11 @@ Analytics operate on per-simulation summaries that include:
 - `totalSkippedEffects`, `totalAppliedEffects` (accumulated from trajectory
   step `skippedEffects` and `appliedEffects` arrays; used for skip-rate
   degeneracy detection)
+- `totalSkippedTriggers`, `totalAttemptedTriggers` (accumulated from
+  step-level `triggerSkipCount` and `triggerAttemptCount`)
+- `totalCostAborts` (count of steps where `costAborted === true`)
+- `totalPassSteps` (steps where `actionId` is null),
+  `totalActionSteps` (steps where `actionId` is non-null)
 
 ## Config Defaults and Overrides
 
@@ -44,11 +49,24 @@ Implemented in `src/evaluation-analytics/metrics/core.js`:
   spawn, move, and destroy. Variable effects support a `player` field on the
   target ref (a binding name, `"self"`, or `"opponent"`) to direct writes and
   impact recording to a specific player rather than the active player.
+- Skipped trigger rate = `totalSkippedTriggers / max(1, totalAttemptedTriggers)`
+  aggregated across all summaries. Quantifies how often triggers fail silently.
+- Cost abort rate = `totalCostAborts / max(1, totalActionSteps)` aggregated
+  across all summaries. Detects games where actions frequently fail due to
+  unaffordable costs.
+- Pass step rate = `totalPassSteps / max(1, stepCount)` aggregated across all
+  summaries. High values indicate games where players lack meaningful actions.
+- No-legal-actions termination rate = fraction of runs where
+  `terminationReason === "no-legal-actions"`. Detects games that frequently
+  dead-end into states with no available moves.
 
 Core metric ordering defaults to `configs/metrics-core.json`:
 
 - `featureOrder`: canonical order for the core metrics.
-- `normalization.nonFinite`: non-finite value policy (currently `zero`).
+- `normalization.nonFinite`: non-finite value normalization (currently `zero` — replaces non-finite values with 0 in the feature vector).
+- `normalization.nonFinitePolicy`: what to do about genomes with non-finite metrics — `"penalize"` (reduce fitness by a multiplier) or `"reject"` (return null fitness). Default: `"penalize"`.
+- `normalization.nonFinitePenalty`: penalty parameters when policy is `"penalize"` — `perKeyPenalty` (default 0.05) and `maxPenalty` (default 0.50). The multiplier is `max(0, 1 - min(maxPenalty, count * perKeyPenalty))`.
+- `computeNonFinitePenaltyMultiplier()` in `feature-vector.js` computes the penalty multiplier as a pure function. The evaluator (downstream) applies it.
 
 ## Extended Metric Calculations
 
@@ -183,6 +201,23 @@ Implemented in `src/evaluation-analytics/degeneracy.js` with defaults from
   (totalSkippedEffects + totalAppliedEffects)`) >= 0.10 with at least 50 total
   effect attempts across all summaries. Indicates genomes with many structurally
   invalid or bounds-violating effects.
+- Any cost abort: any run accumulates `totalCostAborts >= minCount` (default 1).
+  Detects games where actions fail due to unaffordable costs. Policy: reject.
+- High skipped triggers: `totalSkippedTriggers / totalAttemptedTriggers >= rate`
+  (default 0.10) with at least `minAttempts` (default 20) total trigger attempts.
+  Detects games where triggers frequently fail silently.
+- High pass rate: `totalPassSteps / totalSteps >= rate` (default 0.30) with at
+  least `minSteps` (default 20) total steps. Detects games where players lack
+  meaningful actions and pass most turns.
+- High no-legal-actions termination: fraction of runs where
+  `terminationReason === "no-legal-actions"` >= `rate` (default 0.25) with at
+  least `minRuns` (default 10) summaries. Detects games that frequently dead-end.
+- Non-finite metrics: fires when `nonFiniteKeys.length >= minKeys` (default 1).
+  Unlike other flags, this is not derived from trajectory statistics — it comes
+  from the metric computation step. The evaluator pre-computes non-finite keys
+  from `allMetrics` and passes them to `detectDegeneracy()` via `options.nonFiniteKeys`.
+  This bridges the non-finite policy (VALSEEISS-07/08) with degeneracy detection,
+  allowing non-finite metrics to participate in compound rejection.
 
 Note: `forcedMove` and `noChoices` are preference/policy knobs, not genre-truth.
 Some game designs legitimately have constrained action spaces.
@@ -195,6 +230,12 @@ Degeneracy flags and filters are configured by:
 - `thresholds.trivialWin.winRate`, `thresholds.trivialWin.maxAvgSteps`,
   `thresholds.trivialWin.minSamples`
 - `thresholds.highSkippedEffects.rate`, `thresholds.highSkippedEffects.minAttempts`
+- `thresholds.anyCostAbort.minCount`
+- `thresholds.highSkippedTriggers.rate`, `thresholds.highSkippedTriggers.minAttempts`
+- `thresholds.highPassRate.rate`, `thresholds.highPassRate.minSteps`
+- `thresholds.highNoLegalActionsTermination.rate`,
+  `thresholds.highNoLegalActionsTermination.minRuns`
+- `thresholds.nonFiniteMetrics.minKeys`
 - `enabledFlags`: which degeneracy flags are active
 - `policyByFlag`: per-flag policy with three semantics:
   - `"reject"` — genome is filtered out entirely (hard gate)
@@ -204,8 +245,10 @@ Degeneracy flags and filters are configured by:
 - `minStepsForNoChoices`: minimum total trajectory steps required before the no-choices
   flag can fire (guards against false positives on very short games)
 
-Default policies: `loop`, `non-terminating`, and `no-choices` → reject; all others
-(including `high-skipped-effects`) → penalize.
+Default policies: `loop`, `non-terminating`, `no-choices`, and `any-cost-abort` →
+reject; all others (including `high-skipped-effects`, `high-skipped-triggers`,
+`high-pass-rate`, `high-no-legal-actions-termination`, `non-finite-metrics`) →
+penalize.
 
 ### Compound Rejection
 
@@ -233,7 +276,9 @@ Implemented in `src/evaluation-analytics/feature-vector.js`:
 - Ordering defaults to `configs/metrics-core.json` `featureOrder`:
   `agency`, `strategic_depth`, `seat_imbalance`, `variety`, `pacing_tension`,
   `turn_taking_rate`, `interaction_rate`, `structural_complexity`,
-  `advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`.
+  `advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`,
+  `skipped_trigger_rate`, `cost_abort_rate`, `pass_step_rate`,
+  `no_legal_actions_termination_rate`.
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
 - Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.
@@ -334,6 +379,8 @@ passes it to the runner as `options.evaluation`.
 | `agentSuites` | `AgentSuite[]` | `[]` | Agent suites for portfolio metric simulations |
 | `agentSuiteRuns` | `Record<string, number>` | `{}` | Map of suite ID → number of runs per suite |
 | `portfolioMetrics` | `{ enabled?: boolean }` | `{}` | When `enabled: true`, triggers agent-suite simulations via `runSuites()` with run caching |
+| `nonFinitePolicy` | `string` | from `metrics-core.json` (`"penalize"`) | Per-evaluator override for non-finite metric policy: `"reject"` or `"penalize"` |
+| `nonFinitePenalty` | `{ perKeyPenalty?: number, maxPenalty?: number }` | from `metrics-core.json` | Per-evaluator override for penalty parameters |
 
 ### Pipeline Steps
 
@@ -349,15 +396,17 @@ passes it to the runner as `options.evaluation`.
 9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
 10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.
 10b. **Inject structural complexity** — computes `structural_complexity = tokenTypeCount + zoneCount + triggerCount + distinctEffectKinds` from the game definition and injects it into the feature vector. This provides a structural diversity axis for MAP-Elites that is independent of behavioral simulation metrics.
+10c. **Non-finite metric policy enforcement (reject)** — if `nonFiniteKeys` is non-empty and `nonFinitePolicy` is `"reject"`, return early with `{ fitness: null, descriptors: null }` and diagnostics including `nonFiniteMetrics` and `nonFinitePolicy: "reject"`.
 11. **Compute fitness** — `computePreferenceAwareFitness(vector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
+11b. **Non-finite metric policy enforcement (penalize)** — if `nonFinitePolicy` is `"penalize"` and `nonFiniteKeys` is non-empty, multiply the fitness score by `computeNonFinitePenaltyMultiplier(count, perKeyPenalty, maxPenalty)`. Diagnostics include `nonFiniteMetrics` and `nonFinitePenaltyMultiplier` when applicable.
 12. **Extract descriptors** — for each `descriptorKey`, if the key is in `nonFiniteKeys` the descriptor value is `null` (maps to `"unknown"` bin token); otherwise use the numeric value from `vector`.
-13. **Return** — `{ fitness, descriptors, diagnostics }`.
+13. **Return** — `{ fitness: finalFitness, descriptors, diagnostics }`.
 
 ### Return Value
 
 ```
 {
-  fitness: number,         // from computePreferenceAwareFitness().score
+  fitness: number,         // finalFitness (after non-finite penalty if applicable)
   descriptors: object,     // subset of feature vector keyed by descriptorKeys
   diagnostics: {
     coreMetrics: MetricResult[],
@@ -367,6 +416,9 @@ passes it to the runner as `options.evaluation`.
     fitnessResult: PreferenceFitnessResult,
     simulationCount: number,
     logAdapterOk: boolean,
+    nonFiniteMetrics?: string[],          // present when nonFiniteKeys is non-empty
+    nonFinitePenaltyMultiplier?: number,  // present when penalize policy applied
+    nonFinitePolicy?: string,             // present when reject policy triggered
   }
 }
 ```
@@ -377,14 +429,31 @@ passes it to the runner as `options.evaluation`.
 - If `engine.runBatch()` throws (e.g., bounds violations from dec-at-zero actions), the evaluator catches the error and returns `{ fitness: null, descriptors: null, diagnostics: { simulationError: true, error: message } }`. Callers (e.g., `generateSeedPopulation`) treat null-fitness results as evaluation errors.
 - All metric/fitness functions handle edge cases (empty summaries, zero-step games) gracefully.
 
+### Non-Finite Metric Policy
+
+The evaluator enforces a configurable policy for genomes with non-finite metric
+values (step 10c and 11b):
+
+- **`"reject"`** (step 10c): if any metric is non-finite, return
+  `{ fitness: null, descriptors: null }` with `diagnostics.nonFiniteMetrics` and
+  `diagnostics.nonFinitePolicy: "reject"`. This prevents the genome from entering
+  the MAP-Elites grid entirely.
+- **`"penalize"`** (step 11b, default): multiply the fitness score by
+  `computeNonFinitePenaltyMultiplier(count, perKeyPenalty, maxPenalty)`. Fitness
+  strictly decreases as the number of non-finite keys increases. Diagnostics
+  include `nonFiniteMetrics` and `nonFinitePenaltyMultiplier`.
+
+The policy defaults to `configs/metrics-core.json` `normalization.nonFinitePolicy`
+but can be overridden per-evaluator via the `nonFinitePolicy` and `nonFinitePenalty`
+options.
+
 ### Non-Finite Fitness Guard
 
-The built-in evaluator (Step 11) checks the fitness value returned by
-`computePreferenceAwareFitness()`. If the score is non-finite (`NaN`, `Infinity`,
-or `-Infinity`), the evaluator returns `{ fitness: null, descriptors: null }` with
-a diagnostic `{ nonFiniteFitness: true }`. This prevents corrupt fitness values
-from entering the MAP-Elites grid and ensures the genome is rejected by the
-evaluation adapter rather than silently placed.
+The built-in evaluator (Step 11) also checks the fitness value returned by
+`computePreferenceAwareFitness()` and the final fitness after penalty application.
+If either is non-finite (`NaN`, `Infinity`, or `-Infinity`), the evaluator returns
+`{ fitness: null, descriptors: null }` with a diagnostic `{ nonFiniteFitness: true }`.
+This prevents corrupt fitness values from entering the MAP-Elites grid.
 
 ## LTS Builder and Motif Mining
 

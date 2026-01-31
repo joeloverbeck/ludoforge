@@ -188,4 +188,65 @@ describe("accumulateStatistics", () => {
     assert.equal(stats.loopDetectedCount, 0);
     assert.equal(stats.forcedSamples, 0);
   });
+
+  it("accumulates totalCostAborts from summaries", () => {
+    const summaries = [
+      { totalCostAborts: 2 },
+      { totalCostAborts: 3 },
+      {},
+    ];
+    const stats = accumulateStatistics(summaries);
+    assert.equal(stats.totalCostAborts, 5);
+  });
+
+  it("accumulates totalSkippedTriggers and totalAttemptedTriggers", () => {
+    const summaries = [
+      { totalSkippedTriggers: 4, totalAttemptedTriggers: 10 },
+      { totalSkippedTriggers: 1, totalAttemptedTriggers: 15 },
+    ];
+    const stats = accumulateStatistics(summaries);
+    assert.equal(stats.totalSkippedTriggers, 5);
+    assert.equal(stats.totalAttemptedTriggers, 25);
+  });
+
+  it("accumulates totalPassSteps and totalSteps", () => {
+    const summaries = [
+      { totalPassSteps: 3, stepCount: 10 },
+      { totalPassSteps: 2, stepCount: 8 },
+    ];
+    const stats = accumulateStatistics(summaries);
+    assert.equal(stats.totalPassSteps, 5);
+    assert.equal(stats.totalSteps, 18);
+  });
+
+  it("counts no-legal-actions terminations", () => {
+    const summaries = [
+      { terminationReason: "no-legal-actions" },
+      { terminationReason: "no-legal-actions" },
+      { terminationReason: "condition" },
+    ];
+    const stats = accumulateStatistics(summaries);
+    assert.equal(stats.noLegalActionsTerminationCount, 2);
+  });
+
+  it("defaults new fields to zero for missing summary properties", () => {
+    const summaries = [{}];
+    const stats = accumulateStatistics(summaries);
+    assert.equal(stats.totalCostAborts, 0);
+    assert.equal(stats.totalSkippedTriggers, 0);
+    assert.equal(stats.totalAttemptedTriggers, 0);
+    assert.equal(stats.totalPassSteps, 0);
+    assert.equal(stats.totalSteps, 0);
+    assert.equal(stats.noLegalActionsTerminationCount, 0);
+  });
+
+  it("returns zeroed new fields for empty summaries", () => {
+    const stats = accumulateStatistics([]);
+    assert.equal(stats.totalCostAborts, 0);
+    assert.equal(stats.totalSkippedTriggers, 0);
+    assert.equal(stats.totalAttemptedTriggers, 0);
+    assert.equal(stats.totalPassSteps, 0);
+    assert.equal(stats.totalSteps, 0);
+    assert.equal(stats.noLegalActionsTerminationCount, 0);
+  });
 });

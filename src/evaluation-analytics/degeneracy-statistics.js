@@ -29,6 +29,13 @@ function accumulateStatistics(summaries) {
   let skippedEffectsTotal = 0;
   let appliedEffectsTotal = 0;
 
+  let totalCostAborts = 0;
+  let totalSkippedTriggers = 0;
+  let totalAttemptedTriggers = 0;
+  let totalPassSteps = 0;
+  let totalSteps = 0;
+  let noLegalActionsTerminationCount = 0;
+
   const winCounts = new Map();
   let winSamples = 0;
   let winStepTotal = 0;
@@ -98,6 +105,15 @@ function accumulateStatistics(summaries) {
       appliedEffectsTotal += summary.totalAppliedEffects;
     }
 
+    totalCostAborts += clampNumber(summary?.totalCostAborts);
+    totalSkippedTriggers += clampNumber(summary?.totalSkippedTriggers);
+    totalAttemptedTriggers += clampNumber(summary?.totalAttemptedTriggers);
+    totalPassSteps += clampNumber(summary?.totalPassSteps);
+    totalSteps += clampNumber(summary?.stepCount);
+    if (summary?.terminationReason === "no-legal-actions") {
+      noLegalActionsTerminationCount += 1;
+    }
+
     const outcomes = summary?.terminalOutcome?.outcomes;
     if (outcomes && typeof outcomes === "object") {
       const winners = Object.entries(outcomes).filter(([, outcome]) => outcome === "win");
@@ -129,6 +145,12 @@ function accumulateStatistics(summaries) {
     totalActions,
     skippedEffectsTotal,
     appliedEffectsTotal,
+    totalCostAborts,
+    totalSkippedTriggers,
+    totalAttemptedTriggers,
+    totalPassSteps,
+    totalSteps,
+    noLegalActionsTerminationCount,
     winCounts,
     winSamples,
     winStepTotal,

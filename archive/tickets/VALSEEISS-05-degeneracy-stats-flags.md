@@ -1,4 +1,4 @@
-# VALSEEISS-05: Degeneracy statistics + flags for new signals
+# VALSEEISS-05: Degeneracy statistics + flags for new signals ✅ COMPLETED
 
 ## Summary
 
@@ -26,7 +26,7 @@ Add four new degeneracy flags (`anyCostAbort`, `highSkippedTriggers`, `highPassR
 | `src/evaluation-analytics/degeneracy-statistics.js` | Accumulate new statistics from summaries |
 | `src/evaluation-analytics/degeneracy-flags.js` | Implement `checkFlags()` detection for 4 new flags |
 | `src/evaluation-analytics/degeneracy-config.js` | Add threshold resolution for new flags |
-| `src/evaluation-analytics/degeneracy-penalty.js` | Add penalty computation for new penalizable flags |
+| `src/evaluation-analytics/degeneracy-penalty.js` | **No code changes needed** — the existing generic penalty loop already handles any flat-weight flag via `policyByFlag` + `penalties` config. Only schema/config entries are needed. |
 | `test/unit/evaluation-analytics/degeneracy-statistics.test.mjs` | Tests for new statistics |
 | `test/unit/evaluation-analytics/degeneracy-flags.test.mjs` | Tests for new flag detection |
 
@@ -166,7 +166,7 @@ Add threshold resolution for the 4 new flag thresholds, extracting from config w
 
 ### `src/evaluation-analytics/degeneracy-penalty.js`
 
-Add penalty weights for `high-skipped-triggers`, `high-pass-rate`, `high-no-legal-actions-termination`. These follow the existing flat-weight pattern (like `dominant-action`). `any-cost-abort` is reject-only, no penalty weight needed.
+**No code changes required.** The existing `computeDegeneracyPenalty()` generic loop already iterates `policyByFlag`, looks up `penalties[flag].weight`, and applies flat weights for any non-`forced-move` flag. Adding the new flags to the schema/config (`policyByFlag` + `penalties`) is sufficient. `any-cost-abort` is reject-only, so no penalty weight is needed.
 
 ## Out of scope
 
@@ -216,3 +216,25 @@ Add penalty weights for `high-skipped-triggers`, `high-pass-rate`, `high-no-lega
 - New flags are disabled by default if not in `enabledFlags`
 - Existing 8 flags are completely unchanged in behavior
 - Statistics accumulation is backward-compatible (missing fields default to 0)
+
+## Outcome
+
+### What was actually changed vs originally planned
+
+**Schema (`degeneracy.schema.json`)**: Added exactly as planned — 4 new enum values, 4 threshold objects, 4 policyByFlag entries, 3 penalty entries (any-cost-abort is reject-only).
+
+**Config (`degeneracy.json`)**: Added all 4 new thresholds, flags, policies, and 3 penalty weights as planned.
+
+**`degeneracy-statistics.js`**: Added accumulation for 6 new fields (`totalCostAborts`, `totalSkippedTriggers`, `totalAttemptedTriggers`, `totalPassSteps`, `totalSteps`, `noLegalActionsTerminationCount`) using `clampNumber()` for numeric safety, exactly as planned.
+
+**`degeneracy-flags.js`**: Added 4 new flag detection checks with detail formatting and ratio population, exactly as planned.
+
+**`degeneracy-config.js`**: Added 7 new fallback threshold values and 4 new enabled flags, plus config-to-threshold resolution for all new thresholds.
+
+**`degeneracy-penalty.js`**: **No code changes** (corrected from original ticket). The existing generic penalty loop already handles flat-weight flags via `policyByFlag` + `penalties` config entries. Only schema/config changes were needed.
+
+### Test results
+
+- 58 degeneracy-statistics + degeneracy-flags tests pass (21 new)
+- 33 degeneracy.test.mjs tests pass (no regressions)
+- Config validates successfully against updated schema

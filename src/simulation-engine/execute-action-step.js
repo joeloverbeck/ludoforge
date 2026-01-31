@@ -63,6 +63,10 @@ export function executeActionStep({
     ? [triggerResult.skippedTrigger]
     : [];
 
+  const costAborted = actionResult.costAborted === true;
+  const triggerAttemptCount = triggerResult.triggerAttemptCount ?? 0;
+  const triggerSkipCount = skippedTriggers.length;
+
   const step = buildStep(state, action.id, legalActionCount, impact, {
     stateHash,
     bindings: {},
@@ -71,6 +75,9 @@ export function executeActionStep({
     skippedTriggers,
     decisionSpaceRaw,
     decisionSpaceCapped,
+    costAborted,
+    triggerAttemptCount,
+    triggerSkipCount,
   });
   recordStep(step, trajectory, stepControl);
 }

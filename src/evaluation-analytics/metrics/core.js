@@ -207,6 +207,46 @@ function computeInteractionRate(summaries) {
   return average(rates);
 }
 
+function computeSkippedTriggerRate(summaries) {
+  let allSkipped = 0;
+  let allAttempted = 0;
+  for (const s of summaries) {
+    allSkipped += s.totalSkippedTriggers ?? 0;
+    allAttempted += s.totalAttemptedTriggers ?? 0;
+  }
+  return allSkipped / Math.max(1, allAttempted);
+}
+
+function computeCostAbortRate(summaries) {
+  let allCostAborts = 0;
+  let allActionSteps = 0;
+  for (const s of summaries) {
+    allCostAborts += s.totalCostAborts ?? 0;
+    allActionSteps += s.totalActionSteps ?? 0;
+  }
+  return allCostAborts / Math.max(1, allActionSteps);
+}
+
+function computePassStepRate(summaries) {
+  let allPassSteps = 0;
+  let allSteps = 0;
+  for (const s of summaries) {
+    allPassSteps += s.totalPassSteps ?? 0;
+    allSteps += s.stepCount ?? 0;
+  }
+  return allPassSteps / Math.max(1, allSteps);
+}
+
+function computeNoLegalActionsTerminationRate(summaries) {
+  let count = 0;
+  for (const s of summaries) {
+    if (s.terminationReason === "no-legal-actions") {
+      count += 1;
+    }
+  }
+  return count / Math.max(1, summaries.length);
+}
+
 function computeCoreMetrics(summaries) {
   return [
     { id: "agency", value: computeAgency(summaries) },
@@ -216,6 +256,10 @@ function computeCoreMetrics(summaries) {
     { id: "pacing_tension", value: computePacingTension(summaries) },
     { id: "turn_taking_rate", value: computeTurnTakingRate(summaries) },
     { id: "interaction_rate", value: computeInteractionRate(summaries) },
+    { id: "skipped_trigger_rate", value: computeSkippedTriggerRate(summaries) },
+    { id: "cost_abort_rate", value: computeCostAbortRate(summaries) },
+    { id: "pass_step_rate", value: computePassStepRate(summaries) },
+    { id: "no_legal_actions_termination_rate", value: computeNoLegalActionsTerminationRate(summaries) },
   ];
 }
 
@@ -227,5 +271,9 @@ export {
   computePacingTension,
   computeTurnTakingRate,
   computeInteractionRate,
+  computeSkippedTriggerRate,
+  computeCostAbortRate,
+  computePassStepRate,
+  computeNoLegalActionsTerminationRate,
   computeCoreMetrics,
 };

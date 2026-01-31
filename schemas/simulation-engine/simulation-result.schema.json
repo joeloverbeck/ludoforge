@@ -37,7 +37,7 @@
         "required": ["terminationReason"],
         "properties": {
           "terminationReason": {
-            "enum": ["max-turns", "max-steps", "loop-detected"]
+            "enum": ["max-turns", "max-steps", "loop-detected", "trigger-loop", "trigger-recursion", "scheduler-error"]
           }
         }
       },
@@ -106,7 +106,10 @@
           "items": { "$ref": "#/$defs/SkippedTrigger" }
         },
         "decisionSpaceRaw": { "type": "integer", "minimum": 0 },
-        "decisionSpaceCapped": { "type": "boolean" }
+        "decisionSpaceCapped": { "type": "boolean" },
+        "costAborted": { "type": "boolean" },
+        "triggerAttemptCount": { "type": "integer", "minimum": 0 },
+        "triggerSkipCount": { "type": "integer", "minimum": 0 }
       }
     },
     "GameEvent": {
@@ -148,7 +151,10 @@
         "no-legal-actions",
         "max-turns",
         "max-steps",
-        "loop-detected"
+        "loop-detected",
+        "trigger-loop",
+        "trigger-recursion",
+        "scheduler-error"
       ]
     },
     "ResolvedRef": {

@@ -489,5 +489,153 @@ describe("degeneracy", () => {
       const penalty = computeDegeneracyPenalty(report);
       assert.ok(Math.abs(penalty - 0.09) < 1e-9);
     });
+
+    it("applies penalty for high-skipped-triggers flag", () => {
+      const report = { flags: ["high-skipped-triggers"] };
+      const penalty = computeDegeneracyPenalty(report);
+      assert.equal(penalty, 0.15);
+    });
+
+    it("applies penalty for high-pass-rate flag", () => {
+      const report = { flags: ["high-pass-rate"] };
+      const penalty = computeDegeneracyPenalty(report);
+      assert.equal(penalty, 0.2);
+    });
+
+    it("applies penalty for high-no-legal-actions-termination flag", () => {
+      const report = { flags: ["high-no-legal-actions-termination"] };
+      const penalty = computeDegeneracyPenalty(report);
+      assert.equal(penalty, 0.25);
+    });
+
+    it("returns 0 for any-cost-abort (reject-only, no penalty)", () => {
+      const report = { flags: ["any-cost-abort"] };
+      const penalty = computeDegeneracyPenalty(report);
+      assert.equal(penalty, 0);
+    });
+  });
+
+  describe("new flag pipeline integration", () => {
+    it("any-cost-abort rejects genome in full pipeline", () => {
+      const summaries = [
+        { totalCostAborts: 1, stepCount: 5, terminated: true, terminationReason: "condition" },
+      ];
+      const report = detectDegeneracy(summaries);
+      assert.ok(report.flags.includes("any-cost-abort"), "any-cost-abort must be flagged");
+
+      const decision = applyDegeneracyFilters(report);
+      assert.equal(decision.allow, false, "any-cost-abort must reject");
+      assert.ok(decision.rejectedFlags.includes("any-cost-abort"));
+    });
+
+    it("high-skipped-triggers penalizes but does not reject", () => {
+      const summaries = [
+        { totalSkippedTriggers: 5, totalAttemptedTriggers: 20, stepCount: 20, terminated: true, terminationReason: "condition" },
+      ];
+      const report = detectDegeneracy(summaries);
+      assert.ok(report.flags.includes("high-skipped-triggers"), "high-skipped-triggers must be flagged");
+
+      const decision = applyDegeneracyFilters(report);
+      assert.equal(decision.allow, true, "high-skipped-triggers should penalize, not reject");
+
+      const penalty = computeDegeneracyPenalty(report);
+      assert.ok(penalty > 0, "penalty must be > 0");
+    });
+
+    it("high-pass-rate penalizes but does not reject", () => {
+      const summaries = [
+        { totalPassSteps: 10, stepCount: 20, terminated: true, terminationReason: "condition" },
+      ];
+      const report = detectDegeneracy(summaries);
+      assert.ok(report.flags.includes("high-pass-rate"), "high-pass-rate must be flagged");
+
+      const decision = applyDegeneracyFilters(report);
+      assert.equal(decision.allow, true, "high-pass-rate should penalize, not reject");
+
+      const penalty = computeDegeneracyPenalty(report);
+      assert.ok(penalty > 0, "penalty must be > 0");
+    });
+
+    it("high-no-legal-actions-termination penalizes but does not reject", () => {
+      const summaries = Array.from({ length: 10 }, (_, i) => ({
+        terminationReason: i < 3 ? "no-legal-actions" : "condition",
+        terminated: true,
+        stepCount: 10,
+      }));
+      const report = detectDegeneracy(summaries);
+      assert.ok(
+        report.flags.includes("high-no-legal-actions-termination"),
+        "high-no-legal-actions-termination must be flagged"
+      );
+
+      const decision = applyDegeneracyFilters(report);
+      assert.equal(decision.allow, true, "high-no-legal-actions-termination should penalize, not reject");
+
+      const penalty = computeDegeneracyPenalty(report);
+      assert.ok(penalty > 0, "penalty must be > 0");
+    });
+
+    it("compound rejection triggers when new penalize flags exceed maxPenaltyFlags", () => {
+      const summaries = [
+        {
+          totalSkippedTriggers: 5,
+          totalAttemptedTriggers: 20,
+          totalPassSteps: 10,
+          stepCount: 20,
+          terminated: true,
+          terminationReason: "no-legal-actions",
+          terminalOutcome: { outcomes: { 1: "draw", 2: "draw" } },
+          keySteps: Array.from({ length: 20 }, () => ({ legalActionCount: 1 })),
+        },
+        ...Array.from({ length: 9 }, () => ({
+          totalSkippedTriggers: 0,
+          totalAttemptedTriggers: 0,
+          totalPassSteps: 0,
+          stepCount: 20,
+          terminated: true,
+          terminationReason: "no-legal-actions",
+          terminalOutcome: { outcomes: { 1: "draw", 2: "draw" } },
+          keySteps: Array.from({ length: 20 }, () => ({ legalActionCount: 1 })),
+        })),
+      ];
+      const report = detectDegeneracy(summaries);
+      const penalizeFlags = report.flags.filter((f) => {
+        const policy = {
+          "forced-move": "penalize",
+          "dominant-action": "penalize",
+          "trivial-win": "penalize",
+          "stalemate": "penalize",
+          "high-skipped-effects": "penalize",
+          "high-skipped-triggers": "penalize",
+          "high-pass-rate": "penalize",
+          "high-no-legal-actions-termination": "penalize",
+        };
+        return policy[f] === "penalize";
+      });
+      assert.ok(penalizeFlags.length > 3, `Expected >3 penalize flags, got ${penalizeFlags.length}: ${penalizeFlags}`);
+
+      const decision = applyDegeneracyFilters(report);
+      assert.equal(decision.allow, false, "compound rejection must trigger");
+    });
+
+    it("existing flags are unaffected by new flag additions", () => {
+      const summaries = [
+        {
+          stepCount: 6,
+          turnCount: 6,
+          terminationReason: "loop-detected",
+          terminated: false,
+          uniqueStateCount: 3,
+          keySteps: [],
+        },
+      ];
+      const report = detectDegeneracy(summaries);
+      assert.ok(report.flags.includes("loop"));
+      assert.ok(report.flags.includes("non-terminating"));
+      assert.equal(report.flags.includes("any-cost-abort"), false);
+      assert.equal(report.flags.includes("high-skipped-triggers"), false);
+      assert.equal(report.flags.includes("high-pass-rate"), false);
+      assert.equal(report.flags.includes("high-no-legal-actions-termination"), false);
+    });
   });
 });

@@ -21,6 +21,24 @@
     "highSkippedEffects": {
       "rate": 0.10,
       "minAttempts": 50
+    },
+    "anyCostAbort": {
+      "minCount": 1
+    },
+    "highSkippedTriggers": {
+      "rate": 0.10,
+      "minAttempts": 20
+    },
+    "highPassRate": {
+      "rate": 0.30,
+      "minSteps": 20
+    },
+    "highNoLegalActionsTermination": {
+      "rate": 0.25,
+      "minRuns": 10
+    },
+    "nonFiniteMetrics": {
+      "minKeys": 1
     }
   },
   "enabledFlags": [
@@ -31,7 +49,12 @@
     "trivial-win",
     "no-choices",
     "non-terminating",
-    "high-skipped-effects"
+    "high-skipped-effects",
+    "any-cost-abort",
+    "high-skipped-triggers",
+    "high-pass-rate",
+    "high-no-legal-actions-termination",
+    "non-finite-metrics"
   ],
   "policyByFlag": {
     "loop": "reject",
@@ -41,7 +64,12 @@
     "dominant-action": "penalize",
     "trivial-win": "penalize",
     "stalemate": "penalize",
-    "high-skipped-effects": "penalize"
+    "high-skipped-effects": "penalize",
+    "any-cost-abort": "reject",
+    "high-skipped-triggers": "penalize",
+    "high-pass-rate": "penalize",
+    "high-no-legal-actions-termination": "penalize",
+    "non-finite-metrics": "penalize"
   },
   "penalties": {
     "forced-move": { "weight": 0.3, "freeRatio": 0.2 },
@@ -49,7 +77,11 @@
     "dominant-action": { "weight": 0.2 },
     "trivial-win": { "weight": 0.3 },
     "stalemate": { "weight": 0.1 },
-    "high-skipped-effects": { "weight": 0.2 }
+    "high-skipped-effects": { "weight": 0.2 },
+    "high-skipped-triggers": { "weight": 0.15 },
+    "high-pass-rate": { "weight": 0.2 },
+    "high-no-legal-actions-termination": { "weight": 0.25 },
+    "non-finite-metrics": { "weight": 0.15 }
   },
   "minStepsForNoChoices": 10,
   "compoundRejection": {
