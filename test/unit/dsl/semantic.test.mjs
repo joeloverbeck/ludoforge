@@ -248,8 +248,8 @@ describe("semantic", () => {
         });
         candidate.state.zones[0].tokenType = "missingToken";
         candidate.actions[0].effects[0].target = { kind: "var", id: "missingVar" };
-        candidate.actions[0].targets[0].selector.zone = "missingZone";
-        candidate.actions[0].targets[0].selector.tokenType = "missingTokenType";
+        candidate.actions[0].params[0].domain.selector.zone = "missingZone";
+        candidate.actions[0].params[0].domain.selector.tokenType = "missingTokenType";
         candidate.termination.conditions[0].condition.left = {
           kind: "ref",
           ref: { kind: "token", id: "pawn", attribute: "missingAttr" },
@@ -670,7 +670,7 @@ describe("semantic", () => {
     describe("action rules", () => {
       it("reports free lunch actions", () => {
         const candidate = structuredClone(baseDefinition);
-        candidate.actions[0].targets = [];
+        candidate.actions[0].params = [];
         delete candidate.actions[0].preconditions;
         candidate.actions[0].costs = [];
         candidate.actions[0].effects = [
@@ -688,7 +688,7 @@ describe("semantic", () => {
 
       it("allows beneficial actions with costs", () => {
         const candidate = structuredClone(baseDefinition);
-        candidate.actions[0].targets = [];
+        candidate.actions[0].params = [];
         delete candidate.actions[0].preconditions;
         candidate.actions[0].effects = [
           {

@@ -72,9 +72,10 @@ function updateAction(action, handlers) {
   if (Array.isArray(action.effects)) {
     action.effects.forEach((effect) => updateEffect(effect, handlers));
   }
-  if (Array.isArray(action.targets)) {
-    action.targets.forEach((target) => {
-      updateSelector(target?.selector, handlers);
+  const actionTargets = action.params ?? action.targets;
+  if (Array.isArray(actionTargets)) {
+    actionTargets.forEach((target) => {
+      updateSelector(target?.domain?.selector ?? target?.selector, handlers);
     });
   }
 }

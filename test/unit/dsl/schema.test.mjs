@@ -94,7 +94,7 @@ describe("schema", () => {
       const candidate = structuredClone(baseDefinition);
       candidate.actions[0].effects = [
         {
-          kind: "choose",
+          kind: "rng_choose",
           options: [
             [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
             [{ kind: "dec", target: { kind: "var", id: "score" }, amount: 1 }],
@@ -109,13 +109,27 @@ describe("schema", () => {
       const candidate = structuredClone(baseDefinition);
       candidate.actions[0].effects = [
         {
-          kind: "choose",
+          kind: "rng_choose",
           options: [
             [{ kind: "set", target: { kind: "var", id: "score" }, value: 5 }],
           ],
         },
       ];
       assertValid(candidate);
+    });
+
+    it("rejects legacy choose effect kind", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].effects = [
+        {
+          kind: "choose",
+          options: [
+            [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
+          ],
+          count: 1,
+        },
+      ];
+      assertInvalid(candidate);
     });
 
     it("accepts random_draw scheduler", () => {
@@ -130,6 +144,60 @@ describe("schema", () => {
         scheduler: "simultaneous",
         resolution: { order: "by_player_id" },
       };
+      assertValid(candidate);
+    });
+
+    it("accepts action with token param", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", kind: "token", domain: { selector: { zone: "board" } } },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts action with player param using string value", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "p", kind: "player", domain: { values: "opponent" } },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts action with player param using explicit ids", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "p", kind: "player", domain: { values: [0, 1] } },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts action with zone param", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "z", kind: "zone", domain: { values: ["board", "hand"] } },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts param with count and unique", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        {
+          id: "t",
+          kind: "token",
+          domain: { selector: { zone: "board" } },
+          count: 2,
+          unique: true,
+        },
+      ];
+      assertValid(candidate);
+    });
+
+    it("accepts action with both targets and params", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "p", kind: "player", domain: { values: "any" } },
+      ];
       assertValid(candidate);
     });
   });
@@ -180,6 +248,18 @@ describe("schema", () => {
         policy: "pass",
         defaultOutcome: { type: "draw", players: "all" },
       };
+      assertInvalid(candidate);
+    });
+
+    it("rejects selector with random property", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].targets = [
+        {
+          id: "t",
+          kind: "token",
+          selector: { zone: "board", random: true },
+        },
+      ];
       assertInvalid(candidate);
     });
 
@@ -272,6 +352,70 @@ describe("schema", () => {
         scheduler: "simultaneous",
         resolution: { order: "clockwise" },
       };
+      assertInvalid(candidate);
+    });
+
+    it("rejects param missing id", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { kind: "token", domain: { selector: { zone: "board" } } },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects param missing kind", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", domain: { selector: { zone: "board" } } },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects param missing domain", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", kind: "token" },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects param with invalid kind", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", kind: "card", domain: {} },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects token param with missing selector in domain", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", kind: "token", domain: {} },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects player param with missing values in domain", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "p", kind: "player", domain: {} },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects zone param with missing values in domain", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "z", kind: "zone", domain: {} },
+      ];
+      assertInvalid(candidate);
+    });
+
+    it("rejects param with count less than 1", () => {
+      const candidate = structuredClone(baseDefinition);
+      candidate.actions[0].params = [
+        { id: "t", kind: "token", domain: { selector: { zone: "board" } }, count: 0 },
+      ];
       assertInvalid(candidate);
     });
   });

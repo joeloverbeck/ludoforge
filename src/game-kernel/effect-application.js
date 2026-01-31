@@ -41,7 +41,7 @@ export function applyEffect(state, effect, context, options) {
     return applySetTurnOrder(state, effect, context);
   }
 
-  if (effect.kind === "choose") {
+  if (effect.kind === "rng_choose") {
     return applyChoose(state, effect, context, options, applyEffect);
   }
 

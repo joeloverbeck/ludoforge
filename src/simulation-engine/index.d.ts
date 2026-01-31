@@ -39,8 +39,8 @@ export function runBatchSimulations(
   inputs: SimulationConfig[],
   hooks?: BatchMetricsHooks,
   options?: BatchRunOptions,
-): BatchSimulationResult;
-export function runRollout(config: RolloutConfig): RolloutResult;
+): Promise<BatchSimulationResult>;
+export function runRollout(config: RolloutConfig): Promise<RolloutResult>;
 export function createSeededRng(seed: number): SeededRng;
 export function createRandomPolicy(): AgentController;
 export function createGreedyPolicy(options?: GreedyPolicyOptions): AgentController;

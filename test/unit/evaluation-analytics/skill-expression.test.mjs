@@ -86,9 +86,9 @@ const strongAgent = {
 
 describe("skill-expression", () => {
   describe("computeSkillExpressionMetric", () => {
-    it("detects tier separation", () => {
+    it("detects tier separation", async () => {
       const definition = createTierSeparationDefinition();
-      const value = computeSkillExpressionMetric(definition, {
+      const value = await computeSkillExpressionMetric(definition, {
         enabled: true,
         agentTiers: [baselineAgent, strongAgent],
         matchesPerSeat: 2,
@@ -98,9 +98,9 @@ describe("skill-expression", () => {
       assert.ok(Math.abs(value - 1) < 1e-9);
     });
 
-    it("returns 0 when tiers are identical", () => {
+    it("returns 0 when tiers are identical", async () => {
       const definition = createTierSeparationDefinition();
-      const value = computeSkillExpressionMetric(definition, {
+      const value = await computeSkillExpressionMetric(definition, {
         enabled: true,
         agentTiers: [baselineAgent, baselineAgent],
         matchesPerSeat: 2,
@@ -110,9 +110,9 @@ describe("skill-expression", () => {
       assert.ok(Math.abs(value) < 1e-9);
     });
 
-    it("cancels seat bias", () => {
+    it("cancels seat bias", async () => {
       const definition = createSeatBiasDefinition();
-      const value = computeSkillExpressionMetric(definition, {
+      const value = await computeSkillExpressionMetric(definition, {
         enabled: true,
         agentTiers: [baselineAgent, strongAgent],
         matchesPerSeat: 2,
@@ -124,15 +124,15 @@ describe("skill-expression", () => {
   });
 
   describe("computeExtendedMetrics integration", () => {
-    it("only emits skill_expression when enabled", () => {
+    it("only emits skill_expression when enabled", async () => {
       const definition = createTierSeparationDefinition();
-      const disabled = computeExtendedMetrics(definition, [], {});
+      const disabled = await computeExtendedMetrics(definition, [], {});
       assert.equal(
         disabled.some((metric) => metric.id === "skill_expression"),
         false
       );
 
-      const enabled = computeExtendedMetrics(definition, [], {
+      const enabled = await computeExtendedMetrics(definition, [], {
         skillExpression: {
           enabled: true,
           agentTiers: [baselineAgent, strongAgent],

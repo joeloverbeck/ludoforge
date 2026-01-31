@@ -67,13 +67,13 @@ function getMetric(metrics, id) {
 }
 
 describe("decision-quality-metrics", () => {
-  it("integrates via extended metrics", () => {
+  it("integrates via extended metrics", async () => {
     const definition = createMeaningfulChoiceDefinition();
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
-    const results = [engine.run()];
+    const results = [await engine.run()];
 
     const logResult = adaptSimulationLog({
       version: LOG_ADAPTER_VERSION,
@@ -86,7 +86,7 @@ describe("decision-quality-metrics", () => {
     assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
     const summaries = logResult.value.trajectorySummaries;
 
-    const metrics = computeExtendedMetrics(definition, summaries, {
+    const metrics = await computeExtendedMetrics(definition, summaries, {
       simulations: results,
       meaningfulChoice: {
         enabled: true,

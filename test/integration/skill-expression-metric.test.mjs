@@ -67,12 +67,12 @@ function createLastActionAgent() {
   };
 }
 
-function buildSummaries(definition) {
+async function buildSummaries(definition) {
   const engine = createSimulationEngine({
     definition,
     agents: [createFirstActionAgent(), createFirstActionAgent()],
   });
-  const results = [engine.run()];
+  const results = [await engine.run()];
   const logResult = adaptSimulationLog({
     version: LOG_ADAPTER_VERSION,
     log: {
@@ -86,11 +86,11 @@ function buildSummaries(definition) {
 }
 
 describe("skill-expression-metric", () => {
-  it("is gated via extended metrics integration path", () => {
+  it("is gated via extended metrics integration path", async () => {
     const definition = createTierSeparationDefinition();
-    const summaries = buildSummaries(definition);
+    const summaries = await buildSummaries(definition);
 
-    const disabled = computeExtendedMetrics(definition, summaries, {
+    const disabled = await computeExtendedMetrics(definition, summaries, {
       skillExpression: { enabled: false },
     });
     assert.equal(
@@ -98,7 +98,7 @@ describe("skill-expression-metric", () => {
       false
     );
 
-    const enabled = computeExtendedMetrics(definition, summaries, {
+    const enabled = await computeExtendedMetrics(definition, summaries, {
       skillExpression: {
         enabled: true,
         agentTiers: [createFirstActionAgent(), createLastActionAgent()],

@@ -28,9 +28,9 @@ export async function resolveSeedPopulation({ config, rngSeed, evaluator }) {
   throw new Error(`Unknown seeding mode: ${mode}`);
 }
 
-function resolveGenerate({ seeding, mapElitesConfig, rngSeed, evaluator }) {
+async function resolveGenerate({ seeding, mapElitesConfig, rngSeed, evaluator }) {
   const generateConfig = seeding.generate;
-  const result = generateSeedPopulation({
+  const result = await generateSeedPopulation({
     populationSize: seeding.populationSize,
     maxAttempts: generateConfig.coverage.maxAttempts,
     rngSeed,
@@ -89,7 +89,7 @@ async function resolveMixed({ seeding, mapElitesConfig, rngSeed, evaluator }) {
 
   if (generateCount > 0) {
     const generateConfig = seeding.generate;
-    const genResult = generateSeedPopulation({
+    const genResult = await generateSeedPopulation({
       populationSize: generateCount,
       maxAttempts: generateConfig.coverage.maxAttempts,
       rngSeed,

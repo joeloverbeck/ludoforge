@@ -82,8 +82,8 @@ describe("extended-metrics E2E", () => {
       const { evaluator: eval1 } = createEvaluator(opts);
       const { evaluator: eval2 } = createEvaluator(opts);
 
-      const result1 = eval1(genome);
-      const result2 = eval2(genome);
+      const result1 = await eval1(genome);
+      const result2 = await eval2(genome);
 
       assert.ok(result1.fitness !== null, "first call should produce finite fitness");
       assert.ok(result2.fitness !== null, "second call should produce finite fitness");
@@ -120,7 +120,7 @@ describe("extended-metrics E2E", () => {
         extendedMetricsOptions: ALL_EXTENDED_OPTIONS,
       });
 
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
       assert.ok(result.fitness !== null, "evaluation should succeed");
 
       const fv = result.diagnostics.featureVector;
@@ -148,7 +148,7 @@ describe("extended-metrics E2E", () => {
         extendedMetricsOptions: ALL_EXTENDED_OPTIONS,
       });
 
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
       assert.ok(result.fitness !== null, "evaluation should succeed");
 
       const fv = result.diagnostics.featureVector;
@@ -176,7 +176,7 @@ describe("extended-metrics E2E", () => {
         extendedMetricsOptions: ALL_EXTENDED_OPTIONS,
       });
 
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
       assert.ok(result.fitness !== null, "evaluation should succeed");
 
       const extMetrics = result.diagnostics.extendedMetrics;
@@ -207,7 +207,7 @@ describe("extended-metrics E2E", () => {
         extendedMetricsOptions: ALL_EXTENDED_OPTIONS,
       });
 
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
       assert.ok(result.fitness !== null, "evaluation should succeed even without scoring");
 
       const fv = result.diagnostics.featureVector;
@@ -227,7 +227,7 @@ describe("extended-metrics E2E", () => {
         includeExtendedMetrics: false,
       });
 
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
       assert.ok(result.fitness !== null, "evaluation should succeed");
       assert.strictEqual(
         result.diagnostics.extendedMetrics,

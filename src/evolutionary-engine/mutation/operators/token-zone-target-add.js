@@ -29,7 +29,10 @@ export const tokenTypeZoneTargetAddMutation = {
     );
     const existingTargetIds = new Set(
       actions
-        .flatMap((action) => (Array.isArray(action?.targets) ? action.targets : []))
+        .flatMap((action) => {
+          const t = action?.params ?? action?.targets;
+          return Array.isArray(t) ? t : [];
+        })
         .map((target) => (typeof target?.id === "string" ? target.id : null))
         .filter(Boolean)
     );
@@ -64,14 +67,16 @@ export const tokenTypeZoneTargetAddMutation = {
     };
 
     const action = actions[actionIndex];
-    const targets = Array.isArray(action?.targets) ? [...action.targets] : [];
-    targets.push({
-      ...newTarget,
-      id: nextTargetId,
-    });
+    const useParams = Array.isArray(action?.params);
+    const actionTargetSource = useParams ? action.params : action?.targets;
+    const targets = Array.isArray(actionTargetSource) ? [...actionTargetSource] : [];
+    const newEntry = useParams
+      ? { id: nextTargetId, kind: newTarget.kind, domain: { selector: newTarget.selector } }
+      : { ...newTarget, id: nextTargetId };
+    targets.push(newEntry);
     definition.actions[actionIndex] = {
       ...action,
-      targets,
+      [useParams ? "params" : "targets"]: targets,
     };
 
     return { ...genome, definition };

@@ -20,7 +20,7 @@ describe("evaluation-fidelity", () => {
       const genome = makeGenome("choice-game", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.fitness !== null, "fitness should not be null");
       assert.ok(result.descriptors !== null, "descriptors should not be null");
@@ -37,7 +37,7 @@ describe("evaluation-fidelity", () => {
       const genome = makeGenome("single-action", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.fitness !== null, "fitness should not be null");
       assert.ok(result.descriptors !== null, "descriptors should not be null");
@@ -54,7 +54,7 @@ describe("evaluation-fidelity", () => {
       const genome = makeGenome("non-terminating", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.diagnostics, "diagnostics should exist");
       assert.ok(result.diagnostics.degeneracy, "degeneracy report should exist");
@@ -77,8 +77,8 @@ describe("evaluation-fidelity", () => {
       const evaluator1 = createEvaluator({ seed: 77, simulationRuns: 3 });
       const evaluator2 = createEvaluator({ seed: 77, simulationRuns: 3 });
 
-      const result1 = evaluator1.evaluator(genome);
-      const result2 = evaluator2.evaluator(genome);
+      const result1 = await evaluator1.evaluator(genome);
+      const result2 = await evaluator2.evaluator(genome);
 
       assert.equal(result1.fitness, result2.fitness);
       assert.deepEqual(result1.descriptors, result2.descriptors);

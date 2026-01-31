@@ -25,7 +25,7 @@ const { computePolicySensitivity } = await import(
 );
 
 describe("policy-sensitivity suite routing", () => {
-  it("uses suite results instead of spawning simulations", () => {
+  it("uses suite results instead of spawning simulations", async () => {
     const definition = { version: "1.0", players: { count: 2 }, actions: [], turn: {}, termination: {} };
     const suiteResults = {
       "random-greedy": {
@@ -44,7 +44,7 @@ describe("policy-sensitivity suite routing", () => {
       },
     };
 
-    const result = computePolicySensitivity(definition, {
+    const result = await computePolicySensitivity(definition, {
       enabled: true,
       agentTiers: ["random", "greedy"],
       matchesPerSeat: 2,

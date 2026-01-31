@@ -30,14 +30,16 @@ async function loadFixture(name) {
   return JSON.parse(raw);
 }
 
-function runSimulations(definition, seeds) {
-  return seeds.map((seed) =>
-    runSimulation({
+async function runSimulations(definition, seeds) {
+  const results = [];
+  for (const seed of seeds) {
+    results.push(await runSimulation({
       definition,
       agents: [{ kind: "random" }, { kind: "random" }],
       seed,
-    })
-  );
+    }));
+  }
+  return results;
 }
 
 function buildFeatureVector(definition, results) {
@@ -77,15 +79,15 @@ describe("preference-model-update", () => {
 
     const featureVectorA = buildFeatureVector(
       choiceDefinition,
-      runSimulations(choiceDefinition, [3, 5, 7])
+      await runSimulations(choiceDefinition, [3, 5, 7])
     );
     const featureVectorB = buildFeatureVector(
       minimalDefinition,
-      runSimulations(minimalDefinition, [11, 13, 17])
+      await runSimulations(minimalDefinition, [11, 13, 17])
     );
     const featureVectorARepeat = buildFeatureVector(
       choiceDefinition,
-      runSimulations(choiceDefinition, [3, 5, 7])
+      await runSimulations(choiceDefinition, [3, 5, 7])
     );
 
     const differingKeys = Object.keys(featureVectorA).filter(

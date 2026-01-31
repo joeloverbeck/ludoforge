@@ -13,4 +13,4 @@ export function evaluateGenome<
 >(
   genome: TGenome,
   options: EvaluationAdapterOptions<TGenome, TFitness, TDescriptors>
-): EvaluationAdapterResult<TFitness, TDescriptors, TGenome>;
+): Promise<EvaluationAdapterResult<TFitness, TDescriptors, TGenome>>;

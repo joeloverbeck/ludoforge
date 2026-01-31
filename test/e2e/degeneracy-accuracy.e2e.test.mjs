@@ -20,7 +20,7 @@ describe("degeneracy-accuracy", () => {
       const genome = makeGenome("degenerate", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.diagnostics.degeneracy, "degeneracy report should exist");
       const flags = result.diagnostics.degeneracy.flags;
@@ -43,7 +43,7 @@ describe("degeneracy-accuracy", () => {
       const genome = makeGenome("forced-move", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.diagnostics.degeneracy, "degeneracy report should exist");
       assert.ok(
@@ -59,7 +59,7 @@ describe("degeneracy-accuracy", () => {
       const genome = makeGenome("healthy-game", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(result.diagnostics.degeneracy, "degeneracy report should exist");
       const rejectFlags = ["non-terminating", "loop"];
@@ -85,8 +85,8 @@ describe("degeneracy-accuracy", () => {
       const eval1 = createEvaluator({ seed: 42, simulationRuns: 5 });
       const eval2 = createEvaluator({ seed: 42, simulationRuns: 5 });
 
-      const healthyResult = eval1.evaluator(choiceGenome);
-      const degenerateResult = eval2.evaluator(nonTermGenome);
+      const healthyResult = await eval1.evaluator(choiceGenome);
+      const degenerateResult = await eval2.evaluator(nonTermGenome);
 
       assert.ok(
         healthyResult.fitness !== null,
@@ -112,7 +112,7 @@ describe("degeneracy-accuracy", () => {
       const genome = makeGenome("forced-move-penalize", definition);
 
       const { evaluator } = createEvaluator({ seed: 42, simulationRuns: 5 });
-      const result = evaluator(genome);
+      const result = await evaluator(genome);
 
       assert.ok(
         result.fitness !== null,

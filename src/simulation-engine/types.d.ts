@@ -71,7 +71,7 @@ export interface AgentInput {
 export interface AgentController {
   id?: number;
   role?: string;
-  selectAction(input: AgentInput): ActionDef | string;
+  selectAction(input: AgentInput): ActionDef | string | Promise<ActionDef | string>;
 }
 
 export interface AgentDescriptor {
@@ -141,8 +141,8 @@ export interface RolloutResult {
 }
 
 export interface SimulationEngine {
-  run(): SimulationResult;
-  runBatch(count: number): SimulationResult[];
+  run(): Promise<SimulationResult>;
+  runBatch(count: number): Promise<SimulationResult[]>;
 }
 
 export interface BatchHookContext {

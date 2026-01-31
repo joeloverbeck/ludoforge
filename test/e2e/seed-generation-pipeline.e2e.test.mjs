@@ -27,7 +27,7 @@ const { generateSeedPopulation } = await import(
 );
 
 describe("seed-generation-pipeline e2e", () => {
-  it("generates 16 genomes with default config and <25% evaluation-error rate", () => {
+  it("generates 16 genomes with default config and <25% evaluation-error rate", async () => {
     const { evaluator } = createEvaluator({
       simulationRuns: 2,
       descriptorKeys: ["agency", "variety", "strategic_depth", "interaction_rate"],
@@ -41,7 +41,7 @@ describe("seed-generation-pipeline e2e", () => {
         { id: "interaction_rate", min: 0, max: 1, bins: 5 },
       ],
     };
-    const result = generateSeedPopulation({
+    const result = await generateSeedPopulation({
       populationSize: 16,
       maxAttempts: 500,
       rngSeed: 42,

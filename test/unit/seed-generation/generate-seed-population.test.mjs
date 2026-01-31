@@ -33,8 +33,8 @@ const baseOptions = {
 };
 
 describe("generateSeedPopulation", () => {
-  it("returns { genomes, report } with correct shape", () => {
-    const result = generateSeedPopulation(baseOptions);
+  it("returns { genomes, report } with correct shape", async () => {
+    const result = await generateSeedPopulation(baseOptions);
     assert.ok(Array.isArray(result.genomes));
     assert.equal(typeof result.report, "object");
     assert.equal(typeof result.report.attempts, "number");
@@ -45,8 +45,8 @@ describe("generateSeedPopulation", () => {
     assert.equal(typeof result.report.coverageTargetSummary, "object");
   });
 
-  it("genomes have id (string) and definition (object)", () => {
-    const result = generateSeedPopulation(baseOptions);
+  it("genomes have id (string) and definition (object)", async () => {
+    const result = await generateSeedPopulation(baseOptions);
     for (const genome of result.genomes) {
       assert.equal(typeof genome.id, "string");
       assert.ok(genome.id.length > 0);
@@ -55,14 +55,14 @@ describe("generateSeedPopulation", () => {
     }
   });
 
-  it("returns exactly populationSize genomes", () => {
-    const result = generateSeedPopulation(baseOptions);
+  it("returns exactly populationSize genomes", async () => {
+    const result = await generateSeedPopulation(baseOptions);
     assert.equal(result.genomes.length, 4);
   });
 
-  it("deterministic: same inputs produce identical outputs", () => {
-    const a = generateSeedPopulation(baseOptions);
-    const b = generateSeedPopulation(baseOptions);
+  it("deterministic: same inputs produce identical outputs", async () => {
+    const a = await generateSeedPopulation(baseOptions);
+    const b = await generateSeedPopulation(baseOptions);
     assert.deepStrictEqual(
       a.genomes.map((g) => g.id),
       b.genomes.map((g) => g.id)
@@ -70,8 +70,8 @@ describe("generateSeedPopulation", () => {
     assert.deepStrictEqual(a.report, b.report);
   });
 
-  it("random strategy accepts all valid genomes", () => {
-    const result = generateSeedPopulation({
+  it("random strategy accepts all valid genomes", async () => {
+    const result = await generateSeedPopulation({
       ...baseOptions,
       coverageStrategy: "random",
     });
@@ -80,8 +80,8 @@ describe("generateSeedPopulation", () => {
     assert.equal(result.report.coverageTargetSummary.targetPerBin, Infinity);
   });
 
-  it("uniform-bins distributes across bins", () => {
-    const result = generateSeedPopulation({
+  it("uniform-bins distributes across bins", async () => {
+    const result = await generateSeedPopulation({
       ...baseOptions,
       populationSize: 4,
       coverageStrategy: "uniform-bins",
@@ -94,8 +94,8 @@ describe("generateSeedPopulation", () => {
     );
   });
 
-  it("uniform-bins rejects full bins", () => {
-    const result = generateSeedPopulation({
+  it("uniform-bins rejects full bins", async () => {
+    const result = await generateSeedPopulation({
       ...baseOptions,
       populationSize: 4,
       maxAttempts: 500,
@@ -110,8 +110,8 @@ describe("generateSeedPopulation", () => {
     assert.ok(true, "uniform-bins completed without error");
   });
 
-  it("underfilled-first fills deficit bins first", () => {
-    const result = generateSeedPopulation({
+  it("underfilled-first fills deficit bins first", async () => {
+    const result = await generateSeedPopulation({
       ...baseOptions,
       populationSize: 4,
       maxAttempts: 500,
@@ -124,7 +124,7 @@ describe("generateSeedPopulation", () => {
     );
   });
 
-  it("throws when maxAttempts exhausted and cannot fill", () => {
+  it("throws when maxAttempts exhausted and cannot fill", async () => {
     let callCount = 0;
     const failingEvaluator = () => {
       callCount++;
@@ -134,19 +134,18 @@ describe("generateSeedPopulation", () => {
       throw new Error("evaluation failure");
     };
 
-    assert.throws(
-      () =>
-        generateSeedPopulation({
-          ...baseOptions,
-          populationSize: 10,
-          maxAttempts: 5,
-          evaluator: failingEvaluator,
-        }),
+    await assert.rejects(
+      generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 10,
+        maxAttempts: 5,
+        evaluator: failingEvaluator,
+      }),
       /Failed to generate/
     );
   });
 
-  it("fallback accept-any-valid fills remainder", () => {
+  it("fallback accept-any-valid fills remainder", async () => {
     // Use a 4-bin config so uniform target=1, then evaluator always returns bin 0.
     // After bin 0 is full (1 genome), main phase rejects all → fallback accepts rest.
     const fourBinConfig = {
@@ -154,7 +153,7 @@ describe("generateSeedPopulation", () => {
     };
     const singleBinEvaluator = () => ({ descriptors: { axis: 0.1 } });
 
-    const result = generateSeedPopulation({
+    const result = await generateSeedPopulation({
       ...baseOptions,
       populationSize: 3,
       maxAttempts: 2000,
@@ -171,7 +170,7 @@ describe("generateSeedPopulation", () => {
     );
   });
 
-  it("throws when fallback also cannot fill", () => {
+  it("throws when fallback also cannot fill", async () => {
     let callCount = 0;
     const failAfterTwo = (_genome) => {
       callCount++;
@@ -181,22 +180,21 @@ describe("generateSeedPopulation", () => {
       throw new Error("eval fail");
     };
 
-    assert.throws(
-      () =>
-        generateSeedPopulation({
-          ...baseOptions,
-          populationSize: 10,
-          maxAttempts: 5,
-          evaluator: failAfterTwo,
-          coverageStrategy: "uniform-bins",
-          fallback: { strategy: "accept-any-valid" },
-        }),
+    await assert.rejects(
+      generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 10,
+        maxAttempts: 5,
+        evaluator: failAfterTwo,
+        coverageStrategy: "uniform-bins",
+        fallback: { strategy: "accept-any-valid" },
+      }),
       /Failed to generate/
     );
   });
 
-  it("report coverageTargetSummary has correct fields", () => {
-    const result = generateSeedPopulation({
+  it("report coverageTargetSummary has correct fields", async () => {
+    const result = await generateSeedPopulation({
       ...baseOptions,
       coverageStrategy: "uniform-bins",
     });
@@ -232,7 +230,7 @@ describe("generateSeedPopulation", () => {
   });
 
   describe("special bin exclusion from coverage", () => {
-    it("rejects special-bin genomes and counts them as special-bin", () => {
+    it("rejects special-bin genomes and counts them as special-bin", async () => {
       let callCount = 0;
       const evaluator = () => {
         callCount++;
@@ -241,7 +239,7 @@ describe("generateSeedPopulation", () => {
         }
         return { descriptors: { axis: 0.2 } };
       };
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         ...baseOptions,
         populationSize: 2,
         maxAttempts: 100,
@@ -253,7 +251,7 @@ describe("generateSeedPopulation", () => {
       assert.deepStrictEqual(result.report.specialBinCounts, { "axis:unknown": 3 });
     });
 
-    it("special-bin genomes appear in specialBinCounts, not binCounts", () => {
+    it("special-bin genomes appear in specialBinCounts, not binCounts", async () => {
       let callCount = 0;
       const evaluator = () => {
         callCount++;
@@ -262,7 +260,7 @@ describe("generateSeedPopulation", () => {
         }
         return { descriptors: { axis: 0.8 } };
       };
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         ...baseOptions,
         populationSize: 3,
         maxAttempts: 200,
@@ -280,7 +278,7 @@ describe("generateSeedPopulation", () => {
       assert.equal(binTotal, result.report.accepted);
     });
 
-    it("in-range bin counting is unaffected by special-bin rejections", () => {
+    it("in-range bin counting is unaffected by special-bin rejections", async () => {
       let callCount = 0;
       // Alternate: 1 in-range, then 1 special (null), repeat
       const mixedEvaluator = () => {
@@ -290,7 +288,7 @@ describe("generateSeedPopulation", () => {
         }
         return { descriptors: { axis: null } };
       };
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         ...baseOptions,
         populationSize: 4,
         maxAttempts: 200,
@@ -305,7 +303,7 @@ describe("generateSeedPopulation", () => {
       assert.ok(specialKeys.length > 0, "should have special bin entries");
     });
 
-    it("uniform-bins still rejects full in-range bins despite special-bin rejections", () => {
+    it("uniform-bins still rejects full in-range bins despite special-bin rejections", async () => {
       let callCount = 0;
       // Produce: 2 in-range bin 0, then specials, then more in-range bin 0
       // With 4 bins and pop=3, targetPerBin = ceil(3/4)=1
@@ -320,7 +318,7 @@ describe("generateSeedPopulation", () => {
         }
         return { descriptors: { axis: 0.1 } }; // always bin 0
       };
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         ...baseOptions,
         populationSize: 3,
         maxAttempts: 2000,
@@ -342,8 +340,8 @@ describe("generateSeedPopulation", () => {
       );
     });
 
-    it("totalBinCount equals product of d.bins (in-range only)", () => {
-      const result = generateSeedPopulation({
+    it("totalBinCount equals product of d.bins (in-range only)", async () => {
+      const result = await generateSeedPopulation({
         ...baseOptions,
         populationSize: 3,
         maxAttempts: 200,
@@ -354,7 +352,7 @@ describe("generateSeedPopulation", () => {
       assert.equal(result.report.coverageTargetSummary.totalBinCount, 2);
     });
 
-    it("special-bin rejection does not reset coverageRejectStreak", () => {
+    it("special-bin rejection does not reset coverageRejectStreak", async () => {
       // This test verifies that rejecting a special-bin genome does NOT reset
       // the coverageRejectStreak counter, so fallback still triggers correctly.
       let callCount = 0;
@@ -373,7 +371,7 @@ describe("generateSeedPopulation", () => {
         }
         return { descriptors: { axis: 0.1 } }; // in-range bin 0 (rejected)
       };
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         populationSize: 4,
         maxAttempts: 5000,
         rngSeed: 42,
@@ -391,7 +389,7 @@ describe("generateSeedPopulation", () => {
     });
   });
 
-  it("rejects genomes with null fitness from evaluator", () => {
+  it("rejects genomes with null fitness from evaluator", async () => {
     let callCount = 0;
     const nullFitnessEvaluator = () => {
       callCount++;
@@ -400,7 +398,7 @@ describe("generateSeedPopulation", () => {
       }
       return { fitness: 0.5, descriptors: { axis: 0.5 } };
     };
-    const result = generateSeedPopulation({
+    const result = await generateSeedPopulation({
       ...baseOptions,
       populationSize: 4,
       maxAttempts: 500,

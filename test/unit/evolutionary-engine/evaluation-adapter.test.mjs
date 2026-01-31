@@ -8,9 +8,9 @@ import { baseDefinition, missingTerminationDefinition } from "../dsl/fixtures.mj
 describe("evaluation-adapter", () => {
   describe("evaluateGenome", () => {
     describe("validation", () => {
-      it("short-circuits invalid genomes before evaluation", () => {
+      it("short-circuits invalid genomes before evaluation", async () => {
         let called = false;
-        const result = evaluateGenome(
+        const result = await evaluateGenome(
           { definition: missingTerminationDefinition },
           {
             evaluator: () => {
@@ -29,9 +29,9 @@ describe("evaluation-adapter", () => {
     });
 
     describe("safety gates", () => {
-      it("reports safety gate failures without calling evaluator", () => {
+      it("reports safety gate failures without calling evaluator", async () => {
         let called = false;
-        const result = evaluateGenome(
+        const result = await evaluateGenome(
           { definition: baseDefinition },
           {
             gates: [{ name: "no-op", check: () => ({ ok: false, reason: "blocked" }) }],
@@ -51,8 +51,8 @@ describe("evaluation-adapter", () => {
     });
 
     describe("successful evaluation", () => {
-      it("forwards evaluator output on success", () => {
-        const result = evaluateGenome(
+      it("forwards evaluator output on success", async () => {
+        const result = await evaluateGenome(
           { definition: baseDefinition },
           {
             evaluator: () => ({
@@ -72,12 +72,12 @@ describe("evaluation-adapter", () => {
     });
 
     describe("repair operators", () => {
-      it("applies repair operators before validation and evaluation", () => {
+      it("applies repair operators before validation and evaluation", async () => {
         const definition = structuredClone(baseDefinition);
         definition.state.variables[0].initial = 999;
         let observedInitial = null;
 
-        const result = evaluateGenome(
+        const result = await evaluateGenome(
           { definition },
           {
             repairOperators: [dslSafetyRepair],
@@ -96,12 +96,12 @@ describe("evaluation-adapter", () => {
         assert.equal(result.genome.definition.state.variables[0].initial, 10);
       });
 
-      it("rejects genomes when repair fails", () => {
+      it("rejects genomes when repair fails", async () => {
         const definition = structuredClone(baseDefinition);
         definition.state.variables[0].type = { kind: "int", min: 5, max: 1 };
         let called = false;
 
-        const result = evaluateGenome(
+        const result = await evaluateGenome(
           { definition },
           {
             repairOperators: [dslSafetyRepair],

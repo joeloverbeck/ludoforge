@@ -10,7 +10,7 @@ import {
 
 describe("batch", () => {
   describe("runBatchSimulations", () => {
-    it("preserves order and aggregates metrics", () => {
+    it("preserves order and aggregates metrics", async () => {
       const incrementDefinition = createBaseDefinition();
       incrementDefinition.actions = [createIncrementAction()];
       incrementDefinition.termination.conditions = [
@@ -33,7 +33,7 @@ describe("batch", () => {
       const stepOrder = [];
       const terminalOrder = [];
 
-      const { results, metrics } = runBatchSimulations(
+      const { results, metrics } = await runBatchSimulations(
         [
           {
             definition: incrementDefinition,

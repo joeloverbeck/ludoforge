@@ -192,7 +192,7 @@ function computeWinRate(results, seatId) {
  * @param {number|null} [options.maxSteps]
  * @returns {number}
  */
-function computePolicySensitivity(definition, options = {}) {
+async function computePolicySensitivity(definition, options = {}) {
   const enabled = resolveEnabled(options.enabled, DEFAULTS.enabled);
   if (!enabled) {
     return 0;
@@ -242,7 +242,7 @@ function computePolicySensitivity(definition, options = {}) {
 
       const strongResults = strongSuiteResults
         ? strongSuiteResults
-        : runBatchSimulations(
+        : (await runBatchSimulations(
             buildSimulationInputs(
               definition,
               strongAgents,
@@ -250,10 +250,10 @@ function computePolicySensitivity(definition, options = {}) {
               rng,
               resolvedOptions
             )
-          ).results;
+          )).results;
       const baselineResults = baselineSuiteResults
         ? baselineSuiteResults
-        : runBatchSimulations(
+        : (await runBatchSimulations(
             buildSimulationInputs(
               definition,
               baselineAgents,
@@ -261,7 +261,7 @@ function computePolicySensitivity(definition, options = {}) {
               rng,
               resolvedOptions
             )
-          ).results;
+          )).results;
 
       const strongWinRate = computeWinRate(strongResults, seatId);
       const baselineWinRate = computeWinRate(baselineResults, seatId);

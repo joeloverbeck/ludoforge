@@ -12,7 +12,7 @@ import { handleNoLegalActions } from "./no-legal-actions.js";
 import { buildPlayerOrder, resolveSimultaneousOrder } from "./simultaneous-order.js";
 import { executeActionStep } from "./execute-action-step.js";
 
-export function runSimultaneousLoop({
+export async function runSimultaneousLoop({
   config,
   definition,
   agents,
@@ -92,7 +92,7 @@ export function runSimultaneousLoop({
         break;
       }
 
-      const action = selectAndValidateAction({
+      const action = await selectAndValidateAction({
         agents,
         definition,
         state,

@@ -114,28 +114,71 @@ describe("selectors", () => {
       assert.deepEqual(result, []);
     });
 
-    it("applies random shuffle with seeded rng", () => {
+    it("returns deterministic order (no random shuffle)", () => {
       const state = createInitialState(baseDefinition);
-      spawnToken(state, "board");
-      spawnToken(state, "board");
-      spawnToken(state, "board");
-
-      let callCount = 0;
-      const rng = () => { callCount++; return 0; };
-      const ctx = { ...makeContext(state), rng };
+      const t1 = spawnToken(state, "board");
+      const t2 = spawnToken(state, "board");
+      const t3 = spawnToken(state, "board");
 
       const result = resolveSelector(
-        { zone: "board", random: true, count: 2 },
+        { zone: "board", count: 2 },
         state,
-        ctx
+        makeContext(state)
       );
-      assert.equal(result.length, 2);
-      assert.ok(callCount > 0);
+      assert.deepEqual(result, [t1, t2]);
+    });
+
+    it("rejects random property in selector (schema-level)", () => {
+      const state = createInitialState(baseDefinition);
+      spawnToken(state, "board");
+
+      // Even if random is passed, it has no effect on ordering
+      const result1 = resolveSelector(
+        { zone: "board" },
+        state,
+        makeContext(state)
+      );
+      const result2 = resolveSelector(
+        { zone: "board" },
+        state,
+        makeContext(state)
+      );
+      assert.deepEqual(result1, result2);
     });
   });
 
   describe("resolveActionTargets", () => {
-    it("returns bindings for action targets", () => {
+    it("returns bindings for action params", () => {
+      const state = createInitialState(baseDefinition);
+      const t1 = spawnToken(state, "board");
+
+      const action = {
+        id: "play",
+        params: [
+          { id: "chosen", kind: "token", domain: { selector: { zone: "board", count: 1 } } },
+        ],
+      };
+
+      const ctx = makeContext(state);
+      const bindings = resolveActionTargets(baseDefinition, state, action, ctx);
+      assert.equal(bindings.chosen, t1);
+    });
+
+    it("returns empty bindings when no params", () => {
+      const state = createInitialState(baseDefinition);
+      const action = { id: "pass" };
+      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
+      assert.deepEqual(bindings, {});
+    });
+
+    it("returns empty bindings when params array is empty", () => {
+      const state = createInitialState(baseDefinition);
+      const action = { id: "pass", params: [] };
+      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
+      assert.deepEqual(bindings, {});
+    });
+
+    it("falls back to targets when params is absent", () => {
       const state = createInitialState(baseDefinition);
       const t1 = spawnToken(state, "board");
 
@@ -149,20 +192,6 @@ describe("selectors", () => {
       const ctx = makeContext(state);
       const bindings = resolveActionTargets(baseDefinition, state, action, ctx);
       assert.equal(bindings.chosen, t1);
-    });
-
-    it("returns empty bindings when no targets", () => {
-      const state = createInitialState(baseDefinition);
-      const action = { id: "pass" };
-      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
-      assert.deepEqual(bindings, {});
-    });
-
-    it("returns empty bindings when targets array is empty", () => {
-      const state = createInitialState(baseDefinition);
-      const action = { id: "pass", targets: [] };
-      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
-      assert.deepEqual(bindings, {});
     });
   });
 });

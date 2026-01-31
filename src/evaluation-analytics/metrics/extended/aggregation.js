@@ -34,7 +34,7 @@ function resolveSuiteResults(suiteResults, suiteId) {
   return null;
 }
 
-function computeExtendedMetrics(definition, summaries, options = {}, suiteResults = null) {
+async function computeExtendedMetrics(definition, summaries, options = {}, suiteResults = null) {
   const metrics = [
     { id: "length_mean", value: computeLengthMean(summaries) },
     { id: "length_variance", value: computeLengthVariance(summaries) },
@@ -49,7 +49,7 @@ function computeExtendedMetrics(definition, summaries, options = {}, suiteResult
     METRICS_EXTENDED_DEFAULTS.meaningfulChoice.enabled
   );
   if (meaningfulChoiceEnabled) {
-    const value = computeMeaningfulChoice(
+    const value = await computeMeaningfulChoice(
       definition,
       options.simulations,
       options.meaningfulChoice
@@ -80,7 +80,7 @@ function computeExtendedMetrics(definition, summaries, options = {}, suiteResult
       ...(options.skillExpression ?? {}),
       enabled: skillExpressionEnabled,
     };
-    const value = computeSkillExpressionMetric(definition, skillExpressionOptions);
+    const value = await computeSkillExpressionMetric(definition, skillExpressionOptions);
     metrics.push({ id: "skill_expression", value });
   }
 
@@ -111,7 +111,7 @@ function computeExtendedMetrics(definition, summaries, options = {}, suiteResult
       enabled: policySensitivityEnabled,
       suiteResults: suiteResults ?? options.policySensitivity?.suiteResults,
     };
-    const value = computePolicySensitivity(definition, policySensitivityOptions);
+    const value = await computePolicySensitivity(definition, policySensitivityOptions);
     metrics.push({ id: "policy_sensitivity", value });
   }
 

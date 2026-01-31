@@ -53,7 +53,7 @@ describe("config-defaults", () => {
         simulationConfig,
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-turns");
       assert.equal(result.terminated, false);
@@ -77,7 +77,7 @@ describe("config-defaults", () => {
         simulationConfig,
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-steps");
       assert.equal(result.terminated, false);

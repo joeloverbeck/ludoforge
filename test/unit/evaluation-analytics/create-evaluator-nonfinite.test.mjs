@@ -28,10 +28,10 @@ function makeGenome(definition = choiceGame) {
 }
 
 describe("createEvaluator — non-finite fitness guard", () => {
-  it("returns fitness null when score is NaN", () => {
+  it("returns fitness null when score is NaN", async () => {
     mockScore = Number.NaN;
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = evaluator(makeGenome());
+    const result = await evaluator(makeGenome());
 
     assert.equal(result.fitness, null);
     assert.equal(result.descriptors, null);
@@ -39,10 +39,10 @@ describe("createEvaluator — non-finite fitness guard", () => {
     assert.ok(Number.isNaN(result.diagnostics.fitnessResult.score));
   });
 
-  it("returns fitness null when score is Infinity", () => {
+  it("returns fitness null when score is Infinity", async () => {
     mockScore = Number.POSITIVE_INFINITY;
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = evaluator(makeGenome());
+    const result = await evaluator(makeGenome());
 
     assert.equal(result.fitness, null);
     assert.equal(result.descriptors, null);
@@ -50,10 +50,10 @@ describe("createEvaluator — non-finite fitness guard", () => {
     assert.equal(result.diagnostics.fitnessResult.score, Number.POSITIVE_INFINITY);
   });
 
-  it("returns fitness null when score is -Infinity", () => {
+  it("returns fitness null when score is -Infinity", async () => {
     mockScore = Number.NEGATIVE_INFINITY;
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = evaluator(makeGenome());
+    const result = await evaluator(makeGenome());
 
     assert.equal(result.fitness, null);
     assert.equal(result.descriptors, null);
@@ -61,10 +61,10 @@ describe("createEvaluator — non-finite fitness guard", () => {
     assert.equal(result.diagnostics.fitnessResult.score, Number.NEGATIVE_INFINITY);
   });
 
-  it("passes through finite fitness scores", () => {
+  it("passes through finite fitness scores", async () => {
     mockScore = 0.42;
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = evaluator(makeGenome());
+    const result = await evaluator(makeGenome());
 
     assert.equal(result.fitness, 0.42);
     assert.ok(result.descriptors);

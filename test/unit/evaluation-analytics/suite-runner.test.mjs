@@ -16,8 +16,8 @@ function makeCache() {
 }
 
 describe("runSuites", () => {
-  it("returns empty object when no suites provided", () => {
-    const result = runSuites({
+  it("returns empty object when no suites provided", async () => {
+    const result = await runSuites({
       definition: choiceGame,
       suites: [],
       runsPerSuite: {},
@@ -27,8 +27,8 @@ describe("runSuites", () => {
     assert.deepStrictEqual(result, {});
   });
 
-  it("skips suites with zero or missing run count", () => {
-    const result = runSuites({
+  it("skips suites with zero or missing run count", async () => {
+    const result = await runSuites({
       definition: choiceGame,
       suites: [{ id: "s1", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" }],
       runsPerSuite: {},
@@ -38,11 +38,11 @@ describe("runSuites", () => {
     assert.deepStrictEqual(result, {});
   });
 
-  it("returns keyed results per suite with trajectory summaries", () => {
+  it("returns keyed results per suite with trajectory summaries", async () => {
     const suites = [
       { id: "random-only", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
     ];
-    const result = runSuites({
+    const result = await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { "random-only": 2 },
@@ -55,18 +55,18 @@ describe("runSuites", () => {
     assert.ok(Array.isArray(result["random-only"].trajectorySummaries));
   });
 
-  it("produces deterministic results for same seed", () => {
+  it("produces deterministic results for same seed", async () => {
     const suites = [
       { id: "s1", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
     ];
-    const run1 = runSuites({
+    const run1 = await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { s1: 3 },
       baseSeed: 99,
       cache: makeCache(),
     });
-    const run2 = runSuites({
+    const run2 = await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { s1: 3 },
@@ -76,7 +76,7 @@ describe("runSuites", () => {
     assert.deepStrictEqual(run1, run2);
   });
 
-  it("uses run cache to avoid duplicate simulations", () => {
+  it("uses run cache to avoid duplicate simulations", async () => {
     let simulationCount = 0;
     const cache = makeCache();
 
@@ -97,7 +97,7 @@ describe("runSuites", () => {
 
     // Run twice with same cache — seeds are deterministic per (baseSeed, suiteId, runIndex)
     // so second call to runSuites with same params should hit cache
-    runSuites({
+    await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { s1: 2 },
@@ -107,7 +107,7 @@ describe("runSuites", () => {
 
     const countAfterFirst = simulationCount;
 
-    runSuites({
+    await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { s1: 2 },
@@ -119,12 +119,12 @@ describe("runSuites", () => {
     assert.equal(simulationCount, countAfterFirst, "cache should prevent re-running simulations");
   });
 
-  it("handles multiple suites independently", () => {
+  it("handles multiple suites independently", async () => {
     const suites = [
       { id: "a", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
       { id: "b", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
     ];
-    const result = runSuites({
+    const result = await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { a: 1, b: 2 },
@@ -137,11 +137,11 @@ describe("runSuites", () => {
     assert.equal(result.b.results.length, 2);
   });
 
-  it("uses fixed seed when seedPolicy is fixed", () => {
+  it("uses fixed seed when seedPolicy is fixed", async () => {
     const suites = [
       { id: "fixed1", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "fixed", seed: 123 },
     ];
-    const run1 = runSuites({
+    const run1 = await runSuites({
       definition: choiceGame,
       suites,
       runsPerSuite: { fixed1: 2 },
@@ -154,7 +154,7 @@ describe("runSuites", () => {
     assert.deepStrictEqual(run1.fixed1.results[0], run1.fixed1.results[1]);
   });
 
-  it("captures errors gracefully per suite", () => {
+  it("captures errors gracefully per suite", async () => {
     // Definition that will cause simulation to fail
     const badDef = {
       version: "1.0",
@@ -190,7 +190,7 @@ describe("runSuites", () => {
     const suites = [
       { id: "bad", agents: [{ kind: "random" }, { kind: "random" }], seedPolicy: "derive" },
     ];
-    const result = runSuites({
+    const result = await runSuites({
       definition: badDef,
       suites,
       runsPerSuite: { bad: 1 },

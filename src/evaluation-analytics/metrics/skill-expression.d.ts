@@ -4,4 +4,4 @@ import type { SkillExpressionMetricOptions } from "../types.js";
 export function computeSkillExpressionMetric(
   definition: GameDefinition,
   options?: SkillExpressionMetricOptions
-): number;
+): Promise<number>;

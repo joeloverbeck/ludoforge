@@ -58,15 +58,6 @@ export function resolveSelector(selector, state, context) {
     });
   }
 
-  if (selector.random && context.rng) {
-    for (let i = tokenIds.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(context.rng() * (i + 1));
-      const temp = tokenIds[i];
-      tokenIds[i] = tokenIds[j];
-      tokenIds[j] = temp;
-    }
-  }
-
   if (typeof selector.count === "number" && selector.count > 0) {
     tokenIds = tokenIds.slice(0, selector.count);
   }
@@ -85,34 +76,66 @@ export function resolvePlayerSelector(selector, state, context) {
   } else {
     ids = agents.map((a) => a.id);
   }
-  if (selector?.random && context.rng) {
-    for (let i = ids.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(context.rng() * (i + 1));
-      const temp = ids[i];
-      ids[i] = ids[j];
-      ids[j] = temp;
-    }
-  }
   if (typeof selector?.count === "number" && selector.count > 0) {
     ids = ids.slice(0, selector.count);
   }
   return ids;
 }
 
+/**
+ * Computes valid choice domains for each param in an action definition.
+ * Returns a map from param id to an array of all valid candidate values.
+ *
+ * @param {Array} params - The params array from an ActionDef
+ * @param {object} state - Current game state
+ * @param {object} context - Execution context (playerId, bindings, etc.)
+ * @returns {Record<string, Array<string|number>>}
+ */
+export function resolveParamDomains(params, state, context) {
+  if (!Array.isArray(params) || params.length === 0) {
+    return {};
+  }
+
+  const domains = {};
+
+  for (const param of params) {
+    const { id, kind, domain } = param;
+    if (!id || !domain) {
+      continue;
+    }
+
+    if (kind === "token") {
+      domains[id] = resolveSelector(domain.selector, state, context);
+    } else if (kind === "player") {
+      const values = domain.values;
+      if (Array.isArray(values)) {
+        domains[id] = [...values];
+      } else {
+        domains[id] = resolvePlayerSelector({ player: values }, state, context);
+      }
+    } else if (kind === "zone") {
+      domains[id] = Array.isArray(domain.values) ? [...domain.values] : [];
+    }
+  }
+
+  return domains;
+}
+
 export function resolveActionTargets(definition, state, action, context) {
-  const targets = action.targets ?? [];
+  const targets = action.params ?? action.targets ?? [];
   const bindings = { ...context.bindings };
   const variableIndex = context.variableIndex ?? buildVariableIndex(definition);
 
   for (const target of targets) {
+    const selector = target.domain?.selector ?? target.selector;
     if (target.kind === "player") {
-      const playerIds = resolvePlayerSelector(target.selector, state, context);
+      const playerIds = resolvePlayerSelector(selector, state, context);
       if (playerIds.length > 0) {
         bindings[target.id] = playerIds[0];
       }
       continue;
     }
-    const resolved = resolveSelector(target.selector, state, {
+    const resolved = resolveSelector(selector, state, {
       ...context,
       variableIndex,
     });

@@ -65,12 +65,12 @@ describe("map-elites-binning integration", () => {
   });
 
   describe("seed-generation nicheId matches MAP-Elites placement nicheId", () => {
-    it("same descriptor values produce identical nicheId in both paths", () => {
+    it("same descriptor values produce identical nicheId in both paths", async () => {
       // Fixed descriptor values for a deterministic test
       const fixedDescriptors = { agency: 0.3, variety: 0.7 };
       let callCount = 0;
 
-      const result = generateSeedPopulation({
+      const result = await generateSeedPopulation({
         populationSize: 1,
         maxAttempts: 10,
         rngSeed: 42,

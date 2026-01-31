@@ -28,10 +28,10 @@ function hydrateConfig(input) {
   };
 }
 
-function handleMessage(message) {
+async function handleMessage(message) {
   if (message?.type === "run") {
     try {
-      const result = runSimulation(hydrateConfig(message.input));
+      const result = await runSimulation(hydrateConfig(message.input));
       port.postMessage({ type: "result", index: message.index, result });
     } catch (error) {
       port.postMessage({ type: "error", index: message.index, error: serializeError(error) });

@@ -154,7 +154,7 @@ describe("extended-metrics", () => {
   });
 
   describe("computeExtendedMetrics", () => {
-    it("returns bundle output", () => {
+    it("returns bundle output", async () => {
       const definition = {
         version: "0.1.0",
         players: { count: 2 },
@@ -165,7 +165,7 @@ describe("extended-metrics", () => {
       };
 
       const summaries = [buildSummary({ stepCount: 2, actionCounts: { a: 2 } })];
-      const metrics = computeExtendedMetrics(definition, summaries);
+      const metrics = await computeExtendedMetrics(definition, summaries);
 
       assert.equal(getMetric(metrics, "length_mean"), 2);
       assert.equal(getMetric(metrics, "length_variance"), 0);
@@ -175,7 +175,7 @@ describe("extended-metrics", () => {
       assert.equal(getMetric(metrics, "coverage_state"), 0);
     });
 
-    it("uses suite results for advantage_reversal_rate when suiteId is provided", () => {
+    it("uses suite results for advantage_reversal_rate when suiteId is provided", async () => {
       const definition = createScoringDefinition();
       const summaries = [buildSummary({ stepCount: 2 })];
       const suiteRun = makeRun([
@@ -187,7 +187,7 @@ describe("extended-metrics", () => {
         { state: makeState(definition, { 1: 5, 2: 1 }) },
         { state: makeState(definition, { 1: 6, 2: 2 }) },
       ]);
-      const metrics = computeExtendedMetrics(
+      const metrics = await computeExtendedMetrics(
         definition,
         summaries,
         {

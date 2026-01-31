@@ -48,7 +48,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 5 }],
         [{ kind: "inc", target: { kind: "var", id: "gold" }, amount: 10 }],
@@ -59,7 +59,7 @@ describe("choose effect", () => {
     const result = applyEffect(state, effect, ctx);
 
     assert.equal(result.ok, true);
-    assert.equal(result.appliedEffect.kind, "choose");
+    assert.equal(result.appliedEffect.kind, "rng_choose");
     assert.equal(result.appliedEffect.selected, 1);
     assert.equal(state.variables.global.score, 5);
     assert.equal(state.variables.global.gold, 0);
@@ -71,7 +71,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 5 }],
         [{ kind: "inc", target: { kind: "var", id: "gold" }, amount: 10 }],
@@ -92,7 +92,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
         [{ kind: "inc", target: { kind: "var", id: "gold" }, amount: 2 }],
@@ -115,7 +115,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [],
       count: 1,
     };
@@ -138,7 +138,7 @@ describe("choose effect", () => {
       condition: { kind: "value", value: true },
       then: [
         {
-          kind: "choose",
+          kind: "rng_choose",
           options: [
             [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 7 }],
             [{ kind: "inc", target: { kind: "var", id: "gold" }, amount: 3 }],
@@ -161,7 +161,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
         [{ kind: "inc", target: { kind: "var", id: "gold" }, amount: 2 }],
@@ -182,7 +182,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
       ],
@@ -202,7 +202,7 @@ describe("choose effect", () => {
     const ctx = makeContext(state, 1, rng);
 
     const effect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [
         [
           { kind: "inc", target: { kind: "var", id: "score" }, amount: 3 },

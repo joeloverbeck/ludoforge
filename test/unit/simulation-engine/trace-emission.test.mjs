@@ -99,14 +99,14 @@ function createCostOnlyDefinition() {
 // ---------------------------------------------------------------------------
 
 describe("T1: combined trace emission through full loop", () => {
-  it("action with cost + effect + trigger produces correct ordered appliedEffects", () => {
+  it("action with cost + effect + trigger produces correct ordered appliedEffects", async () => {
     const definition = createCombinedDefinition(1);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 1, "should have at least one action step");
 
@@ -130,14 +130,14 @@ describe("T1: combined trace emission through full loop", () => {
     assert.deepEqual(step.appliedEffects[2].target, { kind: "var", id: "hp", scope: "global" });
   });
 
-  it("bindings is present as empty object", () => {
+  it("bindings is present as empty object", async () => {
     const definition = createCombinedDefinition(1);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
 
     for (const step of actionSteps) {
@@ -145,14 +145,14 @@ describe("T1: combined trace emission through full loop", () => {
     }
   });
 
-  it("stateHash matches defaultStateHasher(step.state)", () => {
+  it("stateHash matches defaultStateHasher(step.state)", async () => {
     const definition = createCombinedDefinition(1);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
 
     for (const step of actionSteps) {
@@ -161,14 +161,14 @@ describe("T1: combined trace emission through full loop", () => {
     }
   });
 
-  it("multi-step trajectory has trace on every action step with differing hashes", () => {
+  it("multi-step trajectory has trace on every action step with differing hashes", async () => {
     const definition = createCombinedDefinition(3);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 3, "should have at least 3 action steps");
 
@@ -188,14 +188,14 @@ describe("T1: combined trace emission through full loop", () => {
     }
   });
 
-  it("action with only costs produces cost-only appliedEffects", () => {
+  it("action with only costs produces cost-only appliedEffects", async () => {
     const definition = createCostOnlyDefinition();
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 1, "should have at least one action step");
 

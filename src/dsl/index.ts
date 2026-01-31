@@ -3,6 +3,8 @@ export type {
   Effect,
   Expr,
   GameDefinition,
+  ParamDef,
+  PlayerParamDomain,
   PlayersDef,
   Ref,
   ScoreDef,
@@ -11,12 +13,14 @@ export type {
   TargetDef,
   TerminationBlock,
   TerminationDef,
+  TokenParamDomain,
   TokenTypeDef,
   TriggerDef,
   TurnDef,
   VariableDef,
   VariableTypeDef,
   ZoneDef,
+  ZoneParamDomain,
 } from "./types.js";
 
 export type { ScalarValue } from "./types.js";

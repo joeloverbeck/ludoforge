@@ -52,24 +52,28 @@
           "amount": 1
         }
       ],
-      "targets": [
+      "params": [
         {
           "id": "tableCard",
           "kind": "token",
-          "selector": {
-            "zone": "table",
-            "tokenType": "card",
-            "count": 1
+          "domain": {
+            "selector": {
+              "zone": "table",
+              "tokenType": "card",
+              "count": 1
+            }
           }
         },
         {
           "id": "handCard",
           "kind": "token",
-          "selector": {
-            "zone": "hand",
-            "tokenType": "card",
-            "player": "self",
-            "count": 1
+          "domain": {
+            "selector": {
+              "zone": "hand",
+              "tokenType": "card",
+              "player": "self",
+              "count": 1
+            }
           }
         }
       ]

@@ -52,19 +52,22 @@ describe("resolvePlayerSelector", () => {
     assert.notEqual(ids[0], 1);
   });
 
-  it("shuffles with random and rng", () => {
-    let callCount = 0;
-    const rng = () => {
-      callCount += 1;
-      return 0.99;
-    };
+  it("returns deterministic order (no random shuffle)", () => {
     const ids = resolvePlayerSelector(
-      { player: "opponent", random: true, count: 1 },
+      { player: "opponent", count: 1 },
       state,
-      makeContext(1, { rng })
+      makeContext(1)
     );
     assert.equal(ids.length, 1);
-    assert.ok(callCount > 0);
+    assert.equal(ids[0], 2);
+
+    // Repeated calls return same order
+    const ids2 = resolvePlayerSelector(
+      { player: "opponent", count: 1 },
+      state,
+      makeContext(1)
+    );
+    assert.deepEqual(ids, ids2);
   });
 
   it("returns empty array when no agents", () => {
@@ -84,8 +87,8 @@ describe("resolveActionTargets with kind: player", () => {
     };
     const state = makeState([{ id: 1 }, { id: 2 }]);
     const action = {
-      targets: [
-        { id: "victim", kind: "player", selector: { player: "opponent" } },
+      params: [
+        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
       ],
     };
     const context = makeContext(1);
@@ -100,8 +103,8 @@ describe("resolveActionTargets with kind: player", () => {
     };
     const state = makeState([{ id: 1 }]);
     const action = {
-      targets: [
-        { id: "victim", kind: "player", selector: { player: "opponent" } },
+      params: [
+        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
       ],
     };
     const context = makeContext(1);
@@ -110,7 +113,7 @@ describe("resolveActionTargets with kind: player", () => {
     assert.equal(bindings.victim, undefined);
   });
 
-  it("handles mixed player and token targets", () => {
+  it("handles mixed player and token params", () => {
     const definition = {
       state: { variables: [] },
     };
@@ -125,9 +128,9 @@ describe("resolveActionTargets with kind: player", () => {
       tokens: { t1: { id: "t1", type: "card" } },
     };
     const action = {
-      targets: [
-        { id: "victim", kind: "player", selector: { player: "opponent" } },
-        { id: "card", kind: "token", selector: { zone: "hand", player: "self" } },
+      params: [
+        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
+        { id: "card", kind: "token", domain: { selector: { zone: "hand", player: "self" } } },
       ],
     };
     const context = makeContext(1);

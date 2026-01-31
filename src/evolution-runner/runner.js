@@ -133,7 +133,7 @@ export async function runEvolutionRunner(options) {
       );
     }
 
-    const loopResult = runGenerationLoop({
+    const loopResult = await runGenerationLoop({
       population: currentPopulation,
       evaluation,
       mapElites: mapElitesConfig,

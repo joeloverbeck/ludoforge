@@ -15,7 +15,7 @@ export function computeMeaningfulChoice(
   definition: GameDefinition,
   simulations: ReadonlyArray<SimulationResult>,
   options?: DecisionQualitySamplingConfig
-): number;
+): Promise<number>;
 export function computeComebackPotential(
   definition: GameDefinition,
   simulations: ReadonlyArray<SimulationResult>,
@@ -26,4 +26,4 @@ export function computeExtendedMetrics(
   summaries: ReadonlyArray<TrajectorySummary>,
   options?: ExtendedMetricsOptions,
   suiteResults?: Record<string, { results: ReadonlyArray<SimulationResult> }>
-): MetricResults;
+): Promise<MetricResults>;

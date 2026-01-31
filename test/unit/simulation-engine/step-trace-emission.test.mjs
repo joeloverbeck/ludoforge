@@ -230,7 +230,7 @@ describe("stateHash determinism", () => {
 // ---------------------------------------------------------------------------
 
 describe("simulation trace field integration", () => {
-  it("non-pass trajectory steps include stateHash, bindings, appliedEffects", () => {
+  it("non-pass trajectory steps include stateHash, bindings, appliedEffects", async () => {
     const definition = createBaseDefinition();
     definition.actions = [createIncrementAction()];
     definition.termination.conditions = [
@@ -250,7 +250,7 @@ describe("simulation trace field integration", () => {
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
 
     const nonPassSteps = result.trajectory.steps.filter(
       (step) => step.actionId != null

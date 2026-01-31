@@ -78,14 +78,16 @@
         "left": { "kind": "ref", "ref": { "kind": "var", "id": "turnCount" } },
         "right": { "kind": "value", "value": 0 }
       },
-      "targets": [
+      "params": [
         {
           "id": "unit",
           "kind": "token",
-          "selector": {
-            "zone": "barracks",
-            "tokenType": "warrior",
-            "count": 1
+          "domain": {
+            "selector": {
+              "zone": "barracks",
+              "tokenType": "warrior",
+              "count": 1
+            }
           }
         }
       ],

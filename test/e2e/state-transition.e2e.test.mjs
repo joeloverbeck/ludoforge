@@ -51,7 +51,7 @@ describe("state-transition", () => {
   describe("no-legal-actions policies", () => {
     it("state transition loop defaults to stalemate when no-legal-actions is unset", async () => {
       const definition = await loadFixture("no-legal-actions-stalemate.json");
-      const result = runSimulation({ definition });
+      const result = await runSimulation({ definition });
 
       assert.equal(result.terminationReason, "stalemate");
       assert.equal(result.trajectory.steps[0].legalActionCount, 0);
@@ -59,7 +59,7 @@ describe("state-transition", () => {
 
     it("state transition loop uses no-legal-actions terminate policy outcomes", async () => {
       const definition = await loadFixture("no-legal-actions-terminate.json");
-      const result = runSimulation({ definition });
+      const result = await runSimulation({ definition });
 
       assert.equal(result.terminationReason, "no-legal-actions");
       assert.equal(result.terminationDetail, "no-legal-actions");
@@ -73,7 +73,7 @@ describe("state-transition", () => {
         id: 2,
         selectAction: () => "advance",
       };
-      const result = runSimulation({ definition, agents: [agent] });
+      const result = await runSimulation({ definition, agents: [agent] });
 
       assert.equal(result.trajectory.steps[0].actionId, null);
       assert.equal(result.trajectory.steps[0].legalActionCount, 0);
@@ -84,7 +84,7 @@ describe("state-transition", () => {
     it("state transition loop throws for no-legal-actions error policy", async () => {
       const definition = await loadFixture("no-legal-actions-error.json");
 
-      assert.throws(() => runSimulation({ definition }), /No legal actions: no-legal-actions/);
+      await assert.rejects(async () => runSimulation({ definition }), /No legal actions: no-legal-actions/);
     });
   });
 });

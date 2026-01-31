@@ -21,7 +21,7 @@ function resolveEnabled(value, fallback) {
   return Boolean(fallback);
 }
 
-function computeMeaningfulChoice(definition, simulations, options = {}) {
+async function computeMeaningfulChoice(definition, simulations, options = {}) {
   const config = {
     enabled: resolveEnabled(options.enabled, DEFAULTS.enabled),
     decisionSamplesPerRun: normalizePositiveInt(options.decisionSamplesPerRun, DEFAULTS.decisionSamplesPerRun),
@@ -104,7 +104,7 @@ function computeMeaningfulChoice(definition, simulations, options = {}) {
           );
           const fallbackAgent = resolveRolloutAgent(config.rolloutAgent);
           const agent = createForcedActionAgent(action.id, fallbackAgent);
-          const rolloutResult = runRollout({
+          const rolloutResult = await runRollout({
             definition,
             state: point.state,
             agent,

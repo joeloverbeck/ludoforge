@@ -32,7 +32,7 @@ describe("evolution-pipeline", () => {
 
       const evaluation = createEvaluator({ seed: 42, simulationRuns: 2 });
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation,
         mapElites: MAP_ELITES_CONFIG,
@@ -84,7 +84,7 @@ describe("evolution-pipeline", () => {
         },
       };
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation,
         mapElites: MAP_ELITES_CONFIG,
@@ -105,7 +105,7 @@ describe("evolution-pipeline", () => {
 
       const evaluation = createEvaluator({ seed: 9, simulationRuns: 2 });
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation,
         mapElites: MAP_ELITES_CONFIG,
@@ -137,10 +137,10 @@ describe("evolution-pipeline", () => {
         definition,
       }));
 
-      function runOnce() {
+      async function runOnce() {
         const evaluation = createEvaluator({ seed: 17, simulationRuns: 2 });
 
-        const result = runGenerationLoop({
+        const result = await runGenerationLoop({
           population,
           evaluation,
           mapElites: MAP_ELITES_CONFIG,
@@ -157,8 +157,8 @@ describe("evolution-pipeline", () => {
         };
       }
 
-      const first = runOnce();
-      const second = runOnce();
+      const first = await runOnce();
+      const second = await runOnce();
 
       assert.deepEqual(first, second);
     });

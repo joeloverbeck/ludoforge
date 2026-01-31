@@ -10,7 +10,7 @@ import {
 
 describe("core-loop", () => {
   describe("termination conditions", () => {
-    it("logs steps and terminates on condition", () => {
+    it("logs steps and terminates on condition", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [
@@ -30,7 +30,7 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminated, true);
       assert.ok(!("reason" in result.outcome));
@@ -41,7 +41,7 @@ describe("core-loop", () => {
       assert.equal(result.trajectory.events.at(-1)?.type, "termination");
     });
 
-    it("max-turn cap ends the simulation with a max-turns reason", () => {
+    it("max-turn cap ends the simulation with a max-turns reason", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
@@ -52,7 +52,7 @@ describe("core-loop", () => {
         maxTurns: 1,
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-turns");
       assert.equal(result.terminated, false);
@@ -60,7 +60,7 @@ describe("core-loop", () => {
       assert.equal(result.trajectory.steps.length, 1);
     });
 
-    it("loop detection stops repeated states with a draw outcome", () => {
+    it("loop detection stops repeated states with a draw outcome", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createNoopAction()];
       definition.termination.conditions = [];
@@ -71,14 +71,14 @@ describe("core-loop", () => {
         loopDetection: { maxRepeatedStates: 1 },
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "loop-detected");
       assert.equal(result.terminated, false);
       assert.equal(result.trajectory.steps.length, 1);
     });
 
-    it("stalemate ends when no legal actions exist", () => {
+    it("stalemate ends when no legal actions exist", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -88,7 +88,7 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "stalemate");
       assert.equal(result.terminated, true);
@@ -98,7 +98,7 @@ describe("core-loop", () => {
   });
 
   describe("no-legal-actions policies", () => {
-    it("terminate policy uses default outcome", () => {
+    it("terminate policy uses default outcome", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -113,7 +113,7 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "no-legal-actions");
       assert.equal(result.terminationDetail, "policy-reason");
@@ -124,7 +124,7 @@ describe("core-loop", () => {
       assert.equal(result.trajectory.steps[0].legalActionCount, 0);
     });
 
-    it("pass policy records a pass step and advances", () => {
+    it("pass policy records a pass step and advances", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -136,7 +136,7 @@ describe("core-loop", () => {
         maxTurns: 1,
       });
 
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-turns");
       assert.equal(result.terminated, false);
@@ -148,7 +148,7 @@ describe("core-loop", () => {
       assert.equal(result.trajectory.steps[0].affectedGlobal, false);
     });
 
-    it("error policy throws", () => {
+    it("error policy throws", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -159,15 +159,15 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      assert.throws(
-        () => engine.run(),
+      await assert.rejects(
+        async () => engine.run(),
         (err) => err instanceof Error && err.message.includes("no-legal-actions")
       );
     });
   });
 
   describe("step instrumentation", () => {
-    it("captures per-player and trigger effects", () => {
+    it("captures per-player and trigger effects", async () => {
       const definition = createBaseDefinition();
       definition.players.count = 2;
       definition.state.variables = [
@@ -204,13 +204,13 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      const result = engine.run();
+      const result = await engine.run();
       assert.equal(result.trajectory.steps.length, 1);
       assert.deepEqual(result.trajectory.steps[0].affectedPlayerIds, [1]);
       assert.equal(result.trajectory.steps[0].affectedGlobal, true);
     });
 
-    it("attributes per-player action effects to the active player", () => {
+    it("attributes per-player action effects to the active player", async () => {
       const definition = createBaseDefinition();
       definition.players.count = 2;
       definition.state.variables = [
@@ -240,7 +240,7 @@ describe("core-loop", () => {
         agents: [createFirstActionAgent()],
       });
 
-      const result = engine.run();
+      const result = await engine.run();
       assert.equal(result.trajectory.steps.length, 1);
       assert.deepEqual(result.trajectory.steps[0].affectedPlayerIds, [1]);
       assert.equal(result.trajectory.steps[0].affectedGlobal, false);

@@ -5,6 +5,10 @@
 - `runSimulation(config)` in `src/simulation-engine/loop.js` executes a single playthrough.
 - `createSimulationEngine(config)` in `src/simulation-engine/index.js` wraps the same loop.
 
+All simulation entry points are **async** and return Promises. Agent `selectAction`
+may return a value or a Promise — the engine `await`s the result. Existing sync
+agents work unchanged because `await syncValue` resolves immediately.
+
 ## Configuration
 
 Defaults are loaded from `configs/simulation.json` (validated by `schemas/config/simulation.schema.json`).
@@ -46,16 +50,19 @@ Per step:
    - `pass`: record a pass step (`actionId = null`) and advance the turn/phase.
    - `error`: throw a structured error.
    - unset: default to stalemate draw.
-6. Ask the active agent for an action id or action object.
+6. `await` the active agent's action selection (supports Promise-returning agents).
 
 The effective `turn.noLegalActions` policy is taken from the game definition when set;
 otherwise it falls back to `configs/simulation.json`.
 7. Validate action legality (`validateActionChoice`). This includes resolving
-   action target selectors — if a target selector finds no matching tokens, the
+   action param/target selectors — if a selector finds no matching tokens, the
    action is rejected.
-8. Resolve action targets (`resolveActionTargets` from `selectors.js`) to bind
-   abstract target names to concrete token instance IDs. Bindings are passed
-   into the effect context so effects can reference targets by binding name.
+8. Resolve action params (`resolveActionTargets` from `selectors.js`) to bind
+   abstract param names to concrete token instance IDs. The runtime reads
+   `action.params` first, falling back to `action.targets` for backward
+   compatibility. For `params`, selectors are nested under `domain.selector`;
+   for legacy `targets`, selectors are at the top level. Bindings are passed
+   into the effect context so effects can reference params by binding name.
 9. Apply action costs, then action effects (`applyEffect`). Effect dispatch
    handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
@@ -174,10 +181,11 @@ API: `{ getOrRun(key, runFn) }`.
 
 - `key`: composite string identifying the simulation configuration (e.g.,
   `"${suiteId}:${seed}"`).
-- `runFn`: zero-argument function that executes the simulation and returns the
-  result.
-- If `key` exists in the cache, the cached result is returned immediately.
-  Otherwise, `runFn()` is called, the result is stored, and then returned.
+- `runFn`: zero-argument async function that executes the simulation and returns
+  a Promise resolving to the result.
+- If `key` exists in the cache, the cached Promise is returned immediately.
+  Otherwise, `runFn()` is called, the resulting Promise is stored, and then
+  returned. This ensures concurrent requests for the same key share one run.
 
 The cache is created fresh per `evaluator()` call in `create-evaluator.js`,
 ensuring no cross-genome leakage.
@@ -239,7 +247,7 @@ Each `TrajectoryStep` includes optional trace fields for motif mining and replay
 ```
 
 Effect kinds: `set`, `inc`, `dec`, `move`, `spawn`, `destroy`, `reveal`, `hide`,
-`move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`, `choose`,
+`move_spatial`, `repeat`, `conditional`, `set_flag`, `set_turn_order`, `rng_choose`,
 `shuffle`, `queue_push`, `queue_pop`.
 
 ### Pass-Step Rules
@@ -283,7 +291,7 @@ When `actionId === null` (pass step):
 - **Turn order** (`set_turn_order`): sorts players by a per-player variable value
   (ascending or descending, tie-break by lower player ID) and writes the resulting
   order into `state.turn.turnOrder` for the `round_robin` scheduler to consult.
-- **Player choice** (`choose`): presents `options` (array of effect arrays) and
+- **RNG branching** (`rng_choose`): presents `options` (array of effect arrays) and
   selects `count` of them (default 1) via `context.rng` for deterministic
   simulation. Selected option effects are applied recursively. Empty options is
   a no-op.
@@ -325,13 +333,15 @@ target selectors resolve to concrete instance IDs.
 - `applyTokenDestroy`: removes token from its zone and deletes it from `state.tokens`.
 - `applyTokenReveal`/`applyTokenHide`: sets `token.revealed` to true/false.
 
-### Target Selectors (`selectors.js`)
+### Param/Target Selectors (`selectors.js`)
 
 - `resolveSelector(selector, state, context)`: filters tokens in a zone by type,
-  optional `where` expression, random shuffle (via `context.rng`), and count limit.
+  optional `where` expression and count limit.
 - `resolveActionTargets(definition, state, action, context)`: resolves all selectors
-  in `action.targets` and returns a bindings object mapping target IDs to concrete
-  token instance IDs.
+  in `action.params` (preferred) or `action.targets` (legacy fallback) and returns
+  a bindings object mapping param/target IDs to concrete token instance IDs. For
+  `params` entries, the selector is read from `entry.domain.selector`; for legacy
+  `targets` entries, from `entry.selector`.
 
 ### Scoped Flags (`flags.js`)
 
@@ -341,9 +351,9 @@ target selectors resolve to concrete instance IDs.
 
 ### Action Legality (`actions.js`)
 
-`isActionLegal` checks preconditions, target selector availability, and cost
-feasibility. If an action declares targets, all selectors must resolve to at
-least one matching token. If an action declares costs, `checkCostFeasibility`
+`isActionLegal` checks preconditions, param/target selector availability, and cost
+feasibility. If an action declares params (or legacy targets), all selectors must
+resolve to at least one matching token. If an action declares costs, `checkCostFeasibility`
 trial-applies each cost effect on a `structuredClone` of the state with
 `boundsMode: "reject"` — if any cost would violate variable bounds the action
 is illegal. This prevents agents from selecting actions they cannot afford.

@@ -80,7 +80,7 @@ export function isActionLegal(definition, state, action, context = {}) {
       return false;
     }
   }
-  const targets = action.targets ?? [];
+  const targets = action.params ?? action.targets ?? [];
   if (targets.length > 0) {
     const bindings = resolveActionTargets(definition, state, action, {
       ...context,

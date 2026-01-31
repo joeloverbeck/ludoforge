@@ -17,7 +17,7 @@ import { selectAndValidateAction } from "./agent-action.js";
 import { handleNoLegalActions } from "./no-legal-actions.js";
 import { runSimultaneousLoop } from "./simultaneous-loop.js";
 
-function runSimulationLoop(config) {
+async function runSimulationLoop(config) {
   const definition = config.definition;
   const agents = config.agents ?? [];
   const state = config.state ?? createInitialState(definition);
@@ -41,7 +41,7 @@ function runSimulationLoop(config) {
   recordLoopHash(state, tracker);
 
   if (definition.turn?.scheduler === "simultaneous") {
-    return runSimultaneousLoop({
+    return await runSimultaneousLoop({
       config,
       definition,
       agents,
@@ -116,7 +116,7 @@ function runSimulationLoop(config) {
       continue;
     }
 
-    const action = selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
+    const action = await selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
 
     executeActionStep({
       definition, state, action, context, legalActionCount,
@@ -149,16 +149,16 @@ function runSimulationLoop(config) {
   }
 }
 
-export function runSimulation(config) {
+export async function runSimulation(config) {
   const resolved = resolveSimulationDefaults(config);
   const definition = resolved.definition;
   const agents = normalizeAgents(resolved.agents ?? []);
   const state = createInitialState(definition);
 
-  return runSimulationLoop({ ...resolved, definition, agents, state });
+  return await runSimulationLoop({ ...resolved, definition, agents, state });
 }
 
-export function runRollout(config) {
+export async function runRollout(config) {
   if (!config || !config.definition) {
     throw new Error("runRollout requires a game definition.");
   }
@@ -174,7 +174,7 @@ export function runRollout(config) {
   const state = cloneState(config.state);
   const resolved = resolveSimulationDefaults({ ...config, definition });
 
-  return runSimulationLoop({
+  return await runSimulationLoop({
     definition,
     agents,
     state,

@@ -96,7 +96,7 @@ function computeWinRate(results, seatId) {
   return total / count;
 }
 
-function computeSkillExpressionMetric(definition, options = {}) {
+async function computeSkillExpressionMetric(definition, options = {}) {
   const enabled = resolveEnabled(options.enabled, DEFAULTS.enabled);
   if (!enabled) {
     return 0;
@@ -150,8 +150,8 @@ function computeSkillExpressionMetric(definition, options = {}) {
         resolvedOptions
       );
 
-      const strongResults = runBatchSimulations(strongInputs);
-      const baselineResults = runBatchSimulations(baselineInputs);
+      const strongResults = await runBatchSimulations(strongInputs);
+      const baselineResults = await runBatchSimulations(baselineInputs);
 
       const strongWinRate = computeWinRate(strongResults.results, seatId);
       const baselineWinRate = computeWinRate(baselineResults.results, seatId);

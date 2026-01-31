@@ -38,7 +38,7 @@ function runSafetyGates(genome, gates) {
   return failures;
 }
 
-export function evaluateGenome(genome, options) {
+export async function evaluateGenome(genome, options) {
   if (!options || typeof options.evaluator !== "function") {
     throw new Error("Evaluation adapter requires an evaluator function");
   }
@@ -94,7 +94,7 @@ export function evaluateGenome(genome, options) {
     };
   }
 
-  const evaluation = options.evaluator(candidate);
+  const evaluation = await options.evaluator(candidate);
   if (!evaluation || evaluation.fitness === undefined || evaluation.descriptors == null) {
     return {
       fitness: null,

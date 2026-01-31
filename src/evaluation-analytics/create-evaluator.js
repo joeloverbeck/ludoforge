@@ -54,7 +54,7 @@ export function createEvaluator(options = {}) {
     portfolioMetrics = {},
   } = options;
 
-  function evaluator(genome) {
+  async function evaluator(genome) {
     const definition = genome.definition;
 
     // Step 1: Create agents
@@ -76,7 +76,7 @@ export function createEvaluator(options = {}) {
     // Step 4: Run N simulations
     let results;
     try {
-      results = engine.runBatch(simulationRuns);
+      results = await engine.runBatch(simulationRuns);
     } catch (err) {
       return {
         fitness: null,
@@ -94,7 +94,7 @@ export function createEvaluator(options = {}) {
     if (shouldRunSuites) {
       const baseSeed = seed ?? 0;
       const cache = createRunCache();
-      suiteResults = runSuites({
+      suiteResults = await runSuites({
         definition,
         suites: agentSuites,
         runsPerSuite: agentSuiteRuns,
@@ -128,7 +128,7 @@ export function createEvaluator(options = {}) {
 
     // Step 7: Optionally compute extended metrics
     const extendedMetrics = includeExtendedMetrics
-      ? computeExtendedMetrics(definition, trajectorySummaries, {
+      ? await computeExtendedMetrics(definition, trajectorySummaries, {
           ...extendedMetricsOptions,
           simulations: results,
         }, suiteResults)

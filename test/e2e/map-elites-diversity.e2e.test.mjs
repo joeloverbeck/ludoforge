@@ -77,7 +77,7 @@ describe("map-elites-diversity", () => {
 
       const evaluation = createDiverseEvaluator(42);
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation,
         mapElites: MAP_ELITES_CONFIG,
@@ -108,7 +108,7 @@ describe("map-elites-diversity", () => {
 
       const evaluation = createDiverseEvaluator(99);
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation,
         mapElites: MAP_ELITES_CONFIG,

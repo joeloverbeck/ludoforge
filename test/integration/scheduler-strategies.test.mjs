@@ -52,37 +52,37 @@ function makeBaseDefinition(schedulerOverrides) {
   };
 }
 
-function runGame(def) {
+async function runGame(def) {
   const engine = createSimulationEngine({
     definition: def,
     agents: [createFirstActionAgent()],
   });
-  return engine.run();
+  return await engine.run();
 }
 
 describe("scheduler strategies through simulation engine", () => {
-  it("round_robin: terminates via win condition", () => {
+  it("round_robin: terminates via win condition", async () => {
     const def = makeBaseDefinition({ scheduler: "round_robin" });
-    const result = runGame(def);
+    const result = await runGame(def);
     assert.strictEqual(result.terminationReason, "condition");
     assert.strictEqual(result.terminated, true);
     assert.ok(result.trajectory.steps.length >= 3);
   });
 
-  it("priority_queue: terminates via win condition", () => {
+  it("priority_queue: terminates via win condition", async () => {
     const def = makeBaseDefinition({
       scheduler: "priority_queue",
       orderBy: { variable: "time", direction: "asc" },
     });
-    const result = runGame(def);
+    const result = await runGame(def);
     assert.strictEqual(result.terminationReason, "condition");
     assert.strictEqual(result.terminated, true);
     assert.ok(result.trajectory.steps.length >= 3);
   });
 
-  it("simultaneous: terminates via win condition", () => {
+  it("simultaneous: terminates via win condition", async () => {
     const def = makeBaseDefinition({ scheduler: "simultaneous" });
-    const result = runGame(def);
+    const result = await runGame(def);
     assert.strictEqual(result.terminationReason, "condition");
     assert.strictEqual(result.terminated, true);
     assert.ok(result.trajectory.steps.length >= 3);

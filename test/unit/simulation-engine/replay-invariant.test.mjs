@@ -172,13 +172,13 @@ function deepEqualVariables(a, b) {
 // ---------------------------------------------------------------------------
 
 describe("T3: replay invariant", () => {
-  it("stateHash matches defaultStateHasher(step.state) for every step", () => {
+  it("stateHash matches defaultStateHasher(step.state) for every step", async () => {
     const definition = createCounterDefinition(3);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 3);
 
@@ -188,13 +188,13 @@ describe("T3: replay invariant", () => {
     }
   });
 
-  it("replaying appliedEffects forward reproduces state variables at each step", () => {
+  it("replaying appliedEffects forward reproduces state variables at each step", async () => {
     const definition = createCounterDefinition(3);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 3);
 
@@ -209,13 +209,13 @@ describe("T3: replay invariant", () => {
     assert.ok(replay.ok, `Replay failures: ${JSON.stringify(replay.failures)}`);
   });
 
-  it("replay with costs + effects + triggers", () => {
+  it("replay with costs + effects + triggers", async () => {
     const definition = createCombinedDefinition(2);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 2);
 
@@ -229,13 +229,13 @@ describe("T3: replay invariant", () => {
     assert.ok(replay.ok, `Replay failures: ${JSON.stringify(replay.failures)}`);
   });
 
-  it("replay works for multi-step with varying action types", () => {
+  it("replay works for multi-step with varying action types", async () => {
     const definition = createTwoActionDefinition();
     const engine = createSimulationEngine({
       definition,
       agents: [createAlternatingAgent()],
     });
-    const result = engine.run();
+    const result = await engine.run();
     const actionSteps = result.trajectory.steps.filter((s) => s.actionId != null);
     assert.ok(actionSteps.length >= 2, "should have multiple action steps");
 
@@ -249,7 +249,7 @@ describe("T3: replay invariant", () => {
     assert.ok(replay.ok, `Replay failures: ${JSON.stringify(replay.failures)}`);
   });
 
-  it("pass step with empty appliedEffects does not alter state", () => {
+  it("pass step with empty appliedEffects does not alter state", async () => {
     const definition = createBaseDefinition();
     definition.actions = [];
     definition.termination.conditions = [];
@@ -260,7 +260,7 @@ describe("T3: replay invariant", () => {
       agents: [createFirstActionAgent()],
       maxTurns: 2,
     });
-    const result = engine.run();
+    const result = await engine.run();
     const passSteps = result.trajectory.steps.filter((s) => s.actionId == null);
     assert.ok(passSteps.length >= 1, "should have pass steps");
 
@@ -283,13 +283,13 @@ describe("T3: replay invariant", () => {
     assert.deepEqual(current.variables, initialState.variables, "variables unchanged after pass steps");
   });
 
-  it("verifyTraceConsistency returns ok:true for valid simulation output", () => {
+  it("verifyTraceConsistency returns ok:true for valid simulation output", async () => {
     const definition = createCounterDefinition(3);
     const engine = createSimulationEngine({
       definition,
       agents: [createFirstActionAgent()],
     });
-    const result = engine.run();
+    const result = await engine.run();
 
     const consistency = verifyTraceConsistency(result.trajectory.steps);
     assert.equal(consistency.ok, true, `Trace consistency failures: ${JSON.stringify(consistency.failures)}`);

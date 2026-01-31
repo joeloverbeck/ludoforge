@@ -86,15 +86,15 @@ function createSingleActionDefinition() {
 
 describe("meaningful-choice", () => {
   describe("computeMeaningfulChoice", () => {
-    it("spread reflects action value differences", () => {
+    it("spread reflects action value differences", async () => {
       const definition = createMeaningfulChoiceDefinition();
       const engine = createSimulationEngine({
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
-      const value = computeMeaningfulChoice(definition, [result], {
+      const value = await computeMeaningfulChoice(definition, [result], {
         enabled: true,
         decisionSamplesPerRun: 2,
         rolloutsPerAction: 1,
@@ -107,15 +107,15 @@ describe("meaningful-choice", () => {
       assert.ok(Math.abs(value - 2) < 1e-9);
     });
 
-    it("returns 0 when no valid decision points exist", () => {
+    it("returns 0 when no valid decision points exist", async () => {
       const definition = createSingleActionDefinition();
       const engine = createSimulationEngine({
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
-      const value = computeMeaningfulChoice(definition, [result], { enabled: true });
+      const value = await computeMeaningfulChoice(definition, [result], { enabled: true });
 
       assert.equal(value, 0);
     });

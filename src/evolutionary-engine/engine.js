@@ -171,7 +171,7 @@ function selectShortlist(placements, config, options) {
   return selected.map((candidate) => candidate.placement.member.genome);
 }
 
-export function runGenerationLoop(options) {
+export async function runGenerationLoop(options) {
   if (!options || !Array.isArray(options.population)) {
     throw new Error("Generation loop requires a population array");
   }
@@ -185,8 +185,8 @@ export function runGenerationLoop(options) {
   const evaluated = [];
   const rejected = [];
 
-  options.population.forEach((genome) => {
-    const result = evaluateGenome(genome, options.evaluation);
+  for (const genome of options.population) {
+    const result = await evaluateGenome(genome, options.evaluation);
     const candidate = result.genome ?? genome;
     if (result.fitness == null || result.descriptors == null) {
       const diag = result.diagnostics;
@@ -200,7 +200,7 @@ export function runGenerationLoop(options) {
               ? "evaluation-error"
               : "evaluation-null";
       rejected.push({ genome: candidate, reason, diagnostics: diag });
-      return;
+      continue;
     }
     evaluated.push({
       genome: candidate,
@@ -208,7 +208,7 @@ export function runGenerationLoop(options) {
       descriptors: result.descriptors,
       diagnostics: result.diagnostics,
     });
-  });
+  }
 
   const mapElites = placePopulationInMapElites(evaluated, options.mapElites);
   const nextGeneration = Array.from(mapElites.elites.values()).map(

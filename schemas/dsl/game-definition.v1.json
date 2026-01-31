@@ -180,6 +180,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/TargetDef" }
         },
+        "params": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ParamDef" }
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": false,
@@ -208,9 +212,78 @@
         "zone": { "type": "string" },
         "tokenType": { "type": "string" },
         "player": { "type": "string", "enum": ["self", "opponent", "any"] },
-        "count": { "type": "integer" },
-        "random": { "type": "boolean" }
+        "count": { "type": "integer" }
       }
+    },
+    "ParamDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "domain"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["token", "player", "zone"] },
+        "domain": {},
+        "count": { "type": "integer", "minimum": 1 },
+        "unique": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "token" } } },
+          "then": {
+            "properties": {
+              "domain": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["selector"],
+                "properties": {
+                  "selector": { "$ref": "#/$defs/SelectorDef" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "player" } } },
+          "then": {
+            "properties": {
+              "domain": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["values"],
+                "properties": {
+                  "values": {
+                    "oneOf": [
+                      { "type": "string", "enum": ["self", "opponent", "any"] },
+                      {
+                        "type": "array",
+                        "items": { "type": "integer" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "zone" } } },
+          "then": {
+            "properties": {
+              "domain": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["values"],
+                "properties": {
+                  "values": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "Effect": {
       "oneOf": [
@@ -362,7 +435,7 @@
           "additionalProperties": false,
           "required": ["kind", "options"],
           "properties": {
-            "kind": { "const": "choose" },
+            "kind": { "const": "rng_choose" },
             "options": {
               "type": "array",
               "items": {

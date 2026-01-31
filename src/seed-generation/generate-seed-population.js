@@ -43,7 +43,7 @@ export function hasSpecialBin(nicheId) {
  * }} options
  * @returns {{ genomes: Array<{ id: string, definition: object }>, report: object }}
  */
-export function generateSeedPopulation({
+export async function generateSeedPopulation({
   populationSize,
   maxAttempts,
   rngSeed,
@@ -121,7 +121,7 @@ export function generateSeedPopulation({
 
     let evalResult;
     try {
-      evalResult = evaluator(genome);
+      evalResult = await evaluator(genome);
     } catch {
       rejectedByReason["evaluation-error"] =
         (rejectedByReason["evaluation-error"] ?? 0) + 1;

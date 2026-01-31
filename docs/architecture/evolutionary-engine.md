@@ -16,8 +16,9 @@ Steps per genome:
    the result is `null`.
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
 3. Run safety gates if provided.
-4. Invoke `options.evaluator(genome)` with the repaired genome if repair ran.
-   The default evaluator is produced by `createEvaluator()` from
+4. `await options.evaluator(genome)` with the repaired genome if repair ran.
+   The evaluator is async — it returns a Promise. The default evaluator is
+   produced by `createEvaluator()` from
    `src/evaluation-analytics/create-evaluator.js`, which runs the full 13-step
    built-in evaluation pipeline (see `docs/architecture/metrics-and-fitness.md`).
 5. Reject if evaluator output is missing `fitness` or `descriptors`.
@@ -151,7 +152,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `scheduler-param-tweak`: tweaks parameters of the current scheduler without changing type. For `priority_queue`: flips `direction` (`asc`/`desc`) or swaps `variable` to a different per-player int variable. For `token_holder`: swaps `tokenType` or `zone` to a different valid option. No-op for `round_robin` (no parameters to tweak).
 - `conditional-effect-insert`: wraps an existing effect from a random action in a `conditional` block. The `then` branch contains the original effect, and the condition is a `cmp` expression comparing a random game variable to a random threshold. No-op when no actions have effects or no variables exist for condition generation.
 - `turn-order-effect-insert`: inserts a `set_turn_order` effect into an `end_round` trigger. Creates the trigger if none exists. References a random per-player integer variable with random direction (`asc`/`desc`). No-op when no per-player integer variables exist.
-- `choose-effect-insert`: wraps an existing action effect in a `choose` block with two options: the original effect and a randomly generated alternative. No-op when no actions have effects.
+- `choose-effect-insert`: wraps an existing action effect in an `rng_choose` block with two options: the original effect and a randomly generated alternative. No-op when no actions have effects.
 - `worker-count-tweak`: adjusts the `count` field on `spawn` effects found in triggers or action effect lists by ±1, clamped to min 1. Defaults missing `count` to 1 before tweaking. No-op when no spawn effects exist.
 
 ### Operator Selection
@@ -179,7 +180,7 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 `scheduler-param-tweak` is weighted at 1.5 (parameter variation within existing scheduler).
 `conditional-effect-insert` is weighted at 1.5 (adds conditional branching to existing effects).
 `turn-order-effect-insert` is weighted at 1.5 (inserts turn-order effect into end-round trigger).
-`choose-effect-insert` is weighted at 1.5 (wraps effect in player-choice block).
+`choose-effect-insert` is weighted at 1.5 (wraps effect in RNG-branching block).
 `worker-count-tweak` is weighted at 2 (moderate spawn-count adjustment).
 The tiering ensures destructive removal mutations fire less frequently than
 conservative value tweaks, reducing invalid-offspring rates.

@@ -14,16 +14,16 @@ export function createSimulationEngine(config) {
   }
 
   return {
-    run() {
-      return runSimulation(config);
+    async run() {
+      return await runSimulation(config);
     },
-    runBatch(count) {
+    async runBatch(count) {
       if (!Number.isInteger(count) || count <= 0) {
         throw new Error("runBatch requires a positive integer count.");
       }
       const results = [];
       for (let index = 0; index < count; index += 1) {
-        results.push(runSimulation(config));
+        results.push(await runSimulation(config));
       }
       return results;
     },

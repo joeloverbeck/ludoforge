@@ -57,7 +57,7 @@ function replayStepHooks(result, input, hooks, context) {
   }
 }
 
-export function runBatchSimulations(inputs, hooks = {}, options = {}) {
+export async function runBatchSimulations(inputs, hooks = {}, options = {}) {
   if (!Array.isArray(inputs)) {
     throw new Error("runBatchSimulations requires an array of inputs.");
   }
@@ -99,12 +99,13 @@ export function runBatchSimulations(inputs, hooks = {}, options = {}) {
       ? hooks.initialMetrics ?? {}
       : hooks.initialMetrics;
 
-  inputs.forEach((input, index) => {
+  for (let index = 0; index < inputs.length; index += 1) {
+    const input = inputs[index];
     const context = { index, input };
     const stepControl = buildStepControl(input, hooks, context);
     const config = stepControl ? { ...input, stepControl } : input;
 
-    const result = runSimulation(config);
+    const result = await runSimulation(config);
     results.push(result);
 
     hooks.onTerminal?.(result, context);
@@ -115,7 +116,7 @@ export function runBatchSimulations(inputs, hooks = {}, options = {}) {
         metrics = nextMetrics;
       }
     }
-  });
+  }
 
   return { results, metrics };
 }

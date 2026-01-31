@@ -14,13 +14,13 @@ const mapElitesConfig = {
 
 describe("engine", () => {
   describe("runGenerationLoop", () => {
-    it("evaluates genomes and skips invalid candidates", () => {
+    it("evaluates genomes and skips invalid candidates", async () => {
       const population = [
         { id: "valid", definition: baseDefinition },
         { id: "invalid", definition: missingTerminationDefinition },
       ];
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: () => ({ fitness: 0.8, descriptors: { length: 10, randomness: 0.1 } }),
@@ -42,8 +42,8 @@ describe("engine", () => {
   describe("rejection reason categorization", () => {
     const validGenome = { id: "g1", definition: baseDefinition };
 
-    function loopWithEvaluator(evaluator) {
-      return runGenerationLoop({
+    async function loopWithEvaluator(evaluator) {
+      return await runGenerationLoop({
         population: [validGenome],
         evaluation: { evaluator },
         mapElites: mapElitesConfig,
@@ -51,8 +51,8 @@ describe("engine", () => {
       });
     }
 
-    it("assigns 'evaluation-null' when evaluator returns null fitness with valid descriptors", () => {
-      const result = loopWithEvaluator(() => ({
+    it("assigns 'evaluation-null' when evaluator returns null fitness with valid descriptors", async () => {
+      const result = await loopWithEvaluator(() => ({
         fitness: null,
         descriptors: { length: 10, randomness: 0.5 },
       }));
@@ -61,11 +61,11 @@ describe("engine", () => {
       assert.equal(result.rejected[0].genome.id, "g1");
     });
 
-    it("assigns 'validation-failure' for invalid genome definitions", () => {
+    it("assigns 'validation-failure' for invalid genome definitions", async () => {
       const population = [
         { id: "bad", definition: missingTerminationDefinition },
       ];
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: () => ({
@@ -80,8 +80,8 @@ describe("engine", () => {
       assert.equal(result.rejected[0].reason, "validation-failure");
     });
 
-    it("assigns 'safety-failure' when safety gates reject", () => {
-      const result = runGenerationLoop({
+    it("assigns 'safety-failure' when safety gates reject", async () => {
+      const result = await runGenerationLoop({
         population: [validGenome],
         evaluation: {
           evaluator: () => ({
@@ -97,14 +97,14 @@ describe("engine", () => {
       assert.equal(result.rejected[0].reason, "safety-failure");
     });
 
-    it("assigns 'evaluation-error' when evaluator returns invalid output", () => {
-      const result = loopWithEvaluator(() => "not-an-object");
+    it("assigns 'evaluation-error' when evaluator returns invalid output", async () => {
+      const result = await loopWithEvaluator(() => "not-an-object");
       assert.equal(result.rejected.length, 1);
       assert.equal(result.rejected[0].reason, "evaluation-error");
     });
 
-    it("assigns 'repair-failure' when repair fails", () => {
-      const result = runGenerationLoop({
+    it("assigns 'repair-failure' when repair fails", async () => {
+      const result = await runGenerationLoop({
         population: [validGenome],
         evaluation: {
           evaluator: () => ({
@@ -125,12 +125,12 @@ describe("engine", () => {
       assert.equal(result.rejected[0].reason, "repair-failure");
     });
 
-    it("every rejected item has reason and diagnostics fields", () => {
+    it("every rejected item has reason and diagnostics fields", async () => {
       const population = [
         { id: "a", definition: baseDefinition },
         { id: "b", definition: missingTerminationDefinition },
       ];
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: () => ({
@@ -148,7 +148,7 @@ describe("engine", () => {
       }
     });
 
-    it("reason is one of the allowed categories", () => {
+    it("reason is one of the allowed categories", async () => {
       const allowed = new Set([
         "repair-failure",
         "validation-failure",
@@ -156,7 +156,7 @@ describe("engine", () => {
         "evaluation-error",
         "evaluation-null",
       ]);
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population: [
           { id: "a", definition: baseDefinition },
           { id: "b", definition: missingTerminationDefinition },
@@ -177,7 +177,7 @@ describe("engine", () => {
   });
 
   describe("shortlist novelty tie-break", () => {
-    it("prefers higher novelty when useNovelty is true and fitness is equal", () => {
+    it("prefers higher novelty when useNovelty is true and fitness is equal", async () => {
       // Four genomes in different niches, all equal fitness.
       // g1 (bin [0,0]), g2 (bin [1,0]), g3 (bin [1,1]) are clustered.
       // g4 (bin [4,3]) is far from all others → highest novelty.
@@ -201,7 +201,7 @@ describe("engine", () => {
         g4: { length: 90, randomness: 0.9 },
       };
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: (genome) => ({
@@ -221,7 +221,7 @@ describe("engine", () => {
       assert.equal(result.shortlist.length, 2);
     });
 
-    it("ignores novelty when useNovelty is false (default)", () => {
+    it("ignores novelty when useNovelty is false (default)", async () => {
       // Same setup but without novelty. Existing tests still pass and
       // shortlist returns correct count.
       const population = [
@@ -238,7 +238,7 @@ describe("engine", () => {
         g4: { length: 90, randomness: 0.9 },
       };
 
-      const withoutNovelty = runGenerationLoop({
+      const withoutNovelty = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: (genome) => ({
@@ -259,7 +259,7 @@ describe("engine", () => {
       }
     });
 
-    it("novelty tie-break is deterministic with the same seed", () => {
+    it("novelty tie-break is deterministic with the same seed", async () => {
       const population = [
         { id: "g1", definition: baseDefinition },
         { id: "g2", definition: baseDefinition },
@@ -272,8 +272,8 @@ describe("engine", () => {
         g3: { length: 90, randomness: 0.9 },
       };
 
-      const run = (seed) =>
-        runGenerationLoop({
+      const run = async (seed) =>
+        await runGenerationLoop({
           population,
           evaluation: {
             evaluator: (genome) => ({
@@ -287,8 +287,8 @@ describe("engine", () => {
           rng: createSeededRng(seed),
         });
 
-      const first = run(99);
-      const second = run(99);
+      const first = await run(99);
+      const second = await run(99);
 
       assert.deepEqual(
         first.shortlist.map((g) => g.id),
@@ -298,7 +298,7 @@ describe("engine", () => {
   });
 
   describe("shortlist", () => {
-    it("favors diversity after fitness ordering", () => {
+    it("favors diversity after fitness ordering", async () => {
       const population = [
         { id: "g1", definition: baseDefinition },
         { id: "g2", definition: baseDefinition },
@@ -313,7 +313,7 @@ describe("engine", () => {
 
       const fitnessById = { g1: 0.9, g2: 0.8, g3: 0.2 };
 
-      const result = runGenerationLoop({
+      const result = await runGenerationLoop({
         population,
         evaluation: {
           evaluator: (genome) => ({
@@ -331,7 +331,7 @@ describe("engine", () => {
       );
     });
 
-    it("tie-breaking is deterministic with the same seed", () => {
+    it("tie-breaking is deterministic with the same seed", async () => {
       const population = [
         { id: "g1", definition: baseDefinition },
         { id: "g2", definition: baseDefinition },
@@ -349,7 +349,7 @@ describe("engine", () => {
         descriptors: descriptorsById[genome.id],
       });
 
-      const first = runGenerationLoop({
+      const first = await runGenerationLoop({
         population,
         evaluation: { evaluator },
         mapElites: mapElitesConfig,
@@ -357,7 +357,7 @@ describe("engine", () => {
         rng: createSeededRng(123),
       });
 
-      const second = runGenerationLoop({
+      const second = await runGenerationLoop({
         population,
         evaluation: { evaluator },
         mapElites: mapElitesConfig,

@@ -6,7 +6,7 @@ export { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
 export { createEventStream, recordStateUpdate, recordTermination } from "./events.js";
 export { computeScoresAtState, evaluateTermination } from "./termination.js";
 export { clearFlags } from "./flags.js";
-export { resolveSelector, resolveActionTargets } from "./selectors.js";
+export { resolveSelector, resolveParamDomains, resolveActionTargets } from "./selectors.js";
 export {
   applyTokenSpawn,
   applyTokenMove,

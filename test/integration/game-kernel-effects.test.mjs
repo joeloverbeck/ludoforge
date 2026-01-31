@@ -509,7 +509,7 @@ describe("game-kernel effects integration", () => {
       const result = applyEffect(
         state,
         {
-          kind: "choose",
+          kind: "rng_choose",
           count: 1,
           options: [
             [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 10 }],
@@ -534,7 +534,7 @@ describe("game-kernel effects integration", () => {
       applyEffect(
         state2,
         {
-          kind: "choose",
+          kind: "rng_choose",
           count: 1,
           options: [
             [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 10 }],
@@ -560,7 +560,7 @@ describe("game-kernel effects integration", () => {
           count: 2,
           effects: [
             {
-              kind: "choose",
+              kind: "rng_choose",
               count: 1,
               options: [
                 [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 5 }],

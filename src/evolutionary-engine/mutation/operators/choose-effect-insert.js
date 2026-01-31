@@ -26,7 +26,7 @@ export const chooseEffectInsertMutation = {
     const alternative = buildRandomEffect(definition, rng);
 
     const chooseEffect = {
-      kind: "choose",
+      kind: "rng_choose",
       options: [[originalEffect], [alternative]],
       count: 1,
     };

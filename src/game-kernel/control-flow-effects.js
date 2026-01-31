@@ -43,7 +43,7 @@ export function applyConditional(state, effect, context, options, applyEffectFn)
 export function applyChoose(state, effect, context, options, applyEffectFn) {
   const allOptions = Array.isArray(effect.options) ? effect.options : [];
   if (allOptions.length === 0) {
-    return { ok: true, appliedEffect: { kind: "choose", selected: [], applied: [] } };
+    return { ok: true, appliedEffect: { kind: "rng_choose", selected: [], applied: [] } };
   }
   const count = typeof effect.count === "number" ? effect.count : 1;
   const available = allOptions.slice();
@@ -70,5 +70,5 @@ export function applyChoose(state, effect, context, options, applyEffectFn) {
       }
     }
   }
-  return { ok: true, appliedEffect: { kind: "choose", selected: selected.length, applied } };
+  return { ok: true, appliedEffect: { kind: "rng_choose", selected: selected.length, applied } };
 }

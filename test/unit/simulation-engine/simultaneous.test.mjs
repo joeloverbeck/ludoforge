@@ -55,7 +55,7 @@ function createOrderDefinition() {
 }
 
 describe("simultaneous scheduler", () => {
-  it("selects all player actions before resolving any", () => {
+  it("selects all player actions before resolving any", async () => {
     const definition = createSimultaneousDefinition();
     const selectionLog = [];
     const agents = [
@@ -76,7 +76,7 @@ describe("simultaneous scheduler", () => {
     ];
 
     const engine = createSimulationEngine({ definition, agents, maxSteps: 2 });
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.deepEqual(selectionLog, [
       { playerId: 1, counter: 0 },
@@ -88,7 +88,7 @@ describe("simultaneous scheduler", () => {
     );
   });
 
-  it("resolves actions by player id order", () => {
+  it("resolves actions by player id order", async () => {
     const definition = createOrderDefinition();
     const agents = [
       {
@@ -106,13 +106,13 @@ describe("simultaneous scheduler", () => {
     ];
 
     const engine = createSimulationEngine({ definition, agents, maxSteps: 2 });
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.deepEqual(result.trajectory.steps.map((step) => step.playerId), [1, 2]);
     assert.equal(result.trajectory.steps.at(-1)?.state.variables.global.marker, 2);
   });
 
-  it("uses deterministic random resolution with seeded RNG", () => {
+  it("uses deterministic random resolution with seeded RNG", async () => {
     const definition = createOrderDefinition();
     definition.turn.resolution = { order: "random" };
     const agents = [
@@ -130,8 +130,8 @@ describe("simultaneous scheduler", () => {
       },
     ];
 
-    const first = createSimulationEngine({ definition, agents, maxSteps: 2, seed: 123 }).run();
-    const second = createSimulationEngine({ definition, agents, maxSteps: 2, seed: 123 }).run();
+    const first = await createSimulationEngine({ definition, agents, maxSteps: 2, seed: 123 }).run();
+    const second = await createSimulationEngine({ definition, agents, maxSteps: 2, seed: 123 }).run();
 
     assert.deepEqual(
       first.trajectory.steps.map((step) => step.playerId),

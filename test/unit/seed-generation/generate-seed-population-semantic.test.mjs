@@ -187,7 +187,7 @@ describe("generateSeedPopulation semantic validation", () => {
     definitionFactory = (counter) => makeCleanDefinition(counter);
   });
 
-  it("rejects definitions with error-level semantic issues as semantic-invalid", () => {
+  it("rejects definitions with error-level semantic issues as semantic-invalid", async () => {
     definitionFactory = (counter) => {
       if (counter <= 5) {
         return makeSemanticErrorDefinition(counter);
@@ -195,7 +195,7 @@ describe("generateSeedPopulation semantic validation", () => {
       return makeCleanDefinition(counter);
     };
 
-    const result = generateSeedPopulation({
+    const result = await generateSeedPopulation({
       populationSize: 2,
       maxAttempts: 200,
       rngSeed: 42,
@@ -210,10 +210,10 @@ describe("generateSeedPopulation semantic validation", () => {
     );
   });
 
-  it("accepts definitions with only warning-level semantic issues", () => {
+  it("accepts definitions with only warning-level semantic issues", async () => {
     definitionFactory = (counter) => makeWarningOnlyDefinition(counter);
 
-    const result = generateSeedPopulation({
+    const result = await generateSeedPopulation({
       populationSize: 3,
       maxAttempts: 200,
       rngSeed: 99,
@@ -229,8 +229,8 @@ describe("generateSeedPopulation semantic validation", () => {
     );
   });
 
-  it("valid definitions produce no semantic-invalid rejections", () => {
-    const result = generateSeedPopulation({
+  it("valid definitions produce no semantic-invalid rejections", async () => {
+    const result = await generateSeedPopulation({
       populationSize: 3,
       maxAttempts: 200,
       rngSeed: 77,

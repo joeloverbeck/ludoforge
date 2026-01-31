@@ -33,9 +33,9 @@ function makeGenome(definition = choiceGame) {
 }
 
 describe("createEvaluator — log adapter failure path", () => {
-  it("returns fitness null with logAdapterOk false when adapter fails", () => {
+  it("returns fitness null with logAdapterOk false when adapter fails", async () => {
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = evaluator(makeGenome());
+    const result = await evaluator(makeGenome());
 
     assert.equal(result.fitness, null);
     assert.equal(result.descriptors, null);

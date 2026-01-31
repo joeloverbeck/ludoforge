@@ -109,11 +109,11 @@ function createLastActionAgent() {
   };
 }
 
-function buildSummaries(definition, agents, count) {
+async function buildSummaries(definition, agents, count) {
   const engine = createSimulationEngine({ definition, agents });
   const results = [];
   for (let i = 0; i < count; i += 1) {
-    results.push(engine.run());
+    results.push(await engine.run());
   }
   const logResult = adaptSimulationLog({
     version: LOG_ADAPTER_VERSION,
@@ -124,19 +124,19 @@ function buildSummaries(definition, agents, count) {
 }
 
 describe("degeneracy integration", () => {
-  it("trivial game triggers forced-move flag", () => {
+  it("trivial game triggers forced-move flag", async () => {
     const definition = createTrivialWinDefinition();
-    const summaries = buildSummaries(definition, [createFirstActionAgent()], 5);
+    const summaries = await buildSummaries(definition, [createFirstActionAgent()], 5);
 
     const report = detectDegeneracy(summaries);
     assert.ok(report.flags.includes("forced-move"),
       `Expected forced-move flag, got: ${JSON.stringify(report.flags)}`);
   });
 
-  it("non-degenerate game produces no reject-policy flags", () => {
+  it("non-degenerate game produces no reject-policy flags", async () => {
     const definition = createNonTrivialDefinition();
-    const summariesA = buildSummaries(definition, [createFirstActionAgent()], 3);
-    const summariesB = buildSummaries(definition, [createLastActionAgent()], 3);
+    const summariesA = await buildSummaries(definition, [createFirstActionAgent()], 3);
+    const summariesB = await buildSummaries(definition, [createLastActionAgent()], 3);
     const summaries = [...summariesA, ...summariesB];
 
     const report = detectDegeneracy(summaries);
@@ -146,9 +146,9 @@ describe("degeneracy integration", () => {
       `Expected no reject flags, got: ${JSON.stringify(rejectFlags)}`);
   });
 
-  it("filter and penalty round-trip on real data", () => {
+  it("filter and penalty round-trip on real data", async () => {
     const definition = createTrivialWinDefinition();
-    const summaries = buildSummaries(definition, [createFirstActionAgent()], 3);
+    const summaries = await buildSummaries(definition, [createFirstActionAgent()], 3);
 
     const report = detectDegeneracy(summaries);
     const decision = applyDegeneracyFilters(report);
@@ -160,12 +160,12 @@ describe("degeneracy integration", () => {
     assert.ok(penalty >= 0, `penalty must be non-negative, got ${penalty}`);
   });
 
-  it("determinism: same simulation produces deepEqual reports", () => {
+  it("determinism: same simulation produces deepEqual reports", async () => {
     const definition = createTrivialWinDefinition();
     const agents = [createFirstActionAgent()];
 
-    const summaries1 = buildSummaries(definition, agents, 3);
-    const summaries2 = buildSummaries(definition, agents, 3);
+    const summaries1 = await buildSummaries(definition, agents, 3);
+    const summaries2 = await buildSummaries(definition, agents, 3);
 
     const report1 = detectDegeneracy(summaries1);
     const report2 = detectDegeneracy(summaries2);

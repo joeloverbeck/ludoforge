@@ -12,4 +12,4 @@ export function runGenerationLoop<
   TDescriptors = DescriptorSet
 >(
   options: GenerationLoopOptions<TGenome, TFitness, TDescriptors>
-): GenerationLoopResult<TGenome, TFitness, TDescriptors>;
+): Promise<GenerationLoopResult<TGenome, TFitness, TDescriptors>>;

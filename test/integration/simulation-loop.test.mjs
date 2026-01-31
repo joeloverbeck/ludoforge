@@ -58,7 +58,7 @@ function winWhenCounterReaches(n) {
 
 describe("simulation-loop integration", () => {
   describe("termination on game condition", () => {
-    it("terminates when a win condition is met", () => {
+    it("terminates when a win condition is met", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [winWhenCounterReaches(3)];
@@ -67,7 +67,7 @@ describe("simulation-loop integration", () => {
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "condition");
       assert.equal(result.terminated, true);
@@ -76,7 +76,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("max-turns termination", () => {
-    it("terminates when maxTurns is reached", () => {
+    it("terminates when maxTurns is reached", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
@@ -86,7 +86,7 @@ describe("simulation-loop integration", () => {
         agents: [createFirstActionAgent()],
         maxTurns: 2,
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-turns");
       assert.equal(result.terminated, false);
@@ -94,7 +94,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("max-steps termination", () => {
-    it("terminates when maxSteps is reached", () => {
+    it("terminates when maxSteps is reached", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
@@ -104,7 +104,7 @@ describe("simulation-loop integration", () => {
         agents: [createFirstActionAgent()],
         maxSteps: 2,
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-steps");
       assert.equal(result.terminated, false);
@@ -112,7 +112,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("loop detection termination", () => {
-    it("terminates when repeated state is detected", () => {
+    it("terminates when repeated state is detected", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createNoopAction()];
       definition.termination.conditions = [];
@@ -122,7 +122,7 @@ describe("simulation-loop integration", () => {
         agents: [createFirstActionAgent()],
         loopDetection: { maxRepeatedStates: 1 },
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "loop-detected");
       assert.equal(result.terminated, false);
@@ -130,7 +130,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("stalemate (default no-legal-actions)", () => {
-    it("returns stalemate when no actions and no policy", () => {
+    it("returns stalemate when no actions and no policy", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -139,7 +139,7 @@ describe("simulation-loop integration", () => {
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "stalemate");
       assert.equal(result.terminated, true);
@@ -148,7 +148,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("no-legal-actions pass policy", () => {
-    it("passes and advances turn when no legal actions with pass policy", () => {
+    it("passes and advances turn when no legal actions with pass policy", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -159,7 +159,7 @@ describe("simulation-loop integration", () => {
         agents: [createFirstActionAgent()],
         maxTurns: 2,
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "max-turns");
       assert.equal(result.terminated, false);
@@ -169,7 +169,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("no-legal-actions terminate policy", () => {
-    it("terminates with custom outcome when no legal actions", () => {
+    it("terminates with custom outcome when no legal actions", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -182,7 +182,7 @@ describe("simulation-loop integration", () => {
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "no-legal-actions");
       assert.equal(result.terminated, true);
@@ -190,7 +190,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("no-legal-actions error policy", () => {
-    it("throws when no legal actions with error policy", () => {
+    it("throws when no legal actions with error policy", async () => {
       const definition = createBaseDefinition();
       definition.actions = [];
       definition.termination.conditions = [];
@@ -204,14 +204,14 @@ describe("simulation-loop integration", () => {
         agents: [createFirstActionAgent()],
       });
 
-      assert.throws(() => engine.run(), {
+      await assert.rejects(async () => engine.run(), {
         message: /No legal actions: custom-reason/,
       });
     });
   });
 
   describe("agent action selection and validation", () => {
-    it("produces correct trajectory with valid agent actions", () => {
+    it("produces correct trajectory with valid agent actions", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [winWhenCounterReaches(2)];
@@ -220,7 +220,7 @@ describe("simulation-loop integration", () => {
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminated, true);
       const actionSteps = result.trajectory.steps.filter((s) => s.actionId === "tick");
@@ -233,7 +233,7 @@ describe("simulation-loop integration", () => {
   });
 
   describe("post-action termination check", () => {
-    it("terminates immediately after action triggers win", () => {
+    it("terminates immediately after action triggers win", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [winWhenCounterReaches(1)];
@@ -242,7 +242,7 @@ describe("simulation-loop integration", () => {
         definition,
         agents: [createFirstActionAgent()],
       });
-      const result = engine.run();
+      const result = await engine.run();
 
       assert.equal(result.terminationReason, "condition");
       assert.equal(result.terminated, true);
@@ -252,13 +252,13 @@ describe("simulation-loop integration", () => {
   });
 
   describe("rollout uses extracted helpers", () => {
-    it("rollout respects max-steps through refactored loop", () => {
+    it("rollout respects max-steps through refactored loop", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
 
       const state = createInitialState(definition);
-      const result = runRollout({
+      const result = await runRollout({
         definition,
         state,
         agent: { kind: "greedy" },

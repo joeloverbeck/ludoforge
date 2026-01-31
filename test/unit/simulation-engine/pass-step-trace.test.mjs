@@ -25,7 +25,7 @@ function assertPassStepTrace(step, label) {
 // ---------------------------------------------------------------------------
 
 describe("pass-step trace rules", () => {
-  it("pass policy emits bindings:{}, appliedEffects:[], and valid stateHash", () => {
+  it("pass policy emits bindings:{}, appliedEffects:[], and valid stateHash", async () => {
     const definition = createBaseDefinition();
     definition.actions = [];
     definition.termination.conditions = [];
@@ -37,14 +37,14 @@ describe("pass-step trace rules", () => {
       maxTurns: 1,
     });
 
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.equal(result.terminationReason, "max-turns");
     assert.equal(result.trajectory.steps.length, 1);
     assertPassStepTrace(result.trajectory.steps[0], "pass-policy");
   });
 
-  it("stalemate detection emits pass-step trace fields", () => {
+  it("stalemate detection emits pass-step trace fields", async () => {
     const definition = createBaseDefinition();
     definition.actions = [];
     definition.termination.conditions = [];
@@ -55,14 +55,14 @@ describe("pass-step trace rules", () => {
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.equal(result.terminationReason, "stalemate");
     assert.equal(result.trajectory.steps.length, 1);
     assertPassStepTrace(result.trajectory.steps[0], "stalemate");
   });
 
-  it("terminate policy emits pass-step trace fields", () => {
+  it("terminate policy emits pass-step trace fields", async () => {
     const definition = createBaseDefinition();
     definition.actions = [];
     definition.termination.conditions = [];
@@ -77,14 +77,14 @@ describe("pass-step trace rules", () => {
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.equal(result.terminationReason, "no-legal-actions");
     assert.equal(result.trajectory.steps.length, 1);
     assertPassStepTrace(result.trajectory.steps[0], "terminate-policy");
   });
 
-  it("stateHash on pass step reflects actual game state", () => {
+  it("stateHash on pass step reflects actual game state", async () => {
     const definition = createBaseDefinition();
     definition.state.variables = [
       { id: "counter", scope: "global", type: { kind: "int" }, initial: 42 },
@@ -97,7 +97,7 @@ describe("pass-step trace rules", () => {
       agents: [createFirstActionAgent()],
     });
 
-    const result = engine.run();
+    const result = await engine.run();
     const step = result.trajectory.steps[0];
 
     // stateHash should be deterministic — same state → same hash
@@ -108,7 +108,7 @@ describe("pass-step trace rules", () => {
       definition,
       agents: [createFirstActionAgent()],
     });
-    const result2 = engine2.run();
+    const result2 = await engine2.run();
     assert.equal(
       result2.trajectory.steps[0].stateHash,
       step.stateHash,
@@ -116,7 +116,7 @@ describe("pass-step trace rules", () => {
     );
   });
 
-  it("pass policy with loop detection emits trace on all pass steps", () => {
+  it("pass policy with loop detection emits trace on all pass steps", async () => {
     const definition = createBaseDefinition();
     definition.actions = [];
     definition.termination.conditions = [];
@@ -128,7 +128,7 @@ describe("pass-step trace rules", () => {
       loopDetection: { maxRepeatedStates: 2 },
     });
 
-    const result = engine.run();
+    const result = await engine.run();
 
     assert.equal(result.terminationReason, "loop-detected");
     assert.ok(result.trajectory.steps.length >= 1);

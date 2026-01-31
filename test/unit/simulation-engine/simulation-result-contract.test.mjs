@@ -50,7 +50,7 @@ describe("simulation-result-contract", () => {
   }
 
   describe("SimulationResult contract", () => {
-    it("holds across termination variants", () => {
+    it("holds across termination variants", async () => {
       {
         const definition = createBaseDefinition();
         definition.actions = [createIncrementAction()];
@@ -70,7 +70,7 @@ describe("simulation-result-contract", () => {
           definition,
           agents: [createFirstActionAgent()],
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "condition", terminated: true });
       }
 
@@ -83,7 +83,7 @@ describe("simulation-result-contract", () => {
           definition,
           agents: [createFirstActionAgent()],
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "stalemate", terminated: true });
       }
 
@@ -100,7 +100,7 @@ describe("simulation-result-contract", () => {
           definition,
           agents: [createFirstActionAgent()],
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "no-legal-actions", terminated: true });
       }
 
@@ -114,7 +114,7 @@ describe("simulation-result-contract", () => {
           agents: [createFirstActionAgent()],
           maxTurns: 1,
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "max-turns", terminated: false });
       }
 
@@ -128,7 +128,7 @@ describe("simulation-result-contract", () => {
           agents: [createFirstActionAgent()],
           maxSteps: 1,
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "max-steps", terminated: false });
       }
 
@@ -142,20 +142,20 @@ describe("simulation-result-contract", () => {
           agents: [createFirstActionAgent()],
           loopDetection: { maxRepeatedStates: 1 },
         });
-        const result = engine.run();
+        const result = await engine.run();
         assertSimulationContract(result, { terminationReason: "loop-detected", terminated: false });
       }
     });
   });
 
   describe("RolloutResult contract", () => {
-    it("holds for max-steps cutoff", () => {
+    it("holds for max-steps cutoff", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
 
       const state = createInitialState(definition);
-      const result = runRollout({
+      const result = await runRollout({
         definition,
         state,
         agent: { kind: "greedy" },

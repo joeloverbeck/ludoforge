@@ -28,7 +28,7 @@ function assertInvalid(result) {
   assert.equal(ok, false, "Expected schema validation to fail");
 }
 
-function buildMaxTurnResult() {
+async function buildMaxTurnResult() {
   const definition = createBaseDefinition();
   definition.actions = [createIncrementAction()];
   definition.termination.conditions = [];
@@ -39,18 +39,18 @@ function buildMaxTurnResult() {
     maxTurns: 1,
   });
 
-  return engine.run();
+  return await engine.run();
 }
 
 describe("simulation-result-schema", () => {
   describe("schema validation", () => {
-    it("SimulationResult validates against the schema", () => {
-      const result = buildMaxTurnResult();
+    it("SimulationResult validates against the schema", async () => {
+      const result = await buildMaxTurnResult();
       assertValid(result);
     });
 
-    it("rejects outcome.reason", () => {
-      const result = buildMaxTurnResult();
+    it("rejects outcome.reason", async () => {
+      const result = await buildMaxTurnResult();
       const candidate = structuredClone(result);
       candidate.outcome.reason = "max-turns";
       assertInvalid(candidate);
@@ -58,8 +58,8 @@ describe("simulation-result-schema", () => {
   });
 
   describe("required fields", () => {
-    it("rejects steps missing affected fields", () => {
-      const result = buildMaxTurnResult();
+    it("rejects steps missing affected fields", async () => {
+      const result = await buildMaxTurnResult();
       const missingIds = structuredClone(result);
       delete missingIds.trajectory.steps[0].affectedPlayerIds;
       assertInvalid(missingIds);

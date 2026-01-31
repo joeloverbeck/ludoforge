@@ -6,7 +6,7 @@ import { createEvaluator } from "../../src/evaluation-analytics/create-evaluator
 import { createSeededRng } from "../../src/simulation-engine/rng.js";
 
 describe("seed-generation diagnostic", () => {
-  it("tracks rejection distribution across 200 generation attempts", () => {
+  it("tracks rejection distribution across 200 generation attempts", async () => {
     const rng = createSeededRng(42);
     const { evaluator } = createEvaluator({
       simulationRuns: 2,
@@ -45,7 +45,7 @@ describe("seed-generation diagnostic", () => {
 
       let result;
       try {
-        result = evaluator(genome);
+        result = await evaluator(genome);
       } catch {
         counts["evaluation-error"]++;
         continue;

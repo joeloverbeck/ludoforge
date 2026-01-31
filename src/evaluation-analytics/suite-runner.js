@@ -15,7 +15,7 @@ import { adaptSimulationLog, LOG_ADAPTER_VERSION } from "./log-adapter.js";
  * @param {{ getOrRun: (key: string, runFn: () => any) => any }} params.cache
  * @returns {Record<string, { results: any[], trajectorySummaries: any[] | null, error?: string }>}
  */
-export function runSuites({
+export async function runSuites({
   definition,
   suites,
   runsPerSuite,
@@ -45,7 +45,7 @@ export function runSuites({
 
         const cacheKey = `${suite.id}:${seed}`;
 
-        const result = cache.getOrRun(cacheKey, () => {
+        const result = await cache.getOrRun(cacheKey, () => {
           const resolvedConfig = resolveSimulationDefaults({
             definition,
             agents,

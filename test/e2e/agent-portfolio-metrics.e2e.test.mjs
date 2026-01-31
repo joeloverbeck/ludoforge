@@ -66,8 +66,8 @@ describe("agent-portfolio metrics E2E", () => {
     const { evaluator: eval1 } = createEvaluator(opts);
     const { evaluator: eval2 } = createEvaluator(opts);
 
-    const result1 = eval1(genome);
-    const result2 = eval2(genome);
+    const result1 = await eval1(genome);
+    const result2 = await eval2(genome);
 
     assert.ok(result1.fitness !== null, "evaluation should produce fitness");
     assert.ok(result2.fitness !== null, "evaluation should produce fitness");

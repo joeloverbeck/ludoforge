@@ -39,13 +39,13 @@ export function resolveAgent(agents, state) {
  * @returns {object} The validated action object from the definition.
  * @throws {Error} If no agent is available, the selection is unknown, illegal, or invalid.
  */
-export function selectAndValidateAction({ agents, definition, state, legalActions, context, rng }) {
+export async function selectAndValidateAction({ agents, definition, state, legalActions, context, rng }) {
   const agent = resolveAgent(agents, state);
   if (!agent || typeof agent.selectAction !== "function") {
     throw new Error("No agent available to select an action.");
   }
 
-  const selection = agent.selectAction({
+  const selection = await agent.selectAction({
     definition,
     state,
     legalActions,

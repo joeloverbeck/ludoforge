@@ -81,13 +81,15 @@ function makeTokenTypeRemovalDefinition() {
     order: "ordered",
     visibility: "public",
   });
-  definition.actions[0].targets.push({
+  definition.actions[0].params.push({
     id: "piece2",
     kind: "token",
-    selector: {
-      zone: "board2",
-      tokenType: "pawn2",
-      count: 1,
+    domain: {
+      selector: {
+        zone: "board2",
+        tokenType: "pawn2",
+        count: 1,
+      },
     },
   });
   definition.actions[0].preconditions = {
@@ -348,7 +350,7 @@ describe("mutation", () => {
       assert.ok(validation.valid);
       assert.equal(mutated.definition.state.tokenTypes.length, 2);
       assert.equal(mutated.definition.state.zones.length, 2);
-      assert.equal(mutated.definition.actions[0].targets.length, 2);
+      assert.equal(mutated.definition.actions[0].params.length, 2);
     });
   });
 
@@ -374,7 +376,7 @@ describe("mutation", () => {
       assert.ok(validation.valid);
       assert.equal(mutated.definition.state.tokenTypes.length, 1);
       assert.equal(mutated.definition.state.zones[0].tokenType, "pawn2");
-      assert.equal(mutated.definition.actions[0].targets[0].selector.tokenType, "pawn2");
+      assert.equal(mutated.definition.actions[0].params[0].domain.selector.tokenType, "pawn2");
       assert.equal(mutated.definition.actions[0].preconditions.ref.id, "pawn2");
       assert.equal(mutated.definition.actions[0].effects[1].target.id, "pawn2");
       assert.equal(mutated.definition.actions[0].effects[1].target.attribute, undefined);
@@ -402,7 +404,7 @@ describe("mutation", () => {
 
       assert.ok(validation.valid);
       assert.equal(mutated.definition.state.zones.length, 1);
-      assert.equal(mutated.definition.actions[0].targets[0].selector.zone, "board2");
+      assert.equal(mutated.definition.actions[0].params[0].domain.selector.zone, "board2");
       assert.equal(mutated.definition.actions[0].preconditions.ref.id, "board2");
       assert.equal(mutated.definition.actions[0].effects[1].toZone, "board2");
     });
@@ -676,7 +678,7 @@ describe("mutation", () => {
       const mutated = chooseEffectInsertMutation.mutate(genome, rng);
 
       const effects = mutated.definition.actions[0].effects;
-      const chooseEffect = effects.find((e) => e.kind === "choose");
+      const chooseEffect = effects.find((e) => e.kind === "rng_choose");
       assert.ok(chooseEffect, "should have a choose effect");
       assert.equal(chooseEffect.count, 1);
       assert.ok(Array.isArray(chooseEffect.options));

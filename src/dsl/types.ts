@@ -65,6 +65,7 @@ export interface ActionDef {
   costs?: Effect[];
   effects: Effect[];
   targets?: TargetDef[];
+  params?: ParamDef[];
   metadata?: {
     phase?: string;
     speed?: "normal" | "reaction";
@@ -83,7 +84,26 @@ export interface SelectorDef {
   tokenType?: string;
   player?: "self" | "opponent" | "any";
   count?: number;
-  random?: boolean;
+}
+
+export interface TokenParamDomain {
+  selector: SelectorDef;
+}
+
+export interface PlayerParamDomain {
+  values: "self" | "opponent" | "any" | number[];
+}
+
+export interface ZoneParamDomain {
+  values: string[];
+}
+
+export interface ParamDef {
+  id: string;
+  kind: "token" | "player" | "zone";
+  domain: TokenParamDomain | PlayerParamDomain | ZoneParamDomain;
+  count?: number;
+  unique?: boolean;
 }
 
 export type Effect =
@@ -100,7 +120,7 @@ export type Effect =
   | { kind: "conditional"; condition: Expr; then: Effect[]; else?: Effect[] }
   | { kind: "set_flag"; target: Ref; flag: string; duration?: "action" | "phase" | "turn" | "round" }
   | { kind: "set_turn_order"; order: "by_variable"; variable: string; direction: "asc" | "desc" }
-  | { kind: "choose"; options: Effect[][]; count?: number }
+  | { kind: "rng_choose"; options: Effect[][]; count?: number }
   | { kind: "shuffle"; target: Ref }
   | { kind: "queue_push"; target: Ref; toZone: string }
   | { kind: "queue_pop"; fromZone: string; toZone?: string }

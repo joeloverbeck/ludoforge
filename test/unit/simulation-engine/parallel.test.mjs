@@ -16,7 +16,7 @@ function buildTwoActionDefinition() {
 
 describe("parallel", () => {
   describe("runBatchSimulations concurrency", () => {
-    it("parallel matches sequential for seeded agents", () => {
+    it("parallel matches sequential for seeded agents", async () => {
       const definition = buildTwoActionDefinition();
       const inputs = [
         { definition, agents: [{ kind: "random" }], seed: 11, maxTurns: 1 },
@@ -24,8 +24,8 @@ describe("parallel", () => {
         { definition, agents: [{ kind: "random" }], seed: 33, maxTurns: 1 },
       ];
 
-      const sequential = runBatchSimulations(inputs);
-      const parallel = runBatchSimulations(inputs, {}, { concurrency: 2 });
+      const sequential = await runBatchSimulations(inputs);
+      const parallel = await runBatchSimulations(inputs, {}, { concurrency: 2 });
 
       const sequentialActions = sequential.results.map(
         (result) => result.trajectory.steps.map((step) => step.actionId),

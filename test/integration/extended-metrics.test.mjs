@@ -78,7 +78,7 @@ function getMetric(metrics, id) {
 }
 
 describe("extended-metrics", () => {
-  it("integrates length, outcome, and coverage summaries", () => {
+  it("integrates length, outcome, and coverage summaries", async () => {
     const definition = createWinLoseDefinition();
     const winEngine = createSimulationEngine({
       definition,
@@ -89,7 +89,7 @@ describe("extended-metrics", () => {
       agents: [createLastActionAgent()],
     });
 
-    const results = [winEngine.run(), loseEngine.run()];
+    const results = [await winEngine.run(), await loseEngine.run()];
     const logResult = adaptSimulationLog({
       version: LOG_ADAPTER_VERSION,
       log: {
@@ -100,7 +100,7 @@ describe("extended-metrics", () => {
 
     assert.ok(logResult.ok, logResult.ok ? undefined : logResult.error?.message);
     const summaries = logResult.value.trajectorySummaries;
-    const metrics = computeExtendedMetrics(definition, summaries);
+    const metrics = await computeExtendedMetrics(definition, summaries);
 
     assert.ok(Math.abs(getMetric(metrics, "length_mean") - 1) < 1e-9);
     assert.ok(Math.abs(getMetric(metrics, "length_variance") - 0) < 1e-9);

@@ -10,7 +10,7 @@ import {
 
 describe("rollout", () => {
   describe("runRollout", () => {
-    it("simulates from the provided state and keeps input immutable", () => {
+    it("simulates from the provided state and keeps input immutable", async () => {
       const definition = createBaseDefinition();
       definition.actions = [createIncrementAction()];
       definition.termination.conditions = [];
@@ -19,7 +19,7 @@ describe("rollout", () => {
       state.variables.global.counter = 5;
       const snapshot = JSON.stringify(state);
 
-      const result = runRollout({
+      const result = await runRollout({
         definition,
         state,
         agent: { kind: "greedy" },
@@ -34,7 +34,7 @@ describe("rollout", () => {
       assert.equal(JSON.stringify(state), snapshot);
     });
 
-    it("is deterministic when seeded", () => {
+    it("is deterministic when seeded", async () => {
       const definition = createBaseDefinition();
       const actionA = createIncrementAction();
       const actionB = createNoopAction();
@@ -43,14 +43,14 @@ describe("rollout", () => {
 
       const state = createInitialState(definition);
 
-      const resultA = runRollout({
+      const resultA = await runRollout({
         definition,
         state,
         agent: { kind: "random" },
         seed: 123,
         maxSteps: 3,
       });
-      const resultB = runRollout({
+      const resultB = await runRollout({
         definition,
         state,
         agent: { kind: "random" },
@@ -66,13 +66,13 @@ describe("rollout", () => {
   });
 
   describe("input validation", () => {
-    it("rejects missing required inputs", () => {
+    it("rejects missing required inputs", async () => {
       const definition = createBaseDefinition();
       const state = createInitialState(definition);
 
-      assert.throws(() => runRollout({ state, agent: { kind: "random" } }), /definition/);
-      assert.throws(() => runRollout({ definition, agent: { kind: "random" } }), /state/);
-      assert.throws(() => runRollout({ definition, state }), /agent/);
+      await assert.rejects(async () => runRollout({ state, agent: { kind: "random" } }), /definition/);
+      await assert.rejects(async () => runRollout({ definition, agent: { kind: "random" } }), /state/);
+      await assert.rejects(async () => runRollout({ definition, state }), /agent/);
     });
   });
 });
