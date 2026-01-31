@@ -12,6 +12,7 @@ and edge cases.
 - `human-feedback.md`: Human scoring capture and preference model updates.
 - `evolutionary-engine.md`: Evaluation adapter, MAP-Elites placement, and genetic operators.
 - `evolution-runner.md`: Runner responsibilities, run isolation, artifact layout, and CLI entrypoint.
+- `tui-game-player.md`: TUI terminal player — CLI, React/Ink components, state management, and build pipeline.
 
 ## Config File Ownership
 

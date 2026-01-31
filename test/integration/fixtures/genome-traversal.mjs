@@ -88,22 +88,24 @@ export const genomeTraversalDefinition = {
           toZone: "board",
         },
       ],
-      targets: [
+      params: [
         {
           id: "piece",
           kind: "token",
-          selector: {
-            zone: "board",
-            tokenType: "pawn",
-            count: 1,
-            where: {
-              kind: "cmp",
-              op: ">",
-              left: {
-                kind: "ref",
-                ref: { kind: "token", id: "pawn", attribute: "rank" },
+          domain: {
+            selector: {
+              zone: "board",
+              tokenType: "pawn",
+              count: 1,
+              where: {
+                kind: "cmp",
+                op: ">",
+                left: {
+                  kind: "ref",
+                  ref: { kind: "token", id: "pawn", attribute: "rank" },
+                },
+                right: { kind: "value", value: 0 },
               },
-              right: { kind: "value", value: 0 },
             },
           },
         },

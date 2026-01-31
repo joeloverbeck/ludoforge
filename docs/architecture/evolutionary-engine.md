@@ -134,7 +134,7 @@ Implemented in `src/evolutionary-engine/mutation.js`.
   removal, rebinds any actions whose `metadata.phase` matched the removed
   phase to a random remaining phase (or removes the phase metadata entirely
   if no phases remain).
-- `token-zone-target-add`: clones a token type + zone and adds a matching action target.
+- `token-zone-target-add`: clones a token type + zone and adds a matching action param (with `domain.selector`).
 - `token-type-remove`: removes a token type and rewrites references to a remaining token type.
 - `zone-remove`: removes a zone and rewrites references to a remaining zone.
 - `effect-insert`: appends a random atomic effect to a random action's effects list.

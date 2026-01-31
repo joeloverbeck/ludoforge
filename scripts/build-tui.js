@@ -1,16 +1,9 @@
-import { glob } from "node:fs/promises";
 import esbuild from "esbuild";
 
-const entryPoints = [];
-for await (const file of glob("src/tui/**/*.{js,jsx}")) {
-  entryPoints.push(file);
-}
-
 await esbuild.build({
-  entryPoints,
-  outdir: "dist/tui",
-  outbase: "src/tui",
-  bundle: false,
+  entryPoints: ["src/tui/ludoforge-play.js"],
+  outfile: "dist/tui/ludoforge-play.js",
+  bundle: true,
   format: "esm",
   platform: "node",
   target: "node20",
@@ -18,4 +11,5 @@ await esbuild.build({
   jsxImportSource: "react",
   loader: { ".jsx": "jsx", ".js": "js" },
   packages: "external",
+  banner: { js: "#!/usr/bin/env node" },
 });

@@ -49,6 +49,38 @@ describe("appReducer", () => {
     assert.notEqual(next, initialAppState);
   });
 
+  describe("INIT_PLAYER_ASSIGNMENTS", () => {
+    it("creates assignments for the given count defaulting to random", () => {
+      const next = appReducer(initialAppState, { type: "INIT_PLAYER_ASSIGNMENTS", count: 3 });
+      assert.equal(next.playerAssignments.length, 3);
+      assert.deepStrictEqual(next.playerAssignments[0], { playerId: 1, type: "random" });
+      assert.deepStrictEqual(next.playerAssignments[1], { playerId: 2, type: "random" });
+      assert.deepStrictEqual(next.playerAssignments[2], { playerId: 3, type: "random" });
+    });
+
+    it("replaces existing assignments", () => {
+      const state = {
+        ...initialAppState,
+        playerAssignments: [{ playerId: 1, type: "human" }],
+      };
+      const next = appReducer(state, { type: "INIT_PLAYER_ASSIGNMENTS", count: 2 });
+      assert.equal(next.playerAssignments.length, 2);
+      assert.equal(next.playerAssignments[0].type, "random");
+    });
+
+    it("handles count of 1", () => {
+      const next = appReducer(initialAppState, { type: "INIT_PLAYER_ASSIGNMENTS", count: 1 });
+      assert.equal(next.playerAssignments.length, 1);
+      assert.deepStrictEqual(next.playerAssignments[0], { playerId: 1, type: "random" });
+    });
+
+    it("does not mutate original state", () => {
+      const next = appReducer(initialAppState, { type: "INIT_PLAYER_ASSIGNMENTS", count: 2 });
+      assert.deepStrictEqual(initialAppState.playerAssignments, []);
+      assert.equal(next.playerAssignments.length, 2);
+    });
+  });
+
   it("ASSIGN_PLAYER updates the correct player's type", () => {
     const state = {
       ...initialAppState,

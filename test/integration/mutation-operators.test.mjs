@@ -158,21 +158,21 @@ describe("mutation-operators", () => {
 
       const afterTokenTypes = mutated.definition.state.tokenTypes;
       const afterZones = mutated.definition.state.zones;
-      const afterTargets = mutated.definition.actions[0].targets;
+      const afterParams = mutated.definition.actions[0].params;
 
       assert.equal(afterTokenTypes.length, definition.state.tokenTypes.length + 1);
       assert.equal(afterZones.length, definition.state.zones.length + 1);
-      assert.equal(afterTargets.length, definition.actions[0].targets.length + 1);
+      assert.equal(afterParams.length, definition.actions[0].params.length + 1);
 
       const newTokenType = afterTokenTypes[afterTokenTypes.length - 1];
       const newZone = afterZones[afterZones.length - 1];
-      const newTarget = afterTargets[afterTargets.length - 1];
+      const newParam = afterParams[afterParams.length - 1];
 
       assert.ok(!beforeTokenTypeIds.has(newTokenType.id));
       assert.ok(!beforeZoneIds.has(newZone.id));
       assert.equal(newZone.tokenType, newTokenType.id);
-      assert.equal(newTarget.selector.zone, newZone.id);
-      assert.equal(newTarget.selector.tokenType, newTokenType.id);
+      assert.equal(newParam.domain.selector.zone, newZone.id);
+      assert.equal(newParam.domain.selector.tokenType, newTokenType.id);
     });
   });
 
@@ -190,7 +190,7 @@ describe("mutation-operators", () => {
       assert.ok(remainingId);
       assert.ok(removedId);
       assert.ok(mutated.definition.state.zones.every((zone) => zone.tokenType === remainingId));
-      assert.equal(mutated.definition.actions[0].targets[0].selector.tokenType, remainingId);
+      assert.equal(mutated.definition.actions[0].params[0].domain.selector.tokenType, remainingId);
       assert.equal(mutated.definition.actions[0].effects[0].target.id, remainingId);
       assert.ok(!mutated.definition.state.zones.some((zone) => zone.tokenType === removedId));
     });
@@ -235,7 +235,7 @@ describe("mutation-operators", () => {
 
       assert.ok(remainingId);
       assert.ok(removedId);
-      assert.equal(mutated.definition.actions[0].targets[0].selector.zone, remainingId);
+      assert.equal(mutated.definition.actions[0].params[0].domain.selector.zone, remainingId);
       assert.equal(mutated.definition.actions[0].effects[0].toZone, remainingId);
       assert.ok(!mutated.definition.state.zones.some((zone) => zone.id === removedId));
     });

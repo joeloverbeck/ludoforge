@@ -52,14 +52,16 @@ function baseDefinition() {
             amount: 1,
           },
         ],
-        targets: [
+        params: [
           {
             id: "piece",
             kind: "token",
-            selector: {
-              zone: "board",
-              tokenType: "pawn",
-              count: 1,
+            domain: {
+              selector: {
+                zone: "board",
+                tokenType: "pawn",
+                count: 1,
+              },
             },
           },
         ],
@@ -153,22 +155,26 @@ describe("dsl-semantic", () => {
         target: { kind: "var", id: "missingVar" },
         amount: 1,
       });
-      definition.actions[0].targets.push({
+      definition.actions[0].params.push({
         id: "ghost",
         kind: "token",
-        selector: {
-          zone: "missingZone",
-          tokenType: "pawn",
-          count: 1,
+        domain: {
+          selector: {
+            zone: "missingZone",
+            tokenType: "pawn",
+            count: 1,
+          },
         },
       });
-      definition.actions[0].targets.push({
+      definition.actions[0].params.push({
         id: "wrongType",
         kind: "token",
-        selector: {
-          zone: "board",
-          tokenType: "missingTokenType",
-          count: 1,
+        domain: {
+          selector: {
+            zone: "board",
+            tokenType: "missingTokenType",
+            count: 1,
+          },
         },
       });
       definition.termination.conditions.push({

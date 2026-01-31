@@ -161,7 +161,7 @@ export function collectSemanticIssues(definition) {
   actions.forEach((action, index) => {
     const costs = normalizeArray(action?.costs);
     const effects = normalizeArray(action?.effects);
-    const targets = normalizeArray(action?.params ?? action?.targets);
+    const targets = normalizeArray(action?.params);
     const preconditionEvaluation = action?.preconditions
       ? evaluateExpr(action.preconditions, exprEvalContext)
       : { possible: true, alwaysTrue: true };
@@ -186,7 +186,7 @@ export function collectSemanticIssues(definition) {
       validateEffect(effect, `/actions/${index}/effects/${effectIndex}`, effectOptions);
     });
     targets.forEach((target, targetIndex) => {
-      validateSelector(target?.domain?.selector ?? target?.selector, `/actions/${index}/targets/${targetIndex}/selector`);
+      validateSelector(target?.domain?.selector, `/actions/${index}/params/${targetIndex}/selector`);
     });
 
     const summary = summarizeAction({

@@ -66,17 +66,14 @@ describe("ludoforge-play CLI (subprocess)", () => {
     );
   });
 
-  it("runs with a game file argument (placeholder output)", async () => {
-    const { stdout } = await exec("node", [DIST_ENTRY, "test.json"]);
-    assert.ok(stdout.includes('game="test.json"'));
-    assert.ok(stdout.includes("TUI components not yet implemented"));
-  });
-
-  it("passes --watch and --speed through", async () => {
-    const { stdout } = await exec("node", [
-      DIST_ENTRY, "test.json", "--watch", "--speed", "200",
-    ]);
-    assert.ok(stdout.includes("watch=true"));
-    assert.ok(stdout.includes("speed=200"));
+  it("exits 1 when game file does not exist", async () => {
+    await assert.rejects(
+      exec("node", [DIST_ENTRY, "nonexistent.json"]),
+      (err) => {
+        assert.ok(err.stderr.includes("Cannot read game definition file"));
+        assert.equal(err.code, 1);
+        return true;
+      },
+    );
   });
 });

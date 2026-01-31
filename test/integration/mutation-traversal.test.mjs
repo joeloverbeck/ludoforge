@@ -61,7 +61,7 @@ describe("mutation-traversal", () => {
       });
 
       const action = definition.actions[0];
-      assert.equal(action.targets[0].selector.tokenType, "piece");
+      assert.equal(action.params[0].domain.selector.tokenType, "piece");
       assert.equal(action.costs[0].target.id, "piece");
       assert.equal(action.costs[0].target.attribute, "owner");
 
@@ -127,7 +127,7 @@ describe("mutation-traversal", () => {
       });
 
       const action = definition.actions[0];
-      assert.equal(action.targets[0].selector.zone, "bench");
+      assert.equal(action.params[0].domain.selector.zone, "bench");
       assert.equal(action.effects[0].toZone, "bench");
       assert.equal(action.preconditions.right.ref.id, "bench");
       assert.equal(definition.triggers[0].effects[0].toZone, "bench");

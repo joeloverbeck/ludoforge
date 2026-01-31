@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { parsePlayArgs } from "./parse-play-args.js";
 
 const USAGE = [
@@ -37,8 +36,23 @@ if (!parsed.gameFile) {
   process.exit(1);
 }
 
-// Placeholder: future tickets will add Ink rendering here.
-process.stdout.write(
-  `ludoforge-play: game="${parsed.gameFile}" watch=${parsed.watch} speed=${parsed.speed}\n`,
-);
-process.stdout.write("TUI components not yet implemented. See TUIGAMPLA-06+.\n");
+// Lazy imports: only load heavy deps (React, Ink, DSL validator) after early-exit checks.
+const { loadDefinition } = await import("./utils/load-definition.js");
+const React = await import("react");
+const { render } = await import("ink");
+const { App } = await import("./app.jsx");
+
+try {
+  const definition = await loadDefinition(parsed.gameFile);
+
+  render(
+    React.createElement(App, {
+      definition,
+      cliPlayers: parsed.players,
+      watch: parsed.watch,
+    }),
+  );
+} catch (err) {
+  process.stderr.write(`Error: ${err.message}\n`);
+  process.exit(1);
+}

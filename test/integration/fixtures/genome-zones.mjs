@@ -50,14 +50,16 @@ export const genomeZonesDefinition = {
           toZone: "bench",
         },
       ],
-      targets: [
+      params: [
         {
           id: "piece",
           kind: "token",
-          selector: {
-            zone: "board",
-            tokenType: "pawn",
-            count: 1,
+          domain: {
+            selector: {
+              zone: "board",
+              tokenType: "pawn",
+              count: 1,
+            },
           },
         },
       ],

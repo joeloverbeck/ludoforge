@@ -51,6 +51,14 @@ export function appReducer(state, action) {
     case "SET_DEFINITION":
       return { ...state, definition: action.definition };
 
+    case "INIT_PLAYER_ASSIGNMENTS": {
+      const assignments = [];
+      for (let i = 1; i <= action.count; i++) {
+        assignments.push({ playerId: i, type: "random" });
+      }
+      return { ...state, playerAssignments: assignments };
+    }
+
     case "ASSIGN_PLAYER":
       return {
         ...state,
