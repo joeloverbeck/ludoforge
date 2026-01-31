@@ -1,5 +1,5 @@
 import { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
-import { resolveActionTargets, resolveParamDomains } from "./selectors.js";
+import { autoBindParams, resolveParamDomains } from "./selectors.js";
 
 const DEFAULT_BOUNDS_MODE = "reject";
 
@@ -41,7 +41,7 @@ function checkCostFeasibility(definition, state, action, context, variableIndex)
     return true;
   }
   const workingState = structuredClone(state);
-  const bindings = resolveActionTargets(definition, workingState, action, {
+  const bindings = autoBindParams(action.params ?? [], workingState, {
     ...context,
     variableIndex,
   });
@@ -80,7 +80,7 @@ export function isActionLegal(definition, state, action, context = {}) {
       return false;
     }
   }
-  const params = action.params ?? action.targets ?? [];
+  const params = action.params ?? [];
   if (params.length > 0) {
     const domains = resolveParamDomains(params, state, {
       ...context,
@@ -106,7 +106,7 @@ export function listLegalActions(definition, state, context = {}) {
 function checkActionBounds(definition, state, action, context, boundsMode) {
   const variableIndex = buildVariableIndex(definition);
   const workingState = structuredClone(state);
-  const bindings = resolveActionTargets(definition, workingState, action, {
+  const bindings = autoBindParams(action.params ?? [], workingState, {
     ...context,
     variableIndex,
   });

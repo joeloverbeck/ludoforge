@@ -7,22 +7,22 @@ describe("formatAction", () => {
     assert.equal(formatAction({ id: "deployWarrior", effects: [] }), "deployWarrior");
   });
 
-  it("shows target names when action has targets", () => {
+  it("shows param names when action has params", () => {
     const action = {
       id: "marchWarrior",
       effects: [],
-      targets: [{ id: "unit", kind: "token", selector: {} }],
+      params: [{ id: "unit", kind: "token", domain: { selector: {} } }],
     };
     assert.equal(formatAction(action), "marchWarrior (select unit)");
   });
 
-  it("shows multiple target names", () => {
+  it("shows multiple param names", () => {
     const action = {
       id: "trade",
       effects: [],
-      targets: [
-        { id: "source", kind: "token", selector: {} },
-        { id: "dest", kind: "zone", selector: {} },
+      params: [
+        { id: "source", kind: "token", domain: { selector: {} } },
+        { id: "dest", kind: "zone", domain: { values: [] } },
       ],
     };
     assert.equal(formatAction(action), "trade (select source, dest)");
@@ -37,18 +37,18 @@ describe("formatAction", () => {
     assert.equal(formatAction(action), "heal (cost: energy -1)");
   });
 
-  it("shows both targets and costs", () => {
+  it("shows both params and costs", () => {
     const action = {
       id: "attack",
       effects: [],
-      targets: [{ id: "enemy", kind: "token", selector: {} }],
+      params: [{ id: "enemy", kind: "token", domain: { selector: {} } }],
       costs: [{ kind: "dec", target: { kind: "var", id: "mana" }, amount: 3 }],
     };
     assert.equal(formatAction(action), "attack (select enemy) (cost: mana -3)");
   });
 
-  it("handles empty targets array as no-targets", () => {
-    const action = { id: "pass", effects: [], targets: [] };
+  it("handles empty params array as no-params", () => {
+    const action = { id: "pass", effects: [], params: [] };
     assert.equal(formatAction(action), "pass");
   });
 
@@ -57,7 +57,7 @@ describe("formatAction", () => {
     assert.equal(formatAction(action), "pass");
   });
 
-  it("handles action with no targets or costs properties", () => {
+  it("handles action with no params or costs properties", () => {
     const action = { id: "skip", effects: [] };
     assert.equal(formatAction(action), "skip");
   });

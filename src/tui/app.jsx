@@ -65,6 +65,7 @@ export function App({ definition, cliPlayers, watch }) {
         gameState={state.gameState}
         definition={state.definition}
         playerAssignments={state.playerAssignments}
+        effectLog={state.effectLog}
       />
     );
   }

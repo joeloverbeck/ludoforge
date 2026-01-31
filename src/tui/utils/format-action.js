@@ -20,8 +20,8 @@ import { formatEffect } from "./format-effect.js";
 export function formatAction(action) {
   const parts = [action.id];
 
-  if (action.targets && action.targets.length > 0) {
-    const summary = action.targets.map((t) => t.id).join(", ");
+  if (action.params && action.params.length > 0) {
+    const summary = action.params.map((p) => p.id).join(", ");
     parts.push(`(select ${summary})`);
   }
 

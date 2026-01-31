@@ -66,13 +66,15 @@ const definition: GameDefinition = {
           toZone: "board",
         },
       ],
-      targets: [
+      params: [
         {
           id: "piece",
           kind: "token",
-          selector: {
-            zone: "board",
-            count: 1,
+          domain: {
+            selector: {
+              zone: "board",
+              count: 1,
+            },
           },
         },
       ],

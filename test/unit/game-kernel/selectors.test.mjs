@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createInitialState } from "../../../src/game-kernel/state.js";
 import { applyTokenSpawn } from "../../../src/game-kernel/token-effects.js";
 import { buildVariableIndex } from "../../../src/game-kernel/effects.js";
-import { resolveSelector, resolveActionTargets } from "../../../src/game-kernel/selectors.js";
+import { resolveSelector, autoBindParams } from "../../../src/game-kernel/selectors.js";
 
 const baseDefinition = {
   version: "1.0",
@@ -147,51 +147,24 @@ describe("selectors", () => {
     });
   });
 
-  describe("resolveActionTargets", () => {
-    it("returns bindings for action params", () => {
+  describe("autoBindParams", () => {
+    it("returns bindings for action params (picks first match)", () => {
       const state = createInitialState(baseDefinition);
       const t1 = spawnToken(state, "board");
 
-      const action = {
-        id: "play",
-        params: [
-          { id: "chosen", kind: "token", domain: { selector: { zone: "board", count: 1 } } },
-        ],
-      };
+      const params = [
+        { id: "chosen", kind: "token", domain: { selector: { zone: "board", count: 1 } } },
+      ];
 
       const ctx = makeContext(state);
-      const bindings = resolveActionTargets(baseDefinition, state, action, ctx);
+      const bindings = autoBindParams(params, state, ctx);
       assert.equal(bindings.chosen, t1);
     });
 
-    it("returns empty bindings when no params", () => {
+    it("returns empty bindings when params is empty", () => {
       const state = createInitialState(baseDefinition);
-      const action = { id: "pass" };
-      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
+      const bindings = autoBindParams([], state, makeContext(state));
       assert.deepEqual(bindings, {});
-    });
-
-    it("returns empty bindings when params array is empty", () => {
-      const state = createInitialState(baseDefinition);
-      const action = { id: "pass", params: [] };
-      const bindings = resolveActionTargets(baseDefinition, state, action, makeContext(state));
-      assert.deepEqual(bindings, {});
-    });
-
-    it("falls back to targets when params is absent", () => {
-      const state = createInitialState(baseDefinition);
-      const t1 = spawnToken(state, "board");
-
-      const action = {
-        id: "play",
-        targets: [
-          { id: "chosen", kind: "token", selector: { zone: "board", count: 1 } },
-        ],
-      };
-
-      const ctx = makeContext(state);
-      const bindings = resolveActionTargets(baseDefinition, state, action, ctx);
-      assert.equal(bindings.chosen, t1);
     });
   });
 });

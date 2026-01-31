@@ -1,4 +1,4 @@
-import { evaluateExpr, buildVariableIndex } from "./effects.js";
+import { evaluateExpr } from "./effects.js";
 import { getZoneTokens } from "./token-effects.js";
 
 export function resolveSelector(selector, state, context) {
@@ -121,26 +121,23 @@ export function resolveParamDomains(params, state, context) {
   return domains;
 }
 
-export function resolveActionTargets(definition, state, action, context) {
-  const targets = action.params ?? action.targets ?? [];
+/**
+ * Auto-bind params by picking the first candidate from each domain.
+ * Used as a fallback when no explicit args are provided.
+ *
+ * @param {Array} params - The params array from an ActionDef
+ * @param {object} state - Current game state
+ * @param {object} context - Execution context (playerId, bindings, etc.)
+ * @returns {Record<string, string|number>}
+ */
+export function autoBindParams(params, state, context) {
   const bindings = { ...context.bindings };
-  const variableIndex = context.variableIndex ?? buildVariableIndex(definition);
+  const domains = resolveParamDomains(params, state, context);
 
-  for (const target of targets) {
-    const selector = target.domain?.selector ?? target.selector;
-    if (target.kind === "player") {
-      const playerIds = resolvePlayerSelector(selector, state, context);
-      if (playerIds.length > 0) {
-        bindings[target.id] = playerIds[0];
-      }
-      continue;
-    }
-    const resolved = resolveSelector(selector, state, {
-      ...context,
-      variableIndex,
-    });
-    if (resolved.length > 0) {
-      bindings[target.id] = resolved[0];
+  for (const param of params) {
+    const domain = domains[param.id];
+    if (Array.isArray(domain) && domain.length > 0) {
+      bindings[param.id] = domain[0];
     }
   }
 

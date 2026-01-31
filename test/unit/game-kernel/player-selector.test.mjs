@@ -3,9 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   resolvePlayerSelector,
-  resolveActionTargets,
+  autoBindParams,
 } from "../../../src/game-kernel/selectors.js";
-import { buildVariableIndex } from "../../../src/game-kernel/effects.js";
 
 function makeState(agents) {
   return { agents };
@@ -80,43 +79,30 @@ describe("resolvePlayerSelector", () => {
   });
 });
 
-describe("resolveActionTargets with kind: player", () => {
+describe("autoBindParams with kind: player", () => {
   it("stores resolved player ID in bindings", () => {
-    const definition = {
-      state: { variables: [{ id: "hp", scope: "per_player", type: { kind: "int" }, initial: 10 }] },
-    };
     const state = makeState([{ id: 1 }, { id: 2 }]);
-    const action = {
-      params: [
-        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
-      ],
-    };
+    const params = [
+      { id: "victim", kind: "player", domain: { values: "opponent" } },
+    ];
     const context = makeContext(1);
 
-    const bindings = resolveActionTargets(definition, state, action, context);
+    const bindings = autoBindParams(params, state, context);
     assert.equal(bindings.victim, 2);
   });
 
   it("does not overwrite bindings when no players match", () => {
-    const definition = {
-      state: { variables: [] },
-    };
     const state = makeState([{ id: 1 }]);
-    const action = {
-      params: [
-        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
-      ],
-    };
+    const params = [
+      { id: "victim", kind: "player", domain: { values: "opponent" } },
+    ];
     const context = makeContext(1);
 
-    const bindings = resolveActionTargets(definition, state, action, context);
+    const bindings = autoBindParams(params, state, context);
     assert.equal(bindings.victim, undefined);
   });
 
   it("handles mixed player and token params", () => {
-    const definition = {
-      state: { variables: [] },
-    };
     const state = {
       agents: [{ id: 1 }, { id: 2 }],
       zones: {
@@ -127,15 +113,13 @@ describe("resolveActionTargets with kind: player", () => {
       },
       tokens: { t1: { id: "t1", type: "card" } },
     };
-    const action = {
-      params: [
-        { id: "victim", kind: "player", domain: { selector: { player: "opponent" } } },
-        { id: "card", kind: "token", domain: { selector: { zone: "hand", player: "self" } } },
-      ],
-    };
+    const params = [
+      { id: "victim", kind: "player", domain: { values: "opponent" } },
+      { id: "card", kind: "token", domain: { selector: { zone: "hand", player: "self" } } },
+    ];
     const context = makeContext(1);
 
-    const bindings = resolveActionTargets(definition, state, action, context);
+    const bindings = autoBindParams(params, state, context);
     assert.equal(bindings.victim, 2);
     assert.equal(bindings.card, "t1");
   });

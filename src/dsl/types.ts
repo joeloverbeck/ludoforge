@@ -64,18 +64,11 @@ export interface ActionDef {
   preconditions?: Expr;
   costs?: Effect[];
   effects: Effect[];
-  targets?: TargetDef[];
   params?: ParamDef[];
   metadata?: {
     phase?: string;
     speed?: "normal" | "reaction";
   };
-}
-
-export interface TargetDef {
-  id: string;
-  kind: "token" | "player" | "zone";
-  selector: SelectorDef;
 }
 
 export interface SelectorDef {

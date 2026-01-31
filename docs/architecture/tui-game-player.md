@@ -113,10 +113,12 @@ State shape (`src/tui/state/app-reducer.js`):
 ├── screen: "playing"
 │   └── <GameScreen>         src/tui/components/game-screen.jsx
 │       ├── <TurnHeader>     src/tui/components/turn-header.jsx
-│       ├── Board placeholder (future: TUIGAMPLA-07+)
+│       ├── <BoardPanel>     src/tui/components/board-panel.jsx
+│       │   └── <ZoneDisplay> src/tui/components/zone-display.jsx
+│       │       └── <TokenBadge> src/tui/components/token-badge.jsx
 │       ├── <StatePanel>     src/tui/components/state-panel.jsx
-│       ├── Action placeholder (future: TUIGAMPLA-07+)
-│       └── Effect Log placeholder (future: TUIGAMPLA-07+)
+│       ├── Action placeholder (future ticket)
+│       └── <EffectLog>      src/tui/components/effect-log.jsx
 │
 └── screen: "gameover"
     └── inline Box (outcome display + quit prompt)
@@ -146,10 +148,38 @@ Keyboard controls:
 
 2x2 flexbox layout shell for the playing screen:
 - Top row: `<TurnHeader>` (full width)
-- Middle row: Board placeholder (left) + `<StatePanel>` (right)
-- Bottom row: Action placeholder (left) + Effect Log placeholder (right)
+- Middle row: `<BoardPanel>` (left) + `<StatePanel>` (right)
+- Bottom row: Action placeholder (left) + `<EffectLog>` (right)
 
-Board, action panel, and effect log are placeholders for future tickets.
+Props: `gameState`, `definition`, `playerAssignments`, `effectLog`,
+`currentPlayerId`, `isSpectator`.
+
+### BoardPanel (`board-panel.jsx`)
+
+Iterates over `definition.state.zones`, builds a token color map from token
+types, and renders a `<ZoneDisplay>` for each zone. Passes zone state,
+token state, color map, player assignments, and visibility context.
+
+### ZoneDisplay (`zone-display.jsx`)
+
+Single zone renderer with four variants:
+- **Global**: Flat token list — `[zoneName] t1:type t2:type`.
+- **Per-player**: Grouped by owner — each player's tokens on a separate line.
+  Zones with `visibility: "private"` show `[hidden]` for non-current-player
+  tokens (spectators see all).
+- **Spatial**: Tokens rendered at node positions from `zone.spatial.nodes`.
+- **Empty**: `[zoneName] (empty)`.
+
+### TokenBadge (`token-badge.jsx`)
+
+Displays a single token as `id:type` with a color prop from the token color
+map. When `hidden` is true, renders dimmed `[hidden]` text instead.
+
+### EffectLog (`effect-log.jsx`)
+
+Scrollable effect log panel. Renders formatted log entries `[T{turn}] P{id}: {message}`.
+Supports PgUp/PgDn scrolling via `useInput`. Auto-scrolls to bottom when new
+entries arrive. Uses pure scroll offset functions from `src/tui/hooks/use-scroll.js`.
 
 ### TurnHeader (`turn-header.jsx`)
 
@@ -184,16 +214,25 @@ src/tui/
 ├── ludoforge-play.js           CLI entrypoint
 ├── app.jsx                     Root component (useReducer, screen switching)
 ├── parse-play-args.js          CLI argument parser
+├── human-agent.js              Promise-based agent for human players
 ├── state/
 │   └── app-reducer.js          Pure reducer + initial state
 ├── components/
 │   ├── game-setup-screen.jsx   Player assignment screen
 │   ├── game-screen.jsx         Playing screen layout shell
 │   ├── turn-header.jsx         Turn/round/phase/player display
-│   └── state-panel.jsx         Variable tables
+│   ├── board-panel.jsx         Zone + token rendering container
+│   ├── zone-display.jsx        Single zone (global/per-player/spatial/empty)
+│   ├── token-badge.jsx         Color-coded token display
+│   ├── state-panel.jsx         Variable tables
+│   └── effect-log.jsx          Scrollable effect log (PgUp/PgDn)
+├── hooks/
+│   └── use-scroll.js           Scroll offset arithmetic (pure functions)
 ├── utils/
 │   ├── load-definition.js      File loading + DSL validation
-│   └── color-scheme.js         Color assignment utilities
+│   ├── color-scheme.js         Color assignment utilities
+│   ├── format-effect.js        Effect → human-readable string
+│   └── format-action.js        Action → display label
 scripts/
 └── build-tui.js                esbuild bundle script
 dist/tui/
@@ -231,8 +270,6 @@ CLI launch
 
 ## Future Work
 
-Placeholder components in `<GameScreen>` will be implemented by subsequent tickets:
-- **Board panel** — zone/token visualization
+Remaining placeholders in `<GameScreen>`:
 - **Action panel** — action selection with cursor navigation
-- **Effect log** — scrollable turn-by-turn effect history
 - **Watch mode loop** — automated AI step execution with speed/pause controls

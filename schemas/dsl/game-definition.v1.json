@@ -176,10 +176,6 @@
           "type": "array",
           "items": { "$ref": "#/$defs/Effect" }
         },
-        "targets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/TargetDef" }
-        },
         "params": {
           "type": "array",
           "items": { "$ref": "#/$defs/ParamDef" }
@@ -192,16 +188,6 @@
             "speed": { "type": "string", "enum": ["normal", "reaction"] }
           }
         }
-      }
-    },
-    "TargetDef": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "kind", "selector"],
-      "properties": {
-        "id": { "type": "string" },
-        "kind": { "type": "string", "enum": ["token", "player", "zone"] },
-        "selector": { "$ref": "#/$defs/SelectorDef" }
       }
     },
     "SelectorDef": {

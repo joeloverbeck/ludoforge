@@ -160,7 +160,7 @@ describe("applyAction", () => {
     assert.ok(state.tokens.token_1, "token_1 should remain untouched");
   });
 
-  it("falls back to resolveActionTargets when args are empty", () => {
+  it("auto-binds params when args are empty", () => {
     const definition = {
       state: { variables: [] },
       turn: {},
@@ -190,15 +190,15 @@ describe("applyAction", () => {
     };
     const context = { playerId: 1 };
 
-    // Empty args — should fall back to resolveActionTargets (auto-picks first match)
+    // Empty args — should auto-bind params (picks first match)
     const result = applyAction(definition, state, action, context, {});
     assert.ok(!result.costAborted);
-    // resolveActionTargets picks the first token in the domain (token_1)
-    assert.equal(state.tokens.token_1, undefined, "token_1 should be destroyed via auto-resolve");
+    // autoBindParams picks the first token in the domain (token_1)
+    assert.equal(state.tokens.token_1, undefined, "token_1 should be destroyed via auto-bind");
     assert.ok(state.tokens.token_2, "token_2 should remain");
   });
 
-  it("falls back to resolveActionTargets when args are undefined", () => {
+  it("auto-binds params when args are undefined", () => {
     const definition = {
       state: { variables: [] },
       turn: {},

@@ -5,7 +5,7 @@
 
 import { buildVariableIndex, applyEffect, applyTriggers } from "../game-kernel/index.js";
 import { clearFlags } from "../game-kernel/flags.js";
-import { resolveActionTargets } from "../game-kernel/selectors.js";
+import { autoBindParams } from "../game-kernel/selectors.js";
 
 /**
  * Deep-clone a game state via JSON round-trip.
@@ -29,7 +29,7 @@ export function applyAction(definition, state, action, context, args) {
   const hasExplicitArgs = args != null && Object.keys(args).length > 0;
   const bindings = hasExplicitArgs
     ? { ...context.bindings, ...args }
-    : resolveActionTargets(definition, state, action, {
+    : autoBindParams(action.params ?? [], state, {
         ...context,
         variableIndex,
       });

@@ -10,7 +10,6 @@ export type {
   ScoreDef,
   SelectorDef,
   StateDef,
-  TargetDef,
   TerminationBlock,
   TerminationDef,
   TokenParamDomain,

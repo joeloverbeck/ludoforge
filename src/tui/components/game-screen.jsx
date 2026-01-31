@@ -2,14 +2,29 @@ import React from "react";
 import { Box, Text } from "ink";
 import { TurnHeader } from "./turn-header.jsx";
 import { StatePanel } from "./state-panel.jsx";
+import { BoardPanel } from "./board-panel.jsx";
+import { EffectLog } from "./effect-log.jsx";
 
 /**
- * Game screen shell: TurnHeader row + middle row (board placeholder | state panel).
- * Board panel, action panel, and effect log are out of scope (TUIGAMPLA-06).
+ * Game screen shell: TurnHeader row + middle row (board | state panel) + bottom row (actions | effect log).
  *
- * @param {{ gameState: object | null, definition: object | null, playerAssignments: Array<{ playerId: number, type: string }> }} props
+ * @param {{
+ *   gameState: object | null,
+ *   definition: object | null,
+ *   playerAssignments: Array<{ playerId: number, type: string }>,
+ *   effectLog?: Array<{ turn: number, playerId: number | string, message: string }>,
+ *   currentPlayerId?: number | null,
+ *   isSpectator?: boolean,
+ * }} props
  */
-export function GameScreen({ gameState, definition, playerAssignments }) {
+export function GameScreen({
+  gameState,
+  definition,
+  playerAssignments,
+  effectLog = [],
+  currentPlayerId,
+  isSpectator,
+}) {
   return (
     <Box flexDirection="column" width="100%" flexGrow={1}>
       <TurnHeader
@@ -19,10 +34,13 @@ export function GameScreen({ gameState, definition, playerAssignments }) {
       />
 
       <Box flexDirection="row" flexGrow={1}>
-        {/* Board panel placeholder — TUIGAMPLA-07+ */}
-        <Box flexGrow={1} borderStyle="single" paddingX={1}>
-          <Text dimColor>Board (not yet implemented)</Text>
-        </Box>
+        <BoardPanel
+          definition={definition}
+          gameState={gameState}
+          playerAssignments={playerAssignments}
+          currentPlayerId={currentPlayerId}
+          isSpectator={isSpectator}
+        />
 
         <StatePanel
           gameState={gameState}
@@ -32,15 +50,12 @@ export function GameScreen({ gameState, definition, playerAssignments }) {
       </Box>
 
       <Box flexDirection="row" height={8}>
-        {/* Action panel placeholder — TUIGAMPLA-07+ */}
+        {/* Action panel placeholder — future ticket */}
         <Box flexGrow={1} borderStyle="single" paddingX={1}>
           <Text dimColor>Actions (not yet implemented)</Text>
         </Box>
 
-        {/* Effect log placeholder — TUIGAMPLA-07+ */}
-        <Box flexGrow={1} borderStyle="single" paddingX={1}>
-          <Text dimColor>Effect Log (not yet implemented)</Text>
-        </Box>
+        <EffectLog effectLog={effectLog} />
       </Box>
     </Box>
   );
