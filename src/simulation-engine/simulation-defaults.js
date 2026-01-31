@@ -91,6 +91,11 @@ export function resolveSimulationDefaults(config) {
     }
   }
 
+  const defaultMaxDecisionSpace = resolveOptionalNumber(defaults.maxDecisionSpace);
+  if (resolved.maxDecisionSpace == null && defaultMaxDecisionSpace != null) {
+    resolved.maxDecisionSpace = defaultMaxDecisionSpace;
+  }
+
   const hasDefinitionPolicy = Boolean(resolved.definition?.turn?.noLegalActions);
   const hasOverridePolicy = Boolean(resolved.turn?.noLegalActions);
   const defaultNoLegalActions = defaults.turn?.noLegalActions;

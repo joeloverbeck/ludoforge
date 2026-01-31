@@ -10,6 +10,7 @@
     "updatedAt": { "type": "string" },
     "maxTurns": { "type": ["integer", "null"], "minimum": 1 },
     "maxSteps": { "type": ["integer", "null"], "minimum": 1 },
+    "maxDecisionSpace": { "type": ["integer", "null"], "minimum": 1 },
     "loopDetection": {
       "type": "object",
       "additionalProperties": false,

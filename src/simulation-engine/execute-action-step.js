@@ -28,6 +28,8 @@ import { defaultStateHasher } from "./loop-detection.js";
  * @param {{ steps: object[] }} params.trajectory
  * @param {object} [params.stepControl]
  * @param {Record<string, string|number|Array<string|number>>} [params.args] - Explicit choice args forwarded to applyAction.
+ * @param {number} [params.decisionSpaceRaw] - Raw (uncapped) decision-space total.
+ * @param {boolean} [params.decisionSpaceCapped] - Whether the cap was applied.
  * @returns {void}
  */
 export function executeActionStep({
@@ -41,6 +43,8 @@ export function executeActionStep({
   trajectory,
   stepControl,
   args,
+  decisionSpaceRaw,
+  decisionSpaceCapped,
 }) {
   const impact = createStepImpact();
   const effectContext = { ...context, impact, rng };
@@ -65,6 +69,8 @@ export function executeActionStep({
     appliedEffects,
     skippedEffects,
     skippedTriggers,
+    decisionSpaceRaw,
+    decisionSpaceCapped,
   });
   recordStep(step, trajectory, stepControl);
 }

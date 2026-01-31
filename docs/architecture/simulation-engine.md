@@ -58,7 +58,11 @@ context, { args })` and passed to `executeActionStep` for binding resolution.
 Per step:
 
 1. List legal actions (`listLegalActions`).
-2. Build meta (`legalActionCount`, `hasLegalActions`) for termination evaluation.
+2. Compute decision-space meta (`computeDecisionSpace`): `legalActionCount` is
+   the sum of choice products across legal actions (i.e., `sum(product(domainSize(param_i)))`)
+   rather than a simple action count. A configurable `maxDecisionSpace` cap prevents
+   explosion; when the raw total exceeds the cap, `legalActionCount` is clamped and
+   `decisionSpaceCapped` is set to `true` on the trajectory step.
 3. Evaluate termination conditions (`evaluateTermination`) with meta.
 4. If terminated, stop and return the outcome.
 5. If no legal actions exist, apply the `turn.noLegalActions` policy:
@@ -109,7 +113,8 @@ otherwise it falls back to `configs/simulation.json`.
     fails, it is recorded as a `skippedTrigger` rather than throwing, and
     successfully applied trigger effects are still returned.
 12. Record state update in the event stream.
-13. Persist the step snapshot (turn, phase, player, action, legalActionCount).
+13. Persist the step snapshot (turn, phase, player, action, legalActionCount,
+    decisionSpaceRaw, decisionSpaceCapped).
 
 No-legal-actions handling never prompts the agent. The pass policy does not run
 after-action triggers because no action occurred.
@@ -219,7 +224,8 @@ ensuring no cross-genome leakage.
 
 Simulation returns:
 
-- `trajectory.steps`: ordered snapshots including `legalActionCount`, `affectedPlayerIds`,
+- `trajectory.steps`: ordered snapshots including `legalActionCount`, `decisionSpaceRaw`,
+  `decisionSpaceCapped`, `affectedPlayerIds`,
   and `affectedGlobal` for metrics.
 - `trajectory.events`: internal event stream (state updates and termination).
 - `outcome`: per-player outcomes (win/lose/draw) with optional scores.
@@ -417,6 +423,8 @@ Optional fields:
 - `appliedEffects?`: per-step ordered applied effects (see Trace Fields above).
 - `skippedEffects?`: per-step skipped effects with reasons (see Trace Fields above).
 - `skippedTriggers?`: per-step skipped triggers with reasons (see Trace Fields above).
+- `decisionSpaceRaw?`: per-step raw (uncapped) decision-space total.
+- `decisionSpaceCapped?`: per-step boolean, true when the `maxDecisionSpace` cap was applied.
 
 Hard rules:
 

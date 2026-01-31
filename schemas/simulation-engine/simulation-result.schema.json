@@ -104,7 +104,9 @@
         "skippedTriggers": {
           "type": "array",
           "items": { "$ref": "#/$defs/SkippedTrigger" }
-        }
+        },
+        "decisionSpaceRaw": { "type": "integer", "minimum": 0 },
+        "decisionSpaceCapped": { "type": "boolean" }
       }
     },
     "GameEvent": {

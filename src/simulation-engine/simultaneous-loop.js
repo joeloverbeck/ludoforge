@@ -11,6 +11,7 @@ import { selectAndValidateAction } from "./agent-action.js";
 import { handleNoLegalActions } from "./no-legal-actions.js";
 import { buildPlayerOrder, resolveSimultaneousOrder } from "./simultaneous-order.js";
 import { executeActionStep } from "./execute-action-step.js";
+import { computeDecisionSpace } from "./decision-space.js";
 
 export async function runSimultaneousLoop({
   config,
@@ -52,10 +53,13 @@ export async function runSimultaneousLoop({
       state.turn.currentPlayer = playerId;
       const context = { playerId, phase, turn };
       const legalActions = listLegalActions(definition, state, context);
-      const legalActionCount = legalActions.length;
+      const decisionSpace = legalActions.length > 0
+        ? computeDecisionSpace(definition, state, legalActions, context, config)
+        : { legalActionCount: 0, decisionSpaceRaw: 0, decisionSpaceCapped: false };
+      const legalActionCount = decisionSpace.legalActionCount;
       const meta = {
         legalActionCount,
-        hasLegalActions: legalActionCount > 0,
+        hasLegalActions: legalActions.length > 0,
       };
 
       const termination = evaluateTermination(definition, state, {
@@ -100,7 +104,11 @@ export async function runSimultaneousLoop({
         context,
         rng,
       });
-      planned.push({ playerId, action, args, legalActionCount });
+      planned.push({
+        playerId, action, args, legalActionCount,
+        decisionSpaceRaw: decisionSpace.decisionSpaceRaw,
+        decisionSpaceCapped: decisionSpace.decisionSpaceCapped,
+      });
     }
 
     if (aborted) {
@@ -128,7 +136,7 @@ export async function runSimultaneousLoop({
         };
       }
 
-      const { playerId, action, args, legalActionCount } = plan;
+      const { playerId, action, args, legalActionCount, decisionSpaceRaw, decisionSpaceCapped } = plan;
       state.turn.currentPlayer = playerId;
       const context = {
         playerId,
@@ -140,6 +148,8 @@ export async function runSimultaneousLoop({
         definition, state, action, context, legalActionCount,
         rng, events, trajectory, stepControl: config.stepControl,
         args,
+        decisionSpaceRaw,
+        decisionSpaceCapped,
       });
       stepsTaken += 1;
 

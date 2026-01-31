@@ -16,6 +16,7 @@ import { checkLoopDetection } from "./loop-check.js";
 import { selectAndValidateAction } from "./agent-action.js";
 import { handleNoLegalActions } from "./no-legal-actions.js";
 import { runSimultaneousLoop } from "./simultaneous-loop.js";
+import { computeDecisionSpace } from "./decision-space.js";
 
 async function runSimulationLoop(config) {
   const definition = config.definition;
@@ -77,10 +78,13 @@ async function runSimulationLoop(config) {
       turn: state.turn.turn,
     };
     const legalActions = listLegalActions(definition, state, context);
-    const legalActionCount = legalActions.length;
+    const decisionSpace = legalActions.length > 0
+      ? computeDecisionSpace(definition, state, legalActions, context, config)
+      : { legalActionCount: 0, decisionSpaceRaw: 0, decisionSpaceCapped: false };
+    const legalActionCount = decisionSpace.legalActionCount;
     const meta = {
       legalActionCount,
-      hasLegalActions: legalActionCount > 0,
+      hasLegalActions: legalActions.length > 0,
     };
 
     const termination = evaluateTermination(definition, state, {
@@ -122,6 +126,8 @@ async function runSimulationLoop(config) {
       definition, state, action, context, legalActionCount,
       rng, events, trajectory, stepControl: config.stepControl,
       args,
+      decisionSpaceRaw: decisionSpace.decisionSpaceRaw,
+      decisionSpaceCapped: decisionSpace.decisionSpaceCapped,
     });
     stepsTaken += 1;
 

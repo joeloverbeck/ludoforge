@@ -13,6 +13,7 @@
       "reason": null
     }
   },
+  "maxDecisionSpace": 10000,
   "rng": {
     "seed": null,
     "algorithm": "lcg32"

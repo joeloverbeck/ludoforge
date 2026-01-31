@@ -104,7 +104,7 @@ function finalizeStepImpact(impact) {
  * @param {string|null|undefined} actionId
  * @param {number} legalActionCount
  * @param {object} [impact]
- * @param {object} [trace] - Trace data: { stateHash, bindings, appliedEffects, skippedEffects, skippedTriggers }
+ * @param {object} [trace] - Trace data: { stateHash, bindings, appliedEffects, skippedEffects, skippedTriggers, decisionSpaceRaw, decisionSpaceCapped }
  * @returns {object}
  */
 export function buildStep(state, actionId, legalActionCount, impact, trace) {
@@ -127,6 +127,12 @@ export function buildStep(state, actionId, legalActionCount, impact, trace) {
     }
     if (Array.isArray(trace.skippedTriggers) && trace.skippedTriggers.length > 0) {
       step.skippedTriggers = trace.skippedTriggers;
+    }
+    if (typeof trace.decisionSpaceRaw === "number") {
+      step.decisionSpaceRaw = trace.decisionSpaceRaw;
+    }
+    if (typeof trace.decisionSpaceCapped === "boolean") {
+      step.decisionSpaceCapped = trace.decisionSpaceCapped;
     }
   }
   return step;

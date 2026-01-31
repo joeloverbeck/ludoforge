@@ -80,6 +80,28 @@ describe("buildStep", () => {
     const step = buildStep(state, "a", 1);
     assert.equal(step.phase, null);
   });
+
+  it("includes decisionSpaceRaw and decisionSpaceCapped when provided in trace", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+      decisionSpaceRaw: 42,
+      decisionSpaceCapped: true,
+    });
+    assert.equal(step.decisionSpaceRaw, 42);
+    assert.equal(step.decisionSpaceCapped, true);
+  });
+
+  it("omits decisionSpaceRaw and decisionSpaceCapped when not in trace", () => {
+    const step = buildStep(makeState(), "attack", 5, undefined, {
+      stateHash: "h1",
+      bindings: {},
+      appliedEffects: [],
+    });
+    assert.equal(step.decisionSpaceRaw, undefined);
+    assert.equal(step.decisionSpaceCapped, undefined);
+  });
 });
 
 describe("applyAction", () => {
