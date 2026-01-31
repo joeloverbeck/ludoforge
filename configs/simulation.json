@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-28T00:00:00Z",
-  "maxTurns": null,
-  "maxSteps": null,
+  "updatedAt": "2026-01-31T00:00:00Z",
+  "maxTurns": 200,
+  "maxSteps": 5000,
   "loopDetection": {
-    "enabled": false,
-    "maxRepeatedStates": null
+    "enabled": true,
+    "maxRepeatedStates": 10
   },
   "turn": {
     "noLegalActions": {

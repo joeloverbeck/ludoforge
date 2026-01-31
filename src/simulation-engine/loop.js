@@ -18,6 +18,9 @@ import { handleNoLegalActions } from "./no-legal-actions.js";
 import { runSimultaneousLoop } from "./simultaneous-loop.js";
 import { computeDecisionSpace } from "./decision-space.js";
 
+const ABSOLUTE_MAX_STEPS = 50_000;
+const YIELD_INTERVAL = 500;
+
 async function runSimulationLoop(config) {
   const definition = config.definition;
   const agents = config.agents ?? [];
@@ -36,7 +39,10 @@ async function runSimulationLoop(config) {
         }
       : null;
   const maxTurns = typeof config.maxTurns === "number" ? config.maxTurns : undefined;
-  const maxSteps = typeof config.maxSteps === "number" ? config.maxSteps : undefined;
+  const effectiveMaxSteps = typeof config.maxSteps === "number"
+    ? Math.min(config.maxSteps, ABSOLUTE_MAX_STEPS)
+    : ABSOLUTE_MAX_STEPS;
+  const logger = config.logger ?? null;
   let stepsTaken = 0;
 
   recordLoopHash(state, tracker);
@@ -52,13 +58,13 @@ async function runSimulationLoop(config) {
       trajectory,
       tracker,
       maxTurns,
-      maxSteps,
+      maxSteps: effectiveMaxSteps,
       stepsTaken,
     });
   }
 
   while (true) {
-    if (typeof maxSteps === "number" && stepsTaken >= maxSteps) {
+    if (stepsTaken >= effectiveMaxSteps) {
       const maxStepOutcome = evaluateTermination(definition, state, {
         activePlayerId: state.turn.currentPlayer,
         maxTurnsReached: true,
@@ -70,6 +76,17 @@ async function runSimulationLoop(config) {
         terminationReason: "max-steps",
         terminated: false,
       };
+    }
+
+    if (stepsTaken > 0 && stepsTaken % YIELD_INTERVAL === 0) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    if (logger && stepsTaken > 0 && stepsTaken % 1000 === 0) {
+      logger.warn(
+        { stepsTaken, turn: state.turn.turn, player: state.turn.currentPlayer },
+        "simulation step milestone",
+      );
     }
 
     const context = {

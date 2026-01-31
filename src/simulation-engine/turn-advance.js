@@ -21,7 +21,6 @@ import { buildDrawOutcome, buildSimulationOutcome } from "./termination-outcome.
 export function advanceAndCheck(definition, state, { maxTurns, events, trajectory, rng }) {
   const advanceResult = advanceTurnPhase(definition, state, {
     maxTurns,
-    stateHistoryLimit: 0,
     rng,
   });
 

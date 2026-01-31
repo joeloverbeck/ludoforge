@@ -11,7 +11,7 @@ import { createFeedbackProvider } from "../human-interface/create-feedback-provi
 async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunnerFn) {
   let consoleIO;
   try {
-    if (config.humanFeedback?.enabled) {
+    if (config.humanFeedback?.enabled && process.stdin.isTTY) {
       consoleIO = createConsoleIO();
       const provider = createFeedbackProvider({
         io: consoleIO.io,
@@ -78,12 +78,24 @@ export async function executeAndReport({
     runnerOptions.preferenceModelSnapshots = preferenceModelSnapshots;
   }
 
-  const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
+  let result;
+  try {
+    result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
+  } catch (error) {
+    reporter.onRunComplete({
+      runId,
+      generationsCompleted: 0,
+      halted: true,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 
   reporter.onRunComplete({
     runId,
     generationsCompleted: result.generations.length,
     halted: !!result.haltedReason,
+    ...(result.haltedReason?.error ? { error: result.haltedReason.error } : {}),
   });
 
   return {

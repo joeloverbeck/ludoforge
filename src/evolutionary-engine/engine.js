@@ -184,9 +184,12 @@ export async function runGenerationLoop(options) {
 
   const evaluated = [];
   const rejected = [];
+  const logger = options.logger ?? null;
+  const total = options.population.length;
 
-  for (const genome of options.population) {
-    const result = await evaluateGenome(genome, options.evaluation);
+  for (let i = 0; i < total; i += 1) {
+    const genome = options.population[i];
+    const result = await evaluateGenome(genome, options.evaluation, { logger });
     const candidate = result.genome ?? genome;
     if (result.fitness == null || result.descriptors == null) {
       const diag = result.diagnostics;
@@ -208,6 +211,13 @@ export async function runGenerationLoop(options) {
       descriptors: result.descriptors,
       diagnostics: result.diagnostics,
     });
+  }
+
+  if (logger) {
+    logger.info(
+      { evaluated: evaluated.length, rejected: rejected.length, total },
+      "population evaluation complete",
+    );
   }
 
   const mapElites = placePopulationInMapElites(evaluated, options.mapElites);

@@ -17,10 +17,12 @@ Per-run values passed to the entry points override file defaults, and explicit
 
 Config keys used by the simulation engine:
 
-- `maxTurns`, `maxSteps`
-- `loopDetection.enabled`, `loopDetection.maxRepeatedStates`
+- `maxTurns` (default `200`), `maxSteps` (default `5000`)
+- `loopDetection.enabled` (default `true`), `loopDetection.maxRepeatedStates` (default `10`)
 - `turn.noLegalActions.policy`, `turn.noLegalActions.reason`
 - `rng.seed` (numeric only), `rng.algorithm` (documentation only; `lcg32`)
+- `logger` (optional Pino logger instance; when provided, step milestones are logged
+  every 1000 steps)
 
 ## State Initialization
 
@@ -168,6 +170,18 @@ When `definition.turn.scheduler === "simultaneous"` the loop changes:
 - The default hasher records variables, tokens, zones, and turn metadata.
 - If repetitions exceed `maxRepeatedStates`, termination reason is `"loop-detected"`.
   Loop detection defaults come from `configs/simulation.json` when enabled.
+
+## Safety Ceilings
+
+Both `loop.js` and `simultaneous-loop.js` enforce an absolute step ceiling
+(`ABSOLUTE_MAX_STEPS = 50_000`) that cannot be overridden by configuration. The
+effective max steps is `Math.min(config.maxSteps, 50_000)` when `maxSteps` is a
+number, or `50_000` when `maxSteps` is unset. This prevents a misconfigured
+`maxSteps: null` from producing an infinite loop.
+
+Every 500 steps, the loop yields to the Node event loop via
+`await new Promise(resolve => setImmediate(resolve))`. This ensures SIGINT
+(CTRL+C) handlers can fire even during CPU-bound simulation loops.
 
 ## Determinism
 

@@ -157,7 +157,9 @@ two factory modules:
 
 - `src/cli/console-io.js` — creates a Node.js readline-based `HumanIO` adapter
   (`{ readLine, writeLine }`) for interactive terminal prompting, with a `close()`
-  handle to release the readline interface.
+  handle to release the readline interface. Both readline output and `writeLine`
+  default to `process.stderr` so that prompts appear alongside pino log output
+  (which also writes to stderr) rather than being lost on a separate stream.
 - `src/human-interface/create-feedback-provider.js` — creates
   `{ feedbackProvider, snapshotProvider }` from an `HumanIO` instance and the
   `humanFeedback` config block.
@@ -179,6 +181,10 @@ runner options receive `feedback` and `preferenceModelSnapshots` from the
 provider. A `try/finally` block ensures `consoleIO.close()` runs on exit. On
 resume, the provider is initialized with `resumeState.preferenceModel` so the
 model continues from where it left off.
+
+Feedback is only wired when `process.stdin.isTTY` is truthy, so non-interactive
+environments (CI, piped input, background processes) skip the feedback loop
+instead of blocking indefinitely on readline.
 
 The `humanFeedback` block is required in the runner config schema
 (`schemas/evolution-runner/runner-config.schema.json`) with `enabled` and `mode`

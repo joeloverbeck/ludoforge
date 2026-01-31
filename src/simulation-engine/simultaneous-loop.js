@@ -13,6 +13,9 @@ import { buildPlayerOrder, resolveSimultaneousOrder } from "./simultaneous-order
 import { executeActionStep } from "./execute-action-step.js";
 import { computeDecisionSpace } from "./decision-space.js";
 
+const ABSOLUTE_MAX_STEPS = 50_000;
+const YIELD_INTERVAL = 500;
+
 export async function runSimultaneousLoop({
   config,
   definition,
@@ -27,9 +30,12 @@ export async function runSimultaneousLoop({
   stepsTaken,
 }) {
   const planningOrder = buildPlayerOrder(definition);
+  const effectiveMaxSteps = typeof maxSteps === "number"
+    ? Math.min(maxSteps, ABSOLUTE_MAX_STEPS)
+    : ABSOLUTE_MAX_STEPS;
 
   while (true) {
-    if (typeof maxSteps === "number" && stepsTaken >= maxSteps) {
+    if (stepsTaken >= effectiveMaxSteps) {
       const maxStepOutcome = evaluateTermination(definition, state, {
         activePlayerId: state.turn.currentPlayer,
         maxTurnsReached: true,
@@ -41,6 +47,10 @@ export async function runSimultaneousLoop({
         terminationReason: "max-steps",
         terminated: false,
       };
+    }
+
+    if (stepsTaken > 0 && stepsTaken % YIELD_INTERVAL === 0) {
+      await new Promise((resolve) => setImmediate(resolve));
     }
 
     state.turn.currentPlayer = 1;
@@ -127,7 +137,7 @@ export async function runSimultaneousLoop({
       .filter(Boolean);
 
     for (const plan of orderedPlans) {
-      if (typeof maxSteps === "number" && stepsTaken >= maxSteps) {
+      if (stepsTaken >= effectiveMaxSteps) {
         const maxStepOutcome = evaluateTermination(definition, state, {
           activePlayerId: state.turn.currentPlayer,
           maxTurnsReached: true,

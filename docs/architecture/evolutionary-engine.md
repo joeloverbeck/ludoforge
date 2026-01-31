@@ -16,11 +16,13 @@ Steps per genome:
    the result is `null`.
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
 3. Run safety gates if provided.
-4. `await options.evaluator(genome)` with the repaired genome if repair ran.
-   The evaluator is async — it returns a Promise. The default evaluator is
-   produced by `createEvaluator()` from
-   `src/evaluation-analytics/create-evaluator.js`, which runs the full 13-step
-   built-in evaluation pipeline (see `docs/architecture/metrics-and-fitness.md`).
+4. `await options.evaluator(genome, context)` with the repaired genome if repair ran.
+   The evaluator is async — it returns a Promise. An optional `context` object
+   (currently `{ logger }`) is threaded from the generation loop through the
+   adapter to the evaluator. The default evaluator is produced by
+   `createEvaluator()` from `src/evaluation-analytics/create-evaluator.js`,
+   which runs the full 13-step built-in evaluation pipeline (see
+   `docs/architecture/metrics-and-fitness.md`).
 5. Reject if evaluator output is missing `fitness` or `descriptors`. When the
    evaluator returns invalid output, diagnostics include the returned `fitness`
    value and whether `descriptors` was present, aiding debugging.

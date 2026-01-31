@@ -72,6 +72,7 @@ export async function writeGenerationArtifacts({
   operatorStats,
   health,
   preferenceMetrics,
+  debugLog,
 }) {
   assertValidRunId(runId);
   assertGenerationNumber(generation);
@@ -172,6 +173,15 @@ export async function writeGenerationArtifacts({
     const preferenceMetricsPath = resolveRunPath(generationDir, "preference-metrics.json");
     await writeJson(preferenceMetricsPath, preferenceMetrics);
     paths.preferenceMetricsPath = preferenceMetricsPath;
+  }
+
+  if (debugLog !== undefined) {
+    if (!isPlainObject(debugLog)) {
+      throw new Error("Debug log must be an object");
+    }
+    const debugLogPath = resolveRunPath(generationDir, "debug-log.json");
+    await writeJson(debugLogPath, debugLog);
+    paths.debugLogPath = debugLogPath;
   }
 
   return paths;

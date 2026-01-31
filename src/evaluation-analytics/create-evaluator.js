@@ -67,7 +67,8 @@ export function createEvaluator(options = {}) {
     },
   } = options;
 
-  async function evaluator(genome) {
+  async function evaluator(genome, context) {
+    const logger = context?.logger ?? null;
     const definition = genome.definition;
 
     // Step 1: Create agents
@@ -86,7 +87,7 @@ export function createEvaluator(options = {}) {
     // Step 3: Create simulation engine + Step 4: Run N simulations
     let results;
     try {
-      const engine = createSimulationEngine(resolvedConfig);
+      const engine = createSimulationEngine({ ...resolvedConfig, logger });
       results = await engine.runBatch(simulationRuns);
     } catch (err) {
       return {

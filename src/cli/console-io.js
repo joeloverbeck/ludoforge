@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 export function createConsoleIO({ input, output } = {}) {
   const rl = createInterface({
     input: input ?? process.stdin,
-    output: output ?? process.stdout,
+    output: output ?? process.stderr,
   });
 
   /** @type {import("../human-interface/prompt.js").HumanIO} */
@@ -20,7 +20,7 @@ export function createConsoleIO({ input, output } = {}) {
       });
     },
     writeLine(line) {
-      const out = output ?? process.stdout;
+      const out = output ?? process.stderr;
       out.write(`${line}\n`);
     },
   };

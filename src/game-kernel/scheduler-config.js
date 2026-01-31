@@ -27,7 +27,7 @@ export function resolveMaxTriggerDepth(options) {
 }
 
 export function resolveStateHistoryLimit(options) {
-  if (typeof options.stateHistoryLimit === "number") {
+  if (typeof options.stateHistoryLimit === "number" && options.stateHistoryLimit > 0) {
     return options.stateHistoryLimit;
   }
   return DEFAULT_STATE_HISTORY_LIMIT;

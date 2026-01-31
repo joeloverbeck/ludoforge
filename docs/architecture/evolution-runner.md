@@ -25,6 +25,9 @@ Describe the evolution runner responsibilities, the per-run directory layout, an
 - Integrate adaptive operator weighting by feeding telemetry to the `WeightedSelector`
   (see [evolutionary-engine.md](evolutionary-engine.md) § Adaptive Weighting).
 - Emit structured logging for major phases and generation boundaries.
+- Thread the logger through to the generation loop, evaluation adapter, evaluator,
+  and simulation engine so that per-genome evaluation progress, simulation batch
+  start/complete, and step milestones are visible at debug/warn levels.
 
 ## Run Naming and Selection
 
@@ -45,6 +48,7 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `operator-stats.json` (per-operator telemetry snapshot)
   - `health.json` (population health metrics snapshot)
   - `preference-metrics.json` (preference model accuracy/calibration diagnostic, when comparison feedback exists)
+  - `debug-log.json` (per-generation debug summary: evaluated/rejected counts, rejection reasons, fitness summaries)
 
 ## Run Isolation Rules
 
@@ -109,6 +113,24 @@ population is overwhelmingly degenerate:
   rejection rate"`) with the halt payload.
 
 Config keys live in `runner` block: `rejectionRateThreshold`, `maxConsecutiveRejections`.
+
+## Generation Error Handling
+
+The generation loop body is wrapped in a try/catch so that an uncaught error
+within a single generation (e.g., evaluation, simulation, or mutation failure)
+does not crash the process:
+
+- **Catch behavior**: the error is logged via `logger.error`, and the runner
+  sets `haltedReason` with `{ cause: "generation-error", generation, error }`
+  (where `error` is the message string) and breaks out of the loop.
+- **Prior results preserved**: any generations that completed before the error
+  are retained in the returned `generations` array.
+- **Run-complete log**: after the loop (whether successful, halted, or errored),
+  the runner logs `"evolution run complete"` with `{ runId, generationsCompleted,
+  halted }`.
+- **CLI reporter**: `executeAndReport` ensures the progress reporter's
+  `onRunComplete` fires even when the runner throws an unexpected error. The
+  reporter includes the error message in its stderr output when present.
 
 ## Health Metrics
 
@@ -341,13 +363,19 @@ minimum `enabled` (boolean) and `mode` (`"comparison"` or `"rating"`). When
 into the generation cycle:
 
 1. `createConsoleIO()` (from `src/cli/console-io.js`) opens a readline-based
-   `HumanIO` adapter for terminal prompting.
+   `HumanIO` adapter for terminal prompting. Both readline output and
+   `writeLine` default to `process.stderr` so prompts appear alongside pino
+   log output in the same stream.
 2. `createFeedbackProvider()` (from `src/human-interface/create-feedback-provider.js`)
    returns an async `feedbackProvider` and a `snapshotProvider`.
 3. These are passed as `feedback` and `preferenceModelSnapshots` to
    `runEvolutionRunner()`.
 
 The feedback provider is async — the runner awaits it each generation.
+
+Feedback is only wired when `process.stdin.isTTY` is truthy, so
+non-interactive environments (CI, piped input, background processes) skip
+the feedback loop instead of blocking indefinitely on readline.
 
 On resume, the provider is initialized with `resumeState.preferenceModel` so
 the preference model continues from its stored state.
@@ -396,8 +424,10 @@ Config keys (in `humanFeedback.adaptiveBudget`):
   the config are known metric names (see
   `docs/architecture/evolutionary-engine.md` § Descriptor ID Validation).
   Unknown IDs produce a `CLIError` listing the invalid names and available metrics.
-- When `humanFeedback.enabled` is `true`, the CLI creates console I/O and a
-  feedback provider, wiring them into the runner options at each call site
-  (resume, `--seeds`, config-seeding). A `try/finally` block ensures the
-  readline interface is closed on exit.
+- When `humanFeedback.enabled` is `true` **and** `process.stdin.isTTY` is
+  truthy, the CLI creates console I/O and a feedback provider, wiring them
+  into the runner options at each call site (resume, `--seeds`,
+  config-seeding). A `try/finally` block ensures the readline interface is
+  closed on exit. Non-interactive environments silently skip the feedback
+  loop.
 - Data persistence modules support run-scoped records via required `runId` fields for metrics and trajectory logs; feedback can optionally include `runId`.

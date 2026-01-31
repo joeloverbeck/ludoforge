@@ -99,7 +99,7 @@ export function advanceRandomDraw(definition, state, rng) {
   }
 
   const playerCount = definition.players.count;
-  const nextPlayer = Math.floor(rng() * playerCount) + 1;
+  const nextPlayer = Math.floor(rng.next() * playerCount) + 1;
   const nextTurn = state.turn.turn + 1;
 
   const { nextRound, nextActed } = advanceRoundTracking(state, playerCount);

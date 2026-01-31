@@ -53,7 +53,7 @@ export function handleNoLegalActions({
     recordStep(step, trajectory, stepControl);
     const newStepsTaken = stepsTaken + 1;
 
-    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory });
+    const turnCheck = advanceAndCheck(definition, state, { maxTurns, events, trajectory, rng: config.rng });
     if (turnCheck.done) {
       return { action: "return", result: turnCheck.result };
     }

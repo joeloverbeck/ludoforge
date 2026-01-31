@@ -29,11 +29,16 @@ function buildAdjacency(edges) {
  * @returns {Map<string, Array<{ fromNode: string, path: string[] }>>}
  *   Map from signature → list of occurrences
  */
-function collectNgrams(adjacency, nodes, n) {
+function collectNgrams(adjacency, nodes, n, maxPaths = 50_000) {
   /** @type {Map<string, Array<{ fromNode: string, path: string[] }>>} */
   const occurrences = new Map();
+  let pathsExplored = 0;
 
   for (const startNode of nodes) {
+    if (pathsExplored >= maxPaths) {
+      break;
+    }
+
     const outgoing = adjacency.get(startNode);
     if (!outgoing) {
       continue;
@@ -47,6 +52,10 @@ function collectNgrams(adjacency, nodes, n) {
     }));
 
     while (stack.length > 0) {
+      if (pathsExplored >= maxPaths) {
+        break;
+      }
+
       const current = stack.pop();
 
       if (current.labels.length === n) {
@@ -58,6 +67,7 @@ function collectNgrams(adjacency, nodes, n) {
           fromNode: startNode,
           path: current.labels,
         });
+        pathsExplored++;
         continue;
       }
 

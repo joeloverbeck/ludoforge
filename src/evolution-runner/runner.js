@@ -65,185 +65,225 @@ export async function runEvolutionRunner(options) {
   for (let offset = 0; offset < generations; offset += 1) {
     const generation = startGeneration + offset;
 
-    if (logger) {
-      logger.info(
-        { generation, totalGenerations: generations, populationSize: currentPopulation.length },
-        "generation start",
-      );
-    }
+    try {
+      if (logger) {
+        logger.info(
+          { generation, totalGenerations: generations, populationSize: currentPopulation.length },
+          "generation start",
+        );
+      }
 
-    const loopResult = await runGenerationLoop({
-      population: currentPopulation,
-      evaluation,
-      mapElites: mapElitesConfig,
-      rng: rng ?? undefined,
-      shortlistSize: runnerConfig.shortlistSize,
-    });
-
-    recordGenerationTelemetry({
-      pendingOperatorNames,
-      loopResult,
-      currentPopulation,
-      telemetry,
-      mutationSelector,
-    });
-
-    const extinctionResult = await checkPopulationExtinction({
-      generation,
-      loopResult,
-      currentPopulation,
-      telemetry,
-      snapshotProvider,
-      runId,
-      baseDir,
-      seed,
-      logger,
-    });
-    if (extinctionResult) {
-      haltedReason = extinctionResult.haltedReason;
-      break;
-    }
-
-    const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
-    const miningResult = await runMotifMiningPipeline({
-      mapElitesResult: loopResult.mapElites,
-      motifMiningConfig,
-      simulationConfig: evaluation.simulationConfig ?? {},
-      generationDir: genDir,
-      seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
-    });
-
-    if (miningResult && miningResult.motifEffects.length > 0 && motifInjectIndex >= 0) {
-      mutationOperators[motifInjectIndex] = createMotifInjectMutation(miningResult.motifEffects);
-    }
-
-    const evolutionResult = applyEvolution(loopResult.nextGeneration, {
-      rng: rng ?? undefined,
-      mutationRate,
-      crossoverRate,
-      mutationOperators,
-      crossoverOperators: options.crossoverOperators,
-      repairOperators: options.repairOperators,
-      mutationSelector,
-      telemetry,
-      ...(maxMutationRetries !== undefined ? { maxMutationRetries } : {}),
-      ...(offspringPerParent !== undefined ? { offspringPerParent } : {}),
-    });
-
-    let evolvedPopulation = evolutionResult.population;
-    pendingOperatorNames = evolutionResult.operatorNames;
-
-    const minPopulationSize = runnerConfig.minPopulationSize;
-    if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
-      const replenished = replenishPopulation(evolvedPopulation, {
-        minSize: minPopulationSize,
-        rng,
-        grammarConfig: config.seeding?.generate?.grammar,
+      const loopResult = await runGenerationLoop({
+        population: currentPopulation,
+        evaluation,
+        mapElites: mapElitesConfig,
+        rng: rng ?? undefined,
+        shortlistSize: runnerConfig.shortlistSize,
+        logger: logger ?? undefined,
       });
-      if (replenished.injectedCount > 0) {
-        evolvedPopulation = replenished.population;
-        pendingOperatorNames = [
-          ...pendingOperatorNames,
-          ...new Array(replenished.injectedCount).fill(null),
-        ];
-        if (logger) {
-          logger.info(
-            { injectedCount: replenished.injectedCount, generation },
-            "population replenished",
-          );
+
+      recordGenerationTelemetry({
+        pendingOperatorNames,
+        loopResult,
+        currentPopulation,
+        telemetry,
+        mutationSelector,
+      });
+
+      const extinctionResult = await checkPopulationExtinction({
+        generation,
+        loopResult,
+        currentPopulation,
+        telemetry,
+        snapshotProvider,
+        runId,
+        baseDir,
+        seed,
+        logger,
+      });
+      if (extinctionResult) {
+        haltedReason = extinctionResult.haltedReason;
+        break;
+      }
+
+      const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
+      const miningResult = await runMotifMiningPipeline({
+        mapElitesResult: loopResult.mapElites,
+        motifMiningConfig,
+        simulationConfig: evaluation.simulationConfig ?? {},
+        generationDir: genDir,
+        seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
+      });
+
+      if (miningResult && miningResult.motifEffects.length > 0 && motifInjectIndex >= 0) {
+        mutationOperators[motifInjectIndex] = createMotifInjectMutation(miningResult.motifEffects);
+      }
+
+      const evolutionResult = applyEvolution(loopResult.nextGeneration, {
+        rng: rng ?? undefined,
+        mutationRate,
+        crossoverRate,
+        mutationOperators,
+        crossoverOperators: options.crossoverOperators,
+        repairOperators: options.repairOperators,
+        mutationSelector,
+        telemetry,
+        ...(maxMutationRetries !== undefined ? { maxMutationRetries } : {}),
+        ...(offspringPerParent !== undefined ? { offspringPerParent } : {}),
+      });
+
+      let evolvedPopulation = evolutionResult.population;
+      pendingOperatorNames = evolutionResult.operatorNames;
+
+      const minPopulationSize = runnerConfig.minPopulationSize;
+      if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
+        const replenished = replenishPopulation(evolvedPopulation, {
+          minSize: minPopulationSize,
+          rng,
+          grammarConfig: config.seeding?.generate?.grammar,
+        });
+        if (replenished.injectedCount > 0) {
+          evolvedPopulation = replenished.population;
+          pendingOperatorNames = [
+            ...pendingOperatorNames,
+            ...new Array(replenished.injectedCount).fill(null),
+          ];
+          if (logger) {
+            logger.info(
+              { injectedCount: replenished.injectedCount, generation },
+              "population replenished",
+            );
+          }
         }
       }
-    }
 
-    assertPopulation(evolvedPopulation);
+      assertPopulation(evolvedPopulation);
 
-    const determinism = assembleDeterminism(options.determinism, rng, seed);
+      const determinism = assembleDeterminism(options.determinism, rng, seed);
 
-    const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
-      generation,
-      runId,
-      baseDir,
-      loopResult,
-      population: evolvedPopulation,
-      feedbackEnabled,
-      feedbackProvider,
-      snapshotProvider,
-      seed,
-      telemetry,
-    });
+      const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
+        generation,
+        runId,
+        baseDir,
+        loopResult,
+        population: evolvedPopulation,
+        feedbackEnabled,
+        feedbackProvider,
+        snapshotProvider,
+        seed,
+        telemetry,
+      });
 
-    const artifacts = await writeGenerationArtifacts({
-      baseDir,
-      runId,
-      generation,
-      population: evolvedPopulation.map((genome) => ({
-        id: genome.id,
-        definition: genome.definition,
-      })),
-      evaluated: loopResult.evaluated,
-      rejected: loopResult.rejected,
-      mapElites: serializeMapElites(loopResult.mapElites),
-      shortlist: loopResult.shortlist,
-      feedback,
-      preferenceModelSnapshots,
-      determinism,
-      operatorStats: serializeTelemetry(telemetry),
-      health,
-      preferenceMetrics,
-    });
+      const debugLog = {
+        generation,
+        timestamp: new Date().toISOString(),
+        populationSize: evolvedPopulation.length,
+        evaluatedCount: loopResult.evaluated.length,
+        rejectedCount: loopResult.rejected.length,
+        rejectionReasons: loopResult.rejected.map((r) => ({
+          genomeId: r.genome?.id ?? null,
+          reason: r.reason,
+        })),
+        evaluatedSummary: loopResult.evaluated.map((e) => ({
+          genomeId: e.genome?.id ?? null,
+          fitness: e.fitness,
+        })),
+      };
 
-    if (runnerConfig.maxRetainedGenerations != null) {
-      await pruneOldGenerations({
+      const artifacts = await writeGenerationArtifacts({
         baseDir,
         runId,
-        maxRetained: runnerConfig.maxRetainedGenerations,
+        generation,
+        population: evolvedPopulation.map((genome) => ({
+          id: genome.id,
+          definition: genome.definition,
+        })),
+        evaluated: loopResult.evaluated,
+        rejected: loopResult.rejected,
+        mapElites: serializeMapElites(loopResult.mapElites),
+        shortlist: loopResult.shortlist,
+        feedback,
+        preferenceModelSnapshots,
+        determinism,
+        operatorStats: serializeTelemetry(telemetry),
+        health,
+        preferenceMetrics,
+        debugLog,
       });
-    }
 
-    results.push({
-      generation,
-      population: evolvedPopulation,
-      evaluated: loopResult.evaluated,
-      rejected: loopResult.rejected,
-      mapElites: loopResult.mapElites,
-      shortlist: loopResult.shortlist,
-      artifacts,
-    });
+      if (runnerConfig.maxRetainedGenerations != null) {
+        await pruneOldGenerations({
+          baseDir,
+          runId,
+          maxRetained: runnerConfig.maxRetainedGenerations,
+        });
+      }
 
-    const totalEvaluated = loopResult.evaluated.length + loopResult.rejected.length;
-    const rejectionRate = totalEvaluated > 0
-      ? loopResult.rejected.length / totalEvaluated
-      : 0;
+      results.push({
+        generation,
+        population: evolvedPopulation,
+        evaluated: loopResult.evaluated,
+        rejected: loopResult.rejected,
+        mapElites: loopResult.mapElites,
+        shortlist: loopResult.shortlist,
+        artifacts,
+      });
 
-    if (logger) {
-      logger.info(
-        {
-          generation,
-          evaluated: loopResult.evaluated.length,
-          rejected: loopResult.rejected.length,
-          rejectionRate,
-          populationSize: evolvedPopulation.length,
-        },
-        "generation end",
-      );
-    }
+      const totalEvaluated = loopResult.evaluated.length + loopResult.rejected.length;
+      const rejectionRate = totalEvaluated > 0
+        ? loopResult.rejected.length / totalEvaluated
+        : 0;
 
-    const haltCheck = checkHighRejectionHalt({
-      rejectionRate,
-      rejectionRateThreshold,
-      consecutiveHighRejections,
-      maxConsecutiveRejections,
-      generation,
-      rejected: loopResult.rejected,
-      logger,
-    });
-    consecutiveHighRejections = haltCheck.consecutiveHighRejections;
-    if (haltCheck.haltedReason) {
-      haltedReason = haltCheck.haltedReason;
+      if (logger) {
+        logger.info(
+          {
+            generation,
+            evaluated: loopResult.evaluated.length,
+            rejected: loopResult.rejected.length,
+            rejectionRate,
+            populationSize: evolvedPopulation.length,
+          },
+          "generation end",
+        );
+      }
+
+      const haltCheck = checkHighRejectionHalt({
+        rejectionRate,
+        rejectionRateThreshold,
+        consecutiveHighRejections,
+        maxConsecutiveRejections,
+        generation,
+        rejected: loopResult.rejected,
+        logger,
+      });
+      consecutiveHighRejections = haltCheck.consecutiveHighRejections;
+      if (haltCheck.haltedReason) {
+        haltedReason = haltCheck.haltedReason;
+        break;
+      }
+
+      currentPopulation = evolvedPopulation;
+    } catch (error) {
+      if (logger) {
+        logger.error(
+          { generation, error: error instanceof Error ? error.message : String(error) },
+          "generation failed with error",
+        );
+      }
+      haltedReason = {
+        cause: "generation-error",
+        generation,
+        error: error instanceof Error ? error.message : String(error),
+      };
       break;
     }
+  }
 
-    currentPopulation = evolvedPopulation;
+  if (logger) {
+    logger.info(
+      { runId, generationsCompleted: results.length, halted: !!haltedReason },
+      "evolution run complete",
+    );
   }
 
   return {

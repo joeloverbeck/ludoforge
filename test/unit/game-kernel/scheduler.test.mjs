@@ -573,7 +573,7 @@ describe("scheduler", () => {
   describe("random_draw scheduler", () => {
     function makeRng(values) {
       let i = 0;
-      return () => values[i++ % values.length];
+      return { next: () => values[i++ % values.length] };
     }
 
     const randomDrawDef = {

@@ -76,7 +76,7 @@
     }
   },
   "humanFeedback": {
-    "enabled": true,
+    "enabled": false,
     "mode": "comparison",
     "maxSamplesPerGen": 5,
     "activeLearning": {
