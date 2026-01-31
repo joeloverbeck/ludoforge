@@ -159,26 +159,15 @@ describe("mutateAndRepairGenome structured outcome", () => {
     });
   });
 
-  describe("backward compatibility", () => {
-    it("non-selector path still returns plain genome on success", () => {
+  describe("selector required", () => {
+    it("throws when called without a selector", () => {
       const operators = [{ mutate: (g) => ({ ...g, definition: { ...g.definition, mutated: true } }) }];
       const repairOperators = [{ repair: (g) => g }];
 
-      const result = mutateAndRepairGenome(baseGenome, { operators, repairOperators });
-
-      assert.equal(result.definition.mutated, true);
-      assert.equal(result.outcome, undefined);
-    });
-
-    it("non-selector path still returns original genome clone on repair failure", () => {
-      const operators = [{ mutate: (g) => ({ ...g, definition: { ...g.definition, mutated: true } }) }];
-      const repairOperators = [{ repair: () => null }];
-
-      const result = mutateAndRepairGenome(baseGenome, { operators, repairOperators });
-
-      assert.deepEqual(result, baseGenome);
-      assert.notEqual(result, baseGenome);
-      assert.equal(result.outcome, undefined);
+      assert.throws(
+        () => mutateAndRepairGenome(baseGenome, { operators, repairOperators }),
+        /requires a selector/,
+      );
     });
   });
 });

@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { playerColor } from "../utils/color-scheme.js";
+import { extractTurnInfo } from "../utils/extract-turn-info.js";
 
 /**
  * Displays turn, round, phase, and active player info.
@@ -16,10 +17,7 @@ export function TurnHeader({ gameState, definition, playerAssignments }) {
     );
   }
 
-  const turn = gameState.turn ?? 0;
-  const round = gameState.round ?? 0;
-  const phase = gameState.phase ?? "main";
-  const activeId = gameState.activePlayerId ?? null;
+  const { turn, round, phase, activePlayerId: activeId } = extractTurnInfo(gameState);
 
   const assignment = activeId !== null
     ? playerAssignments.find((a) => a.playerId === activeId)

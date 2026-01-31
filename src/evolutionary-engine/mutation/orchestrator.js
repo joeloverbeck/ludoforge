@@ -3,7 +3,6 @@ import {
   DEFAULT_EVOLUTION_OPERATORS_CONFIG,
   filterOperatorsByEnabled,
 } from "../operator-config.js";
-import { getRandomIndex } from "./random.js";
 import { numericTweakMutation } from "./operators/numeric-tweak.js";
 import { booleanToggleMutation } from "./operators/boolean-toggle.js";
 import { enumCycleMutation } from "./operators/enum-cycle.js";
@@ -77,27 +76,18 @@ export const defaultMutationOperators = filterOperatorsByEnabled(
 
 export function mutateGenome(genome, options = {}) {
   const { operators = defaultMutationOperators, rng, selector } = options;
+  if (!selector || typeof selector.pick !== "function") {
+    throw new Error("mutateGenome requires a selector with a pick(rng) method");
+  }
   if (!Array.isArray(operators) || operators.length === 0) {
-    const cloned = structuredClone(genome);
-    if (selector) {
-      return { genome: cloned, operatorName: null };
-    }
-    return cloned;
+    return { genome: structuredClone(genome), operatorName: null };
   }
-  if (selector && typeof selector.pick === "function") {
-    const operatorName = selector.pick(rng);
-    const operator = operators.find((candidate) => candidate.name === operatorName);
-    if (!operator) {
-      return { genome: structuredClone(genome), operatorName };
-    }
-    return { genome: operator.mutate(genome, rng), operatorName };
-  }
-  const operatorIndex = getRandomIndex(operators.length, rng);
-  const operator = operators[Math.max(0, operatorIndex)];
+  const operatorName = selector.pick(rng);
+  const operator = operators.find((candidate) => candidate.name === operatorName);
   if (!operator) {
-    return structuredClone(genome);
+    return { genome: structuredClone(genome), operatorName };
   }
-  return operator.mutate(genome, rng);
+  return { genome: operator.mutate(genome, rng), operatorName };
 }
 
 export function mutateAndRepairGenome(genome, options = {}) {
@@ -105,26 +95,18 @@ export function mutateAndRepairGenome(genome, options = {}) {
   const mutated = mutateGenome(genome, { operators, rng, selector });
   const originalGenome = structuredClone(genome);
 
-  if (selector) {
-    const mutationResult = mutated ?? { genome: null, operatorName: null };
-    const operatorName = mutationResult.operatorName ?? null;
-    const mutatedGenome = mutationResult.genome ?? originalGenome;
+  const mutationResult = mutated ?? { genome: null, operatorName: null };
+  const operatorName = mutationResult.operatorName ?? null;
+  const mutatedGenome = mutationResult.genome ?? originalGenome;
 
-    const isNoOp = JSON.stringify(mutatedGenome) === JSON.stringify(originalGenome);
-    if (isNoOp) {
-      return { genome: mutatedGenome, operatorName, outcome: "noOp" };
-    }
-
-    const repaired = repairGenome(mutatedGenome, { operators: repairOperators, rng });
-    if (!repaired) {
-      return { genome: null, operatorName, outcome: "repairFailed" };
-    }
-    return { genome: repaired, operatorName, outcome: "ok" };
+  const isNoOp = JSON.stringify(mutatedGenome) === JSON.stringify(originalGenome);
+  if (isNoOp) {
+    return { genome: mutatedGenome, operatorName, outcome: "noOp" };
   }
 
-  const repaired = repairGenome(mutated, { operators: repairOperators, rng });
+  const repaired = repairGenome(mutatedGenome, { operators: repairOperators, rng });
   if (!repaired) {
-    return originalGenome;
+    return { genome: null, operatorName, outcome: "repairFailed" };
   }
-  return repaired;
+  return { genome: repaired, operatorName, outcome: "ok" };
 }

@@ -30,18 +30,12 @@ describe("operator-outcomes integration", () => {
       const outcomes = buildOperatorOutcomes(loopResult);
 
       assert.deepStrictEqual(outcomes.get(g1), {
-        valid: true,
-        accepted: true,
         gridContribution: "filledEmpty",
       });
       assert.deepStrictEqual(outcomes.get(g2), {
-        valid: true,
-        accepted: true,
         gridContribution: "improvedElite",
       });
       assert.deepStrictEqual(outcomes.get(g3), {
-        valid: false,
-        accepted: false,
         gridContribution: "none",
       });
     });

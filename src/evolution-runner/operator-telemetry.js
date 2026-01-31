@@ -11,8 +11,6 @@ function assertOperatorName(operatorName) {
 function createOperatorCounters() {
   return {
     attempts: 0,
-    validOffspring: 0,
-    acceptedOffspring: 0,
     gridContributions: {
       filledEmpty: 0,
       improvedElite: 0,
@@ -76,19 +74,6 @@ export function recordAttempt(telemetry, operatorName) {
 
 export function recordOutcome(telemetry, operatorName, outcome = {}) {
   const entry = resolveOperator(telemetry, operatorName);
-  const valid = outcome.valid === true;
-  const accepted = outcome.accepted === true;
-
-  if (accepted && !valid) {
-    throw new Error("Accepted offspring must be valid");
-  }
-
-  if (valid) {
-    entry.validOffspring += 1;
-  }
-  if (accepted) {
-    entry.acceptedOffspring += 1;
-  }
 
   const contribution = outcome.gridContribution;
   if (contribution === "filledEmpty") {
@@ -147,8 +132,6 @@ export function mergeTelemetry(a, b) {
     }
     merged.operators[name] = {
       attempts: left.attempts + right.attempts,
-      validOffspring: left.validOffspring + right.validOffspring,
-      acceptedOffspring: left.acceptedOffspring + right.acceptedOffspring,
       gridContributions: {
         filledEmpty: left.gridContributions.filledEmpty + right.gridContributions.filledEmpty,
         improvedElite: left.gridContributions.improvedElite + right.gridContributions.improvedElite,

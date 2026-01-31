@@ -46,8 +46,6 @@ describe("expanded operator telemetry counters", () => {
     it("preserves existing counters alongside new ones", () => {
       const t = createTelemetry(["op1"]);
       assert.equal(t.operators.op1.attempts, 0);
-      assert.equal(t.operators.op1.validOffspring, 0);
-      assert.equal(t.operators.op1.acceptedOffspring, 0);
       assert.equal(t.operators.op1.gridContributions.filledEmpty, 0);
       assert.equal(t.operators.op1.gridContributions.improvedElite, 0);
     });
@@ -189,16 +187,12 @@ describe("expanded operator telemetry counters", () => {
       const a = createTelemetry(["op1"]);
       const b = createTelemetry(["op1"]);
 
-      // Use the existing recording APIs to set original counters
       a.operators.op1.attempts = 5;
-      a.operators.op1.validOffspring = 3;
       b.operators.op1.attempts = 2;
-      b.operators.op1.validOffspring = 1;
 
       const merged = mergeTelemetry(a, b);
 
       assert.equal(merged.operators.op1.attempts, 7);
-      assert.equal(merged.operators.op1.validOffspring, 4);
     });
 
     it("merges across multiple operators", () => {

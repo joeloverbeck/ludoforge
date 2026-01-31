@@ -43,7 +43,7 @@ Each generation: evaluate all genomes → place in MAP-Elites grid → select di
 
 ### Mutation Pipeline
 
-Mutate → Validate → Repair → Validate → Evaluate. Repair operators restore structural validity after mutation/crossover produces invalid genomes. `mutateAndRepairGenome()` returns a structured outcome (`ok`, `noOp`, or `repairFailed`). On `noOp` or `repairFailed`, the runner retries with a different operator (up to `maxMutationRetries`, default 3). Repair failure returns `null` genome — the original is never silently evaluated as a fallback. Adaptive operator weighting uses `validEvaluated` (not `validOffspring`) to measure true operator productivity.
+Mutate → Validate → Repair → Validate → Evaluate. Repair operators restore structural validity after mutation/crossover produces invalid genomes. `mutateAndRepairGenome()` always returns a structured outcome: `"ok"` (valid mutant), `"noOp"` (mutation had no effect), or `"repairFailed"` (repair returned `null`, genome is `null`). A selector is always required — `createMutationSelector()` throws at startup if operator weights are missing or invalid. On `noOp` or `repairFailed`, the runner retries with a different operator (up to `maxMutationRetries`, default 3). If retries exhaust, the unmutated parent is kept but not counted as `validEvaluated`. Adaptive operator weighting uses `validEvaluated` (not `validOffspring`) to measure true operator productivity.
 
 ### Operator Configuration
 

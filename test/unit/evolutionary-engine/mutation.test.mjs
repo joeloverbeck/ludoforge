@@ -860,17 +860,22 @@ describe("mutation", () => {
   });
 
   describe("mutateAndRepairGenome", () => {
-    it("falls back to original genome on invalid int bounds", () => {
+    it("returns noOp or repairFailed on invalid int bounds", () => {
       const definition = cloneDefinition(baseDefinition);
       definition.state.variables[0].type = { kind: "int", min: 5, max: 1 };
       const genome = { definition };
+      const selector = { pick: () => "numeric-tweak" };
 
-      const repaired = mutateAndRepairGenome(genome, {
+      const result = mutateAndRepairGenome(genome, {
         operators: [numericTweakMutation],
+        selector,
       });
 
-      assert.deepEqual(repaired, genome);
-      assert.notEqual(repaired, genome);
+      assert.ok(
+        result.outcome === "noOp" || result.outcome === "repairFailed",
+        `Expected noOp or repairFailed, got ${result.outcome}`,
+      );
+      assert.equal(result.operatorName, "numeric-tweak");
     });
   });
 });

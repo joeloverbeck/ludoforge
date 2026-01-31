@@ -75,8 +75,6 @@ Counters per operator:
   - `validationFailure`, `safetyFailure`, `evaluationError`, `evaluationNull`.
 - `evaluated`: number of mutated genomes actually sent to evaluation (post-repair).
 - `validEvaluated`: number of evaluated mutated genomes that produced valid `{ fitness, descriptors }`.
-- `validOffspring`: legacy counter (evaluated offspring with valid fitness); retained for backward compatibility.
-- `acceptedOffspring`: legacy counter (mirrors `validOffspring`).
 - `gridContributions.filledEmpty`: MAP-Elites placements that filled an empty niche.
 - `gridContributions.improvedElite`: placements that replaced an existing elite.
 
@@ -263,9 +261,7 @@ into the generation cycle:
 3. These are passed as `feedback` and `preferenceModelSnapshots` to
    `runEvolutionRunner()`.
 
-The feedback provider is async — the runner awaits it each generation. This is
-backward-compatible because `await syncValue` simply unwraps synchronous return
-values.
+The feedback provider is async — the runner awaits it each generation.
 
 On resume, the provider is initialized with `resumeState.preferenceModel` so
 the preference model continues from its stored state.

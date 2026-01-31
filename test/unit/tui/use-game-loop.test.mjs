@@ -45,7 +45,36 @@ describe("buildAgents", () => {
     assert.equal(agents[0].id, 1);
   });
 
-  it("human agent dispatches SET_LEGAL_ACTIONS on selectAction", () => {
+  it("human agent dispatches UPDATE_GAME_STATE then SET_LEGAL_ACTIONS on selectAction", () => {
+    const dispatched = [];
+    const agents = buildAgents(makeOpts({
+      playerAssignments: [{ playerId: 1, type: "human" }],
+      dispatch: (action) => dispatched.push(action),
+    }));
+    const legalActions = [{ id: "move" }];
+    const state = { turn: { currentPlayer: 1 }, tokens: [] };
+    agents[0].selectAction({ legalActions, legalMoves: [], state });
+    assert.equal(dispatched.length, 2);
+    assert.equal(dispatched[0].type, "UPDATE_GAME_STATE");
+    assert.deepStrictEqual(dispatched[0].gameState, state);
+    assert.equal(dispatched[1].type, "SET_LEGAL_ACTIONS");
+    assert.deepStrictEqual(dispatched[1].legalActions, legalActions);
+  });
+
+  it("human agent deep-clones state for UPDATE_GAME_STATE (not reference-equal)", () => {
+    const dispatched = [];
+    const agents = buildAgents(makeOpts({
+      playerAssignments: [{ playerId: 1, type: "human" }],
+      dispatch: (action) => dispatched.push(action),
+    }));
+    const state = { turn: { currentPlayer: 1 }, tokens: [{ id: "t1" }] };
+    agents[0].selectAction({ legalActions: [], legalMoves: [], state });
+    const dispathedState = dispatched.find((a) => a.type === "UPDATE_GAME_STATE").gameState;
+    assert.notStrictEqual(dispathedState, state, "should be a clone, not the same reference");
+    assert.deepStrictEqual(dispathedState, state, "clone should be deeply equal");
+  });
+
+  it("human agent skips UPDATE_GAME_STATE when state is not provided", () => {
     const dispatched = [];
     const agents = buildAgents(makeOpts({
       playerAssignments: [{ playerId: 1, type: "human" }],

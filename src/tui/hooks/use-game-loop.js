@@ -51,6 +51,9 @@ export function buildAgents({ playerAssignments, dispatch, actionResolverRef, le
         playerId: assignment.playerId,
         onActionNeeded({ legalActions, legalMoves, context, definition, state }) {
           legalMovesRef.current = legalMoves ?? [];
+          if (state) {
+            dispatch({ type: "UPDATE_GAME_STATE", gameState: structuredClone(state) });
+          }
           dispatch({ type: "SET_LEGAL_ACTIONS", legalActions: legalActions ?? [] });
           return new Promise((resolve) => {
             actionResolverRef.current = resolve;

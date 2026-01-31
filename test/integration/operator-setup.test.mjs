@@ -27,9 +27,11 @@ describe("operator-setup integration", () => {
       });
     });
 
-    it("returns null for empty operators array", () => {
-      const selector = createMutationSelector([]);
-      assert.equal(selector, null);
+    it("throws for empty operators array", () => {
+      assert.throws(
+        () => createMutationSelector([]),
+        /Cannot build mutation selector/,
+      );
     });
   });
 

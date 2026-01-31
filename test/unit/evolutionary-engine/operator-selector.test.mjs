@@ -164,36 +164,4 @@ describe("operator selectors", () => {
     assert.equal(selector.weights[0], 1 + (4 - 1) * 0.5);
   });
 
-  it("falls back to validOffspring when validEvaluated is absent", () => {
-    const operators = [createOperator("legacy")];
-    const weights = { legacy: 4 };
-    const selector = new WeightedSelector({ operators, weights });
-
-    selector.weights = [1];
-
-    selector.observe({
-      operators: {
-        legacy: { attempts: 100, validOffspring: 80 },
-      },
-    });
-
-    // inefficiency = (100 - 80) / 100 = 0.20 → neutral zone, no change
-    assert.equal(selector.weights[0], 1);
-  });
-
-  it("regression: attempts=100, validOffspring=100, validEvaluated=0 penalizes under new logic", () => {
-    const operators = [createOperator("fallback-inflated")];
-    const weights = { "fallback-inflated": 2 };
-    const selector = new WeightedSelector({ operators, weights });
-
-    // Old logic would see (100 - 100) / 100 = 0.0 → restore
-    // New logic sees (100 - 0) / 100 = 1.0 → penalize
-    selector.observe({
-      operators: {
-        "fallback-inflated": { attempts: 100, validOffspring: 100, validEvaluated: 0 },
-      },
-    });
-
-    assert.equal(selector.weights[0], Math.max(0.1, 2 * 0.5));
-  });
 });

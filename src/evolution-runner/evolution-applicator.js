@@ -33,55 +33,43 @@ export function applyEvolution(population, options) {
     }
 
     if (options.mutationRate > 0 && shouldApply(options.mutationRate, options.rng)) {
-      if (options.mutationSelector) {
-        let resolved = false;
-        for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-          const mutated = mutateAndRepairGenome(child, {
-            operators: options.mutationOperators,
-            rng: options.rng,
-            repairOperators: options.repairOperators,
-            selector: options.mutationSelector,
-          });
-          if (mutated && typeof mutated === "object") {
-            operatorName = mutated.operatorName ?? null;
-            if (operatorName && options.telemetry) {
-              recordAttempt(options.telemetry, operatorName);
-            }
-            if (mutated.outcome === "noOp") {
-              if (operatorName && options.telemetry) {
-                recordNoOp(options.telemetry, operatorName);
-              }
-              slotOutcome = "noOp";
-              continue;
-            }
-            if (mutated.outcome === "repairFailed") {
-              if (operatorName && options.telemetry) {
-                recordRepairFailed(options.telemetry, operatorName);
-              }
-              slotOutcome = "repairFailed";
-              continue;
-            }
-            if (mutated.genome) {
-              child = mutated.genome;
-              slotOutcome = "ok";
-              resolved = true;
-              break;
-            }
-          }
-        }
-        if (!resolved) {
-          slotOutcome = slotOutcome ?? "exhausted";
-        }
-      } else {
+      let resolved = false;
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         const mutated = mutateAndRepairGenome(child, {
           operators: options.mutationOperators,
           rng: options.rng,
           repairOperators: options.repairOperators,
+          selector: options.mutationSelector,
         });
-        if (mutated) {
-          child = mutated;
-          slotOutcome = "ok";
+        if (mutated && typeof mutated === "object") {
+          operatorName = mutated.operatorName ?? null;
+          if (operatorName && options.telemetry) {
+            recordAttempt(options.telemetry, operatorName);
+          }
+          if (mutated.outcome === "noOp") {
+            if (operatorName && options.telemetry) {
+              recordNoOp(options.telemetry, operatorName);
+            }
+            slotOutcome = "noOp";
+            continue;
+          }
+          if (mutated.outcome === "repairFailed") {
+            if (operatorName && options.telemetry) {
+              recordRepairFailed(options.telemetry, operatorName);
+            }
+            slotOutcome = "repairFailed";
+            continue;
+          }
+          if (mutated.genome) {
+            child = mutated.genome;
+            slotOutcome = "ok";
+            resolved = true;
+            break;
+          }
         }
+      }
+      if (!resolved) {
+        slotOutcome = slotOutcome ?? "exhausted";
       }
     }
 

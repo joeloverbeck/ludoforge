@@ -325,6 +325,7 @@ describe("runner", () => {
           population,
           evaluation,
           mutationOperators: [mutationOperator],
+          mutationSelector: { pick: () => "tag", observe: () => {} },
           crossoverOperators: [crossoverOperator],
         };
 

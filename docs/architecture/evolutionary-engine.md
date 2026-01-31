@@ -206,8 +206,7 @@ The `WeightedSelector` adjusts operator weights at runtime based on telemetry:
 2. For each operator, the inefficiency rate is
    `(attempts - validEvaluated) / attempts`, where `validEvaluated` counts only
    mutated genomes that produced valid fitness + descriptors (not fallback/no-op
-   genomes). Falls back to `validOffspring` when `validEvaluated` is absent (backward
-   compatibility with pre-existing operator stats).
+   genomes).
 3. If inefficiency rate > 0.30, the weight is halved (clamped to a floor of 0.1).
 4. If inefficiency rate < 0.10, the weight is restored toward the base weight by 50%.
 5. Weights between the thresholds remain unchanged.
@@ -228,8 +227,8 @@ returns a structured outcome when an `OperatorSelector` is provided:
 | `"noOp"` | original genome | Operator made no change (structural guard, missing prerequisites) |
 | `"repairFailed"` | `null` | Mutation applied but repair returned `null` |
 
-When no selector is provided (e.g., direct unit-test calls), the function returns
-the repaired genome directly for backward compatibility.
+A selector is always required. The runner builds one via `createMutationSelector()`
+at startup; missing or invalid operator weights cause an immediate startup error.
 
 ### Effect Helpers
 

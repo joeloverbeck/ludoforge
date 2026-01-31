@@ -1,20 +1,20 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mutateAndRepairGenome } from "../../../src/evolutionary-engine/mutation/orchestrator.js";
+import { mutateAndRepairGenome, mutateGenome } from "../../../src/evolutionary-engine/mutation/orchestrator.js";
 
 describe("mutation orchestrator", () => {
-  it("falls back to original genome when repair fails (non-selector)", () => {
+  it("throws when called without a selector", () => {
     const genome = { definition: { id: "base" } };
     const operators = [{ mutate: (value) => ({ ...value, mutated: true }) }];
     const repairOperators = [{ repair: () => null }];
 
-    const repaired = mutateAndRepairGenome(genome, { operators, repairOperators });
-
-    assert.deepEqual(repaired, genome);
-    assert.notEqual(repaired, genome);
+    assert.throws(
+      () => mutateAndRepairGenome(genome, { operators, repairOperators }),
+      /requires a selector/,
+    );
   });
 
-  it("returns null genome and preserves operatorName on repair failure (selector)", () => {
+  it("returns null genome and preserves operatorName on repair failure", () => {
     const genome = { definition: { id: "base" } };
     const operators = [{ name: "mutator", mutate: (value) => ({ ...value, mutated: true }) }];
     const repairOperators = [{ repair: () => null }];
@@ -27,7 +27,7 @@ describe("mutation orchestrator", () => {
     assert.equal(repaired.outcome, "repairFailed");
   });
 
-  it("preserves operatorName when repair succeeds (selector)", () => {
+  it("preserves operatorName when repair succeeds", () => {
     const genome = { definition: { id: "base" } };
     const operators = [{ name: "mutator", mutate: (value) => ({ ...value, mutated: true }) }];
     const repairOperators = [{ repair: (value) => ({ ...value, repaired: true }) }];

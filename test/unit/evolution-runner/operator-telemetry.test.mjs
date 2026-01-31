@@ -14,8 +14,6 @@ describe("operator telemetry", () => {
     const telemetry = createTelemetry(["alpha", "beta"]);
 
     assert.equal(telemetry.operators.alpha.attempts, 0);
-    assert.equal(telemetry.operators.alpha.validOffspring, 0);
-    assert.equal(telemetry.operators.alpha.acceptedOffspring, 0);
     assert.equal(telemetry.operators.alpha.gridContributions.filledEmpty, 0);
     assert.equal(telemetry.operators.alpha.gridContributions.improvedElite, 0);
   });
@@ -26,41 +24,29 @@ describe("operator telemetry", () => {
     assert.equal(telemetry.operators.alpha.attempts, 1);
   });
 
-  it("recordOutcome increments counters", () => {
+  it("recordOutcome increments grid contribution counters", () => {
     const telemetry = createTelemetry(["alpha"]);
     recordAttempt(telemetry, "alpha");
     recordOutcome(telemetry, "alpha", {
-      valid: true,
-      accepted: true,
       gridContribution: "filledEmpty",
     });
 
-    assert.equal(telemetry.operators.alpha.validOffspring, 1);
-    assert.equal(telemetry.operators.alpha.acceptedOffspring, 1);
     assert.equal(telemetry.operators.alpha.gridContributions.filledEmpty, 1);
     assert.equal(telemetry.operators.alpha.gridContributions.improvedElite, 0);
-    assert.ok(
-      telemetry.operators.alpha.validOffspring <= telemetry.operators.alpha.attempts,
-    );
-    assert.ok(
-      telemetry.operators.alpha.acceptedOffspring <= telemetry.operators.alpha.validOffspring,
-    );
   });
 
   it("mergeTelemetry sums counters", () => {
     const first = createTelemetry(["alpha"]);
     recordAttempt(first, "alpha");
-    recordOutcome(first, "alpha", { valid: true, accepted: true, gridContribution: "filledEmpty" });
+    recordOutcome(first, "alpha", { gridContribution: "filledEmpty" });
 
     const second = createTelemetry(["alpha"]);
     recordAttempt(second, "alpha");
-    recordOutcome(second, "alpha", { valid: true, accepted: false, gridContribution: "improvedElite" });
+    recordOutcome(second, "alpha", { gridContribution: "improvedElite" });
 
     const merged = mergeTelemetry(first, second);
 
     assert.equal(merged.operators.alpha.attempts, 2);
-    assert.equal(merged.operators.alpha.validOffspring, 2);
-    assert.equal(merged.operators.alpha.acceptedOffspring, 1);
     assert.equal(merged.operators.alpha.gridContributions.filledEmpty, 1);
     assert.equal(merged.operators.alpha.gridContributions.improvedElite, 1);
   });

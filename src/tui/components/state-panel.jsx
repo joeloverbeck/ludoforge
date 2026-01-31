@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { playerColor } from "../utils/color-scheme.js";
+import { getVariableValue } from "../utils/get-variable-value.js";
 
 /**
  * Displays global and per-player variables.
@@ -55,11 +56,7 @@ export function StatePanel({ gameState, definition, playerAssignments }) {
  * @returns {string}
  */
 function formatValue(gameState, varId, scope) {
-  if (scope === "global") {
-    const val = gameState.variables?.[varId];
-    return val !== undefined ? String(val) : "?";
-  }
-  const val = gameState.playerVariables?.[scope]?.[varId];
+  const val = getVariableValue(gameState, varId, scope);
   return val !== undefined ? String(val) : "?";
 }
 

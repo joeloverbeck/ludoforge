@@ -99,7 +99,7 @@ export async function runEvolutionRunner(options) {
   const mutationOperators = Array.isArray(options.mutationOperators)
     ? options.mutationOperators
     : defaultMutationOperators;
-  const mutationSelector = createMutationSelector(mutationOperators);
+  const mutationSelector = options.mutationSelector ?? createMutationSelector(mutationOperators);
   const operatorNames = mutationOperators.map((operator) => operator.name);
   const telemetry =
     (await loadOperatorStats({

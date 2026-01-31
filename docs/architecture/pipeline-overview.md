@@ -27,9 +27,12 @@ then repeats.
 2. Evaluate each genome
    - `evaluateGenome` can optionally repair genomes before validation (defaults to no repair).
    - Validation runs on the repaired definition, and the repaired genome is the one evaluated.
-   - In the mutation pipeline, `mutateAndRepairGenome` falls back to the original
-     (pre-mutation) genome when repair returns `null`, so genomes are never silently
-     dropped by the mutation-repair cycle.
+   - In the mutation pipeline, `mutateAndRepairGenome` returns a structured outcome:
+     `"ok"` (valid mutant), `"noOp"` (mutation had no effect), or `"repairFailed"`
+     (repair returned `null`, genome is `null`). The evolution runner retries
+     `"noOp"` and `"repairFailed"` with a different operator (up to
+     `maxMutationRetries`). If retries exhaust, the unmutated parent is kept but
+     not counted as `validEvaluated`.
    - If validation or gates fail, the genome is rejected before scoring.
    - The evaluator function is produced by `createEvaluator()` from
      `src/evaluation-analytics/create-evaluator.js`. It wires the full 13-step

@@ -5,7 +5,7 @@ import type { OperatorSelector, WeightedSelector } from "./operator-selector.js"
 export interface MutationOptions<TGenome = Genome> {
   operators?: ReadonlyArray<MutationOperator<TGenome>>;
   rng?: SeededRng;
-  selector?: OperatorSelector;
+  selector: OperatorSelector;
 }
 
 export interface MutationRepairOptions<TGenome = Genome> extends MutationOptions<TGenome> {
@@ -17,7 +17,7 @@ export type MutationOutcome = "ok" | "noOp" | "repairFailed";
 export interface MutationResult<TGenome = Genome> {
   genome: TGenome | null;
   operatorName: string | null;
-  outcome?: MutationOutcome;
+  outcome: MutationOutcome;
 }
 
 export const numericTweakMutation: MutationOperator<Genome>;
@@ -38,13 +38,13 @@ export const defaultMutationOperators: ReadonlyArray<MutationOperator<Genome>>;
 
 export function mutateGenome<TGenome = Genome>(
   genome: TGenome,
-  options?: MutationOptions<TGenome>
-): TGenome | MutationResult<TGenome>;
+  options: MutationOptions<TGenome>
+): MutationResult<TGenome>;
 
 export function mutateAndRepairGenome<TGenome = Genome>(
   genome: TGenome,
-  options?: MutationRepairOptions<TGenome>
-): TGenome | MutationResult<TGenome> | null;
+  options: MutationRepairOptions<TGenome>
+): MutationResult<TGenome>;
 
 export type { OperatorSelector };
 export { WeightedSelector };

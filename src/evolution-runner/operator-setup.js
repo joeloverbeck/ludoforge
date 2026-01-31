@@ -7,7 +7,9 @@ import { canBuildWeightedSelector, ensureTelemetryOperators } from "./runner-val
 export function createMutationSelector(operators) {
   const weights = DEFAULT_EVOLUTION_OPERATORS_CONFIG.mutation?.weights;
   if (!canBuildWeightedSelector(operators, weights)) {
-    return null;
+    throw new Error(
+      "Cannot build mutation selector: missing or invalid operator weights in evolution-operators.json",
+    );
   }
   return new WeightedSelector({ operators, weights });
 }

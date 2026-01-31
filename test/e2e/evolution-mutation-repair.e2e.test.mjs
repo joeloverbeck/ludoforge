@@ -27,6 +27,8 @@ function buildParentB(definition) {
   return clone;
 }
 
+const actionDuplicateSelector = { pick: () => "action-duplicate" };
+
 describe("evolution-mutation-repair", () => {
   it("mutation + repair produces valid children after crossover", async () => {
     const baseDefinition = await loadFixture("choice-game.json");
@@ -49,15 +51,17 @@ describe("evolution-mutation-repair", () => {
       operators: [actionDuplicateMutation],
       repairOperators: [dslSafetyRepair],
       rng: createSeededRng(11),
+      selector: actionDuplicateSelector,
     });
 
-    assert.ok(mutated, "Expected mutation + repair to return a genome");
-    assert.ok(validateGenomeDefinition(mutated.definition).valid);
+    assert.ok(mutated.genome, "Expected mutation + repair to return a genome");
+    assert.equal(mutated.outcome, "ok");
+    assert.ok(validateGenomeDefinition(mutated.genome.definition).valid);
 
-    const variable = mutated.definition.state.variables[0];
+    const variable = mutated.genome.definition.state.variables[0];
     assert.equal(variable.initial, variable.type.max);
     assert.equal(
-      mutated.definition.actions.length,
+      mutated.genome.definition.actions.length,
       crossoverChild.definition.actions.length + 1
     );
 
@@ -66,12 +70,13 @@ describe("evolution-mutation-repair", () => {
         operators: [actionDuplicateMutation],
         repairOperators: [dslSafetyRepair],
         rng: createSeededRng(index + 1),
+        selector: actionDuplicateSelector,
       })
     );
 
     children.forEach((child) => {
-      assert.ok(child, "Expected every child to be generated");
-      assert.ok(validateGenomeDefinition(child.definition).valid);
+      assert.ok(child.genome, "Expected every child to be generated");
+      assert.ok(validateGenomeDefinition(child.genome.definition).valid);
     });
   });
 });

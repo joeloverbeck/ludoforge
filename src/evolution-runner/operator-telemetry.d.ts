@@ -1,7 +1,5 @@
 export interface OperatorTelemetryCounters {
   attempts: number;
-  validOffspring: number;
-  acceptedOffspring: number;
   gridContributions: {
     filledEmpty: number;
     improvedElite: number;
@@ -13,8 +11,6 @@ export interface OperatorTelemetry {
 }
 
 export interface OperatorOutcome {
-  valid?: boolean;
-  accepted?: boolean;
   gridContribution?: "filledEmpty" | "improvedElite" | "none";
 }
 

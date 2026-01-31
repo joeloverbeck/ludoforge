@@ -114,6 +114,7 @@ State shape (`src/tui/state/app-reducer.js`):
 ├── screen: "playing"
 │   └── <GameScreen>         src/tui/components/game-screen.jsx
 │       ├── <TurnHeader>     src/tui/components/turn-header.jsx
+│       ├── <WinConditionsBar> src/tui/components/win-conditions-bar.jsx
 │       ├── <BoardPanel>     src/tui/components/board-panel.jsx
 │       │   └── <ZoneDisplay> src/tui/components/zone-display.jsx
 │       │       └── <TokenBadge> src/tui/components/token-badge.jsx
@@ -163,8 +164,9 @@ Keyboard controls:
 
 ### GameScreen (`game-screen.jsx`)
 
-2x2 flexbox layout shell for the playing screen:
+Flexbox layout shell for the playing screen:
 - Top row: `<TurnHeader>` (full width)
+- Win conditions row: `<WinConditionsBar>` (full width) — static display of win/lose/draw conditions from the game definition's termination block. Hidden when no termination conditions exist.
 - Middle row: `<BoardPanel>` (left) + `<StatePanel>` (right)
 - Bottom row: `<ActionPanel>` (left) + `<EffectLog>` (right)
 
@@ -217,6 +219,15 @@ Scrollable effect log panel. Renders formatted log entries `[T{turn}] P{id}: {me
 Supports PgUp/PgDn scrolling via `useInput`. Auto-scrolls to bottom when new
 entries arrive. Uses pure scroll offset functions from `src/tui/hooks/use-scroll.js`.
 
+### WinConditionsBar (`win-conditions-bar.jsx`)
+
+Displays win/lose/draw conditions extracted from `definition.termination`. Uses
+`formatTerminationConditions()` from `src/tui/utils/format-termination.js` to
+convert DSL expression trees and outcomes into human-readable strings. Conditions
+are joined with ` | ` and shown with a bold "WIN:" label. Returns `null` when
+there are no conditions to display. Content is static (derived from the definition,
+not live game state).
+
 ### TurnHeader (`turn-header.jsx`)
 
 Displays turn number, round, phase, and active player with color-coded text.
@@ -257,6 +268,7 @@ src/tui/
 │   ├── game-setup-screen.jsx   Player assignment screen
 │   ├── game-screen.jsx         Playing screen layout shell
 │   ├── turn-header.jsx         Turn/round/phase/player display
+│   ├── win-conditions-bar.jsx  Static win/lose/draw conditions display
 │   ├── board-panel.jsx         Zone + token rendering container
 │   ├── zone-display.jsx        Single zone (global/per-player/spatial/empty)
 │   ├── token-badge.jsx         Color-coded token display
@@ -273,7 +285,8 @@ src/tui/
 │   ├── load-definition.js      File loading + DSL validation
 │   ├── color-scheme.js         Color assignment utilities
 │   ├── format-effect.js        Effect → human-readable string
-│   └── format-action.js        Action → display label
+│   ├── format-action.js        Action → display label
+│   └── format-termination.js   DSL termination → human-readable conditions
 scripts/
 └── build-tui.js                esbuild bundle script
 dist/tui/

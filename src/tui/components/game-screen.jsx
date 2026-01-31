@@ -5,6 +5,7 @@ import { StatePanel } from "./state-panel.jsx";
 import { BoardPanel } from "./board-panel.jsx";
 import { EffectLog } from "./effect-log.jsx";
 import { ActionPanel } from "./action-panel.jsx";
+import { WinConditionsBar } from "./win-conditions-bar.jsx";
 
 /**
  * Game screen shell: TurnHeader row + middle row (board | state panel) + bottom row (actions | effect log).
@@ -53,6 +54,8 @@ export function GameScreen({
         definition={definition}
         playerAssignments={playerAssignments}
       />
+
+      <WinConditionsBar definition={definition} />
 
       <Box flexDirection="row" flexGrow={1}>
         <BoardPanel

@@ -28,6 +28,7 @@ import {
 } from "../../src/evolutionary-engine/mutation.js";
 import { dslSafetyRepair, defaultRepairOperators } from "../../src/evolutionary-engine/repair.js";
 import { validateGenomeDefinition } from "../../src/evolutionary-engine/serialization.js";
+import { createMutationSelector } from "../../src/evolution-runner/operator-setup.js";
 
 async function loadFixture(name) {
   const fileUrl = new URL(`./fixtures/${name}`, import.meta.url);
@@ -262,6 +263,7 @@ describe("mutation-operator-effectiveness", () => {
       const definitions = await Promise.all(
         FIXTURE_NAMES.map((name) => loadFixture(name))
       );
+      const selector = createMutationSelector(defaultMutationOperators);
 
       let validCount = 0;
       let nullCount = 0;
@@ -279,14 +281,15 @@ describe("mutation-operator-effectiveness", () => {
           operators: defaultMutationOperators,
           rng,
           repairOperators: defaultRepairOperators,
+          selector,
         });
 
-        if (!result) {
+        if (!result.genome) {
           nullCount += 1;
           continue;
         }
 
-        const validation = validateGenomeDefinition(result.definition);
+        const validation = validateGenomeDefinition(result.genome.definition);
         if (validation.valid) {
           validCount += 1;
         } else {
