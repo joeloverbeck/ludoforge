@@ -5,10 +5,12 @@ import { selectElitesForMining } from "../../../src/evolution-runner/elite-selec
 
 function makePlacement(id, fitness, coordinates, isElite = true) {
   return {
-    genome: { id, definition: {} },
-    fitness,
+    member: { genome: { id, definition: {} }, fitness, descriptors: {} },
+    nicheId: coordinates.join(","),
     coordinates,
     isElite,
+    noveltyScore: 0,
+    contributionKind: "none",
   };
 }
 
@@ -116,6 +118,50 @@ describe("elite-selector", () => {
         { perNicheTopK: 3, globalTopK: 5 },
       );
       assert.deepEqual(result, []);
+    });
+
+    it("works with placements shaped exactly as placePopulationInMapElites output", () => {
+      const placements = [
+        {
+          member: { genome: { id: "g1", definition: { phases: [] } }, fitness: 0.9, descriptors: { complexity: 3 }, diagnostics: {} },
+          nicheId: "0,1",
+          coordinates: [0, 1],
+          isElite: true,
+          noveltyScore: 0.5,
+          contributionKind: "improvement",
+        },
+        {
+          member: { genome: { id: "g2", definition: { phases: [] } }, fitness: 0.7, descriptors: { complexity: 2 }, diagnostics: {} },
+          nicheId: "1,0",
+          coordinates: [1, 0],
+          isElite: true,
+          noveltyScore: 0.3,
+          contributionKind: "new",
+        },
+      ];
+      const result = selectElitesForMining(
+        { placements },
+        { perNicheTopK: 1, globalTopK: 2 },
+      );
+      assert.equal(result.length, 2);
+      assert.equal(result[0].genome.id, "g1");
+      assert.equal(result[0].fitness, 0.9);
+      assert.equal(result[1].genome.id, "g2");
+      assert.equal(result[1].fitness, 0.7);
+    });
+
+    it("throws a descriptive error when placement lacks member property", () => {
+      const badPlacements = [
+        { genome: { id: "x" }, fitness: 1, coordinates: [0], isElite: true },
+      ];
+      assert.throws(
+        () => selectElitesForMining({ placements: badPlacements }, { perNicheTopK: 1, globalTopK: 1 }),
+        (err) => {
+          assert.ok(err.message.includes("missing \"member\""));
+          assert.ok(err.message.includes("placePopulationInMapElites"));
+          return true;
+        },
+      );
     });
   });
 });

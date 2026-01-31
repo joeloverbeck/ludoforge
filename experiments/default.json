@@ -12,6 +12,16 @@
     },
     "crossover": {
       "rate": 0.15
+    },
+    "motifMining": {
+      "enabled": true,
+      "eliteSelection": {
+        "perNicheTopK": 2,
+        "globalTopK": 10
+      },
+      "minSupport": 3,
+      "maxMotifLength": 5,
+      "ngramSizes": [2, 3]
     }
   },
   "mapElites": {

@@ -14,10 +14,12 @@ async function loadMinimalDefinition() {
 
 function makePlacement(definition, id, fitness, coordinates) {
   return {
-    genome: { id, definition: structuredClone(definition) },
-    fitness,
+    member: { genome: { id, definition: structuredClone(definition) }, fitness, descriptors: {} },
+    nicheId: coordinates.join(","),
     coordinates,
     isElite: true,
+    noveltyScore: 0,
+    contributionKind: "none",
   };
 }
 
