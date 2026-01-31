@@ -1,18 +1,16 @@
 import { getRandomIndex } from "../random.js";
-import { collectActionEffectTargets, collectVariableTargets } from "../targets.js";
+import { collectActionEffectTargets } from "../targets.js";
+import { pickOrCreateVariable } from "../pick-or-create.js";
 
 /**
  * Builds a random `cmp` condition referencing a variable from the definition.
  * Falls back to `{ kind: "value", value: true }` when no variables exist.
  */
 function buildRandomCondition(definition, rng) {
-  const variables = collectVariableTargets(definition);
-  if (variables.length === 0) {
+  const variable = pickOrCreateVariable(definition, rng);
+  if (!variable) {
     return { kind: "value", value: true };
   }
-
-  const varIndex = getRandomIndex(variables.length, rng);
-  const variable = variables[Math.max(0, varIndex)].variable;
 
   const ops = ["==", "!=", "<", "<=", ">", ">="];
   const opIndex = getRandomIndex(ops.length, rng);

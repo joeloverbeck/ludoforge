@@ -1,31 +1,16 @@
-import { getRandomIndex } from "../random.js";
-import { collectVariableTargets } from "../targets.js";
-
-function collectPerPlayerIntVariables(definition) {
-  const variables = Array.isArray(definition?.state?.variables)
-    ? definition.state.variables
-    : [];
-  return variables.filter(
-    (v) => v.scope === "per_player" && v.type?.kind === "int",
-  );
-}
+import { pickOrCreateVariable } from "../pick-or-create.js";
 
 export const turnOrderEffectInsertMutation = {
   name: "turn-order-effect-insert",
   mutate(genome, rng) {
     const definition = structuredClone(genome.definition);
-    const perPlayerVars = collectPerPlayerIntVariables(definition);
+    const variable = pickOrCreateVariable(definition, rng, {
+      filter: { kind: "int", scope: "per_player" },
+    });
 
-    if (perPlayerVars.length === 0) {
+    if (!variable) {
       return { ...genome, definition };
     }
-
-    const varIndex = getRandomIndex(perPlayerVars.length, rng);
-    if (varIndex < 0) {
-      return { ...genome, definition };
-    }
-
-    const variable = perPlayerVars[Math.max(0, varIndex)];
     const direction = rng.nextInt(2) === 0 ? "asc" : "desc";
 
     const setTurnOrderEffect = {

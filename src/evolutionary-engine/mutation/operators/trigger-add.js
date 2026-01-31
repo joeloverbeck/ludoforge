@@ -1,5 +1,6 @@
 import { collectVariableTargets, collectTokenTypeTargets, collectZoneTargets } from "../targets.js";
 import { buildRandomEffect } from "../effect-helpers.js";
+import { pickOrCreateVariable } from "../pick-or-create.js";
 
 const TRIGGER_EVENTS = [
   "start_turn",
@@ -14,12 +15,8 @@ const TRIGGER_EVENTS = [
 ];
 
 function buildThresholdCondition(definition, rng) {
-  const variables = Array.isArray(definition?.state?.variables) ? definition.state.variables : [];
-  const intVars = variables.filter((v) => v.type?.kind === "int");
-  if (intVars.length === 0) return null;
-
-  const varIdx = rng.nextInt(intVars.length);
-  const variable = intVars[varIdx];
+  const variable = pickOrCreateVariable(definition, rng, { filter: { kind: "int" } });
+  if (!variable) return null;
   const ops = [">=", "<=", ">", "<", "=="];
   const op = ops[rng.nextInt(ops.length)];
   const min = typeof variable.type.min === "number" ? variable.type.min : 0;

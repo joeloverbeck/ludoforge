@@ -1,6 +1,11 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-30T00:00:00Z",
+  "updatedAt": "2026-01-31T00:00:00Z",
+  "pickOrCreate": {
+    "zone": 0.10,
+    "tokenType": 0.10,
+    "variable": 0.15
+  },
   "mutation": {
     "enabled": [
       "numeric-tweak",
@@ -24,13 +29,12 @@
       "effect-reorder",
       "action-add-small",
       "action-cost-tweak",
+      "action-cost-add",
+      "action-cost-remove",
       "motif-inject",
-      "zone-add",
-      "token-type-add",
       "trigger-add",
       "trigger-remove",
       "trigger-edit",
-      "variable-add",
       "variable-remove",
       "variable-scope-toggle",
       "termination-add",
@@ -65,13 +69,12 @@
       "effect-reorder": 2,
       "action-add-small": 2,
       "action-cost-tweak": 2,
+      "action-cost-add": 1.5,
+      "action-cost-remove": 0.5,
       "motif-inject": 2,
-      "zone-add": 3,
-      "token-type-add": 3,
       "trigger-add": 3,
       "trigger-remove": 0.5,
       "trigger-edit": 1.5,
-      "variable-add": 1,
       "variable-remove": 0.5,
       "variable-scope-toggle": 1,
       "termination-add": 1,
@@ -92,7 +95,8 @@
   },
   "repair": {
     "enabled": [
-      "dsl-safety"
+      "dsl-safety",
+      "unused-element-prune"
     ]
   }
 }

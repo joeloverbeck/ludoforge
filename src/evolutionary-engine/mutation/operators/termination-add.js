@@ -1,4 +1,5 @@
 import { getRandomIndex } from "../random.js";
+import { pickOrCreateVariable } from "../pick-or-create.js";
 
 const COMPARATORS = [">=", "<=", ">", "<", "=="];
 const OUTCOME_TYPES = ["win", "lose", "draw"];
@@ -8,14 +9,12 @@ export const terminationAddMutation = {
   name: "termination-add",
   mutate(genome, rng) {
     const definition = structuredClone(genome.definition);
-    const variables = Array.isArray(definition?.state?.variables) ? definition.state.variables : [];
-    const intVars = variables.filter((v) => v.type?.kind === "int");
 
-    if (intVars.length === 0) {
+    const variable = pickOrCreateVariable(definition, rng, { filter: { kind: "int" } });
+
+    if (!variable) {
       return { ...genome, definition };
     }
-
-    const variable = intVars[getRandomIndex(intVars.length, rng)];
     const op = COMPARATORS[getRandomIndex(COMPARATORS.length, rng)];
     const min = typeof variable.type.min === "number" ? variable.type.min : 0;
     const max = typeof variable.type.max === "number" ? variable.type.max : 10;

@@ -2,6 +2,8 @@ import { normalizeArray } from "./utils.js";
 import { collectVariableIds } from "./id-collectors.js";
 import { repairEffects } from "./effect-repair.js";
 import { exprReferencesMissingVariable } from "./expression-repair.js";
+import { evaluateExpr } from "../../dsl/semantic/expr-evaluator.js";
+import { buildExprEvalContext } from "./expr-eval-context.js";
 
 /**
  * @param {object} definition
@@ -9,6 +11,7 @@ import { exprReferencesMissingVariable } from "./expression-repair.js";
  */
 export function repairActions(definition) {
   const variableIds = collectVariableIds(definition);
+  const exprEvalContext = buildExprEvalContext(definition);
   const actions = normalizeArray(definition.actions);
   return actions.map((action) => {
     if (!action || typeof action !== "object") {
@@ -20,6 +23,13 @@ export function repairActions(definition) {
     if (action.preconditions && exprReferencesMissingVariable(action.preconditions, variableIds)) {
       const { preconditions: _, ...rest } = nextAction;
       return rest;
+    }
+    if (nextAction.preconditions) {
+      const result = evaluateExpr(nextAction.preconditions, exprEvalContext);
+      if (result.possible === false) {
+        const { preconditions: _, ...rest } = nextAction;
+        return rest;
+      }
     }
     return nextAction;
   });

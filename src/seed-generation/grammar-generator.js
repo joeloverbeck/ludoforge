@@ -11,6 +11,7 @@ import {
   generateZone,
   generateTrigger,
   andExpr,
+  decEffect,
 } from "./primitives.js";
 import { generateSemanticId } from "../evolutionary-engine/mutation/semantic-naming.js";
 
@@ -110,6 +111,12 @@ function generateActions(rng, variables, actionCount, weights) {
     }
 
     const actionBody = { actor: "player", effects };
+
+    if (rng.next() < 0.25 && assignedVarIds.length > 0) {
+      const costVarId = assignedVarIds[rng.nextInt(assignedVarIds.length)];
+      actionBody.costs = [decEffect(costVarId, pickInt(rng, 1, 3))];
+    }
+
     const id = generateSemanticId("action", actionBody, usedIds);
     usedIds.add(id);
 
@@ -185,6 +192,37 @@ function generateZones(rng, tokenTypes) {
   });
 }
 
+/**
+ * Wire each token type into at least one action via a spawn or move effect,
+ * so seeds start with zero unused token types / zones.
+ */
+function wireTokenTypesToActions(rng, actions, tokenTypes, zones) {
+  if (tokenTypes.length === 0 || actions.length === 0) {
+    return actions;
+  }
+
+  const newActions = actions.map((a) => ({ ...a, effects: [...a.effects] }));
+
+  for (const tt of tokenTypes) {
+    const matchingZones = zones.filter((z) => z.tokenType === tt.id);
+    if (matchingZones.length === 0) continue;
+
+    const zone = matchingZones[rng.nextInt(matchingZones.length)];
+    const action = newActions[rng.nextInt(newActions.length)];
+
+    const effectKind = rng.nextInt(2) === 0 ? "spawn" : "move";
+    const effect = {
+      kind: effectKind,
+      target: { kind: "token", id: tt.id },
+      toZone: zone.id,
+    };
+
+    action.effects.push(effect);
+  }
+
+  return newActions;
+}
+
 function generateTriggers(rng, variables, count) {
   if (variables.length === 0 || count === 0) {
     return [];
@@ -206,10 +244,11 @@ export function generateGameDefinition({ rng, grammar }) {
   const triggerCount = pickInt(rng, limits.minTriggers, limits.maxTriggers);
 
   const variables = generateVariables(rng, variableCount);
-  const actions = generateActions(rng, variables, actionCount, weights);
+  const rawActions = generateActions(rng, variables, actionCount, weights);
   const termination = generateTerminations(rng, variables);
   const tokenTypes = generateTokenTypes(rng, tokenTypeCount);
   const zones = generateZones(rng, tokenTypes);
+  const actions = wireTokenTypesToActions(rng, rawActions, tokenTypes, zones);
   const triggers = generateTriggers(rng, variables, triggerCount);
 
   const state = { variables };

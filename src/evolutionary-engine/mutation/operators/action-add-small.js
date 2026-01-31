@@ -1,7 +1,8 @@
 import { getRandomIndex } from "../random.js";
-import { collectActionTargets } from "../targets.js";
+import { collectActionTargets, collectIntVariableTargets } from "../targets.js";
 import { buildRandomEffect } from "../effect-helpers.js";
 import { generateSemanticId } from "../semantic-naming.js";
+import { pickOrCreateVariable } from "../pick-or-create.js";
 
 export const actionAddSmallMutation = {
   name: "action-add-small",
@@ -29,6 +30,17 @@ export const actionAddSmallMutation = {
       actor: "player",
       effects,
     };
+
+    const addCost = rng ? rng.nextInt(5) === 0 : Math.random() < 0.2;
+    if (addCost) {
+      const costVar = pickOrCreateVariable(definition, rng, { filter: { kind: "int" } });
+      if (costVar) {
+        const amount = (rng ? rng.nextInt(3) : Math.floor(Math.random() * 3)) + 1;
+        newAction.costs = [
+          { kind: "dec", target: { kind: "var", id: costVar.id }, amount },
+        ];
+      }
+    }
 
     const newId = generateSemanticId("action", newAction, existingIds);
 

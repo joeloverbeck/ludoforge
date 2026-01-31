@@ -278,7 +278,7 @@ Implemented in `src/evaluation-analytics/feature-vector.js`:
   `turn_taking_rate`, `interaction_rate`, `structural_complexity`,
   `advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`,
   `skipped_trigger_rate`, `cost_abort_rate`, `pass_step_rate`,
-  `no_legal_actions_termination_rate`.
+  `no_legal_actions_termination_rate`, `unused_element_ratio`.
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
 - Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.
@@ -396,6 +396,7 @@ passes it to the runner as `options.evaluation`.
 9. **Detect degeneracy** — `detectDegeneracy(trajectorySummaries, degeneracyThresholds)`.
 10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.
 10b. **Inject structural complexity** — computes `structural_complexity = tokenTypeCount + zoneCount + triggerCount + distinctEffectKinds` from the game definition and injects it into the feature vector. This provides a structural diversity axis for MAP-Elites that is independent of behavioral simulation metrics.
+10d. **Compute unused element ratio** — uses `collectUsedIds(definition)` from `src/dsl/semantic/used-id-collector.js` to walk all actions, triggers, termination conditions, and scoring expressions, collecting referenced zone, token type, and variable IDs. The ratio is `unusedCount / totalCount` across all three element types. Injected into the feature vector as `unused_element_ratio` (weight 0 in `configs/fitness.json` — monitoring only).
 10c. **Non-finite metric policy enforcement (reject)** — if `nonFiniteKeys` is non-empty and `nonFinitePolicy` is `"reject"`, return early with `{ fitness: null, descriptors: null }` and diagnostics including `nonFiniteMetrics` and `nonFinitePolicy: "reject"`.
 11. **Compute fitness** — `computePreferenceAwareFitness(vector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
 11b. **Non-finite metric policy enforcement (penalize)** — if `nonFinitePolicy` is `"penalize"` and `nonFiniteKeys` is non-empty, multiply the fitness score by `computeNonFinitePenaltyMultiplier(count, perKeyPenalty, maxPenalty)`. Diagnostics include `nonFiniteMetrics` and `nonFinitePenaltyMultiplier` when applicable.

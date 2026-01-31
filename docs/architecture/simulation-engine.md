@@ -21,8 +21,8 @@ Config keys used by the simulation engine:
 - `loopDetection.enabled` (default `true`), `loopDetection.maxRepeatedStates` (default `10`)
 - `turn.noLegalActions.policy`, `turn.noLegalActions.reason`
 - `rng.seed` (numeric only), `rng.algorithm` (documentation only; `lcg32`)
-- `logger` (optional Pino logger instance; when provided, step milestones are logged
-  every 1000 steps)
+- `logger` (optional Pino logger instance; when provided, simulation progress is logged
+  at debug level every 1000 steps)
 
 ## State Initialization
 

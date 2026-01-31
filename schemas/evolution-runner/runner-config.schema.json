@@ -26,7 +26,8 @@
         "maxRetainedGenerations": { "type": "integer", "minimum": 1 },
         "rejectionRateThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
         "maxConsecutiveRejections": { "type": "integer", "minimum": 1 },
-        "minPopulationSize": { "type": "integer", "minimum": 1 }
+        "minPopulationSize": { "type": "integer", "minimum": 1 },
+        "maxPopulationSize": { "type": "integer", "minimum": 1 }
       }
     },
     "EvaluationConfig": {

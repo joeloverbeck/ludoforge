@@ -8,6 +8,7 @@ import { repairActions, repairTriggers } from "./action-repair.js";
 import { repairEffects } from "./effect-repair.js";
 import { hasZoneReferencingEffects } from "./effect-queries.js";
 import { repairTerminationOutcomes } from "./termination-repair.js";
+import { unusedElementPruneRepair } from "./unused-prune.js";
 
 export const dslSafetyRepair = {
   name: "dsl-safety",
@@ -79,7 +80,7 @@ export const dslSafetyRepair = {
   },
 };
 
-const ALL_REPAIR_OPERATORS = [dslSafetyRepair];
+const ALL_REPAIR_OPERATORS = [dslSafetyRepair, unusedElementPruneRepair];
 
 export const defaultRepairOperators = filterOperatorsByEnabled(
   ALL_REPAIR_OPERATORS,

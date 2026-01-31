@@ -102,7 +102,7 @@ describe("terminationAddMutation", () => {
     }
   });
 
-  it("no-op when no int variables exist", () => {
+  it("creates int variable and adds termination when no int variables exist", () => {
     const definition = structuredClone(baseDefinition);
     definition.state.variables = [
       {
@@ -117,7 +117,12 @@ describe("terminationAddMutation", () => {
 
     const mutated = terminationAddMutation.mutate(genome, rng);
 
-    assert.equal(mutated.definition.termination.conditions.length, 1);
+    // pickOrCreateVariable now creates an int variable, enabling the termination add
+    assert.ok(mutated.definition.termination.conditions.length >= 1);
+    const intVars = mutated.definition.state.variables.filter(
+      (v) => v.type?.kind === "int",
+    );
+    assert.ok(intVars.length > 0, "should have created an int variable");
   });
 
   it("creates termination section if missing", () => {

@@ -667,6 +667,165 @@ describe("semantic", () => {
       });
     });
 
+    describe("fromZone usage tracking", () => {
+      it("does not report unused-zone for zone referenced only via fromZone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.zones.push({
+          id: "deck",
+          tokenType: "pawn",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+        });
+        candidate.actions[0].effects.push({
+          kind: "queue_pop",
+          fromZone: "deck",
+          toZone: "board",
+        });
+
+        const issues = collectSemanticIssues(candidate);
+
+        const unusedZone = issues.find(
+          (i) => i.rule === "unused-zone" && i.message.includes("deck"),
+        );
+        assert.equal(unusedZone, undefined, "deck should not be flagged as unused");
+      });
+
+      it("reports zone-unknown for fromZone referencing non-existent zone", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects.push({
+          kind: "queue_pop",
+          fromZone: "nonExistent",
+        });
+
+        const issues = collectSemanticIssues(candidate);
+
+        const zoneUnknown = issues.find(
+          (i) => i.rule === "zone-unknown" && i.message.includes("nonExistent"),
+        );
+        assert.ok(zoneUnknown, "should report zone-unknown for nonExistent fromZone");
+      });
+    });
+
+    describe("rng_choose effect validation", () => {
+      it("does not report unused-zone for zone referenced only inside rng_choose option", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.zones.push({
+          id: "discard",
+          tokenType: "pawn",
+          scope: "global",
+          order: "ordered",
+          visibility: "public",
+        });
+        candidate.actions[0].effects = [
+          {
+            kind: "rng_choose",
+            count: 1,
+            options: [
+              [
+                {
+                  kind: "move",
+                  target: { kind: "token", id: "pawn" },
+                  toZone: "discard",
+                },
+              ],
+              [
+                {
+                  kind: "inc",
+                  target: { kind: "var", id: "score" },
+                  amount: 1,
+                },
+              ],
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        const unusedZone = issues.find(
+          (i) => i.rule === "unused-zone" && i.message.includes("discard"),
+        );
+        assert.equal(unusedZone, undefined, "discard should not be flagged as unused");
+      });
+
+      it("reports ref-unknown for bad refs inside rng_choose options", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.actions[0].effects = [
+          {
+            kind: "rng_choose",
+            count: 1,
+            options: [
+              [
+                {
+                  kind: "inc",
+                  target: { kind: "var", id: "nonExistentVar" },
+                  amount: 1,
+                },
+              ],
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        assert.ok(findRule(issues, "ref-unknown"));
+      });
+    });
+
+    describe("set_turn_order variable tracking", () => {
+      it("does not report unused-variable for variable referenced via set_turn_order", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.state.variables.push({
+          id: "initiative",
+          scope: "per_player",
+          type: { kind: "int", min: 0, max: 100 },
+          initial: 0,
+        });
+        candidate.triggers = [
+          {
+            event: "end_round",
+            effects: [
+              {
+                kind: "set_turn_order",
+                variable: "initiative",
+                direction: "desc",
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        const unusedVar = issues.find(
+          (i) => i.rule === "unused-variable" && i.message.includes("initiative"),
+        );
+        assert.equal(unusedVar, undefined, "initiative should not be flagged as unused");
+      });
+
+      it("reports ref-unknown for set_turn_order referencing non-existent variable", () => {
+        const candidate = structuredClone(baseDefinition);
+        candidate.triggers = [
+          {
+            event: "end_round",
+            effects: [
+              {
+                kind: "set_turn_order",
+                variable: "nonExistentVar",
+                direction: "desc",
+              },
+            ],
+          },
+        ];
+
+        const issues = collectSemanticIssues(candidate);
+
+        const refUnknown = issues.find(
+          (i) => i.rule === "ref-unknown" && i.message.includes("nonExistentVar"),
+        );
+        assert.ok(refUnknown, "should report ref-unknown for nonExistentVar");
+      });
+    });
+
     describe("action rules", () => {
       it("reports free lunch actions", () => {
         const candidate = structuredClone(baseDefinition);

@@ -41,6 +41,8 @@ import { schedulerParamTweakMutation } from "./operators/scheduler-param-tweak.j
 import { conditionalEffectInsertMutation } from "./operators/conditional-effect-insert.js";
 import { turnOrderEffectInsertMutation } from "./operators/turn-order-effect-insert.js";
 import { chooseEffectInsertMutation } from "./operators/choose-effect-insert.js";
+import { actionCostAddMutation } from "./operators/action-cost-add.js";
+import { actionCostRemoveMutation } from "./operators/action-cost-remove.js";
 import { workerCountTweakMutation } from "./operators/worker-count-tweak.js";
 
 const ALL_MUTATION_OPERATORS = [
@@ -65,6 +67,8 @@ const ALL_MUTATION_OPERATORS = [
   effectReorderMutation,
   actionAddSmallMutation,
   actionCostTweakMutation,
+  actionCostAddMutation,
+  actionCostRemoveMutation,
   motifInjectMutation,
   zoneAddMutation,
   tokenTypeAddMutation,

@@ -150,24 +150,23 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `effect-param-tweak`: nudges a numeric effect parameter (`amount` or `value`) by +/-1.
 - `effect-kind-swap`: replaces an effect's kind with a different valid kind, builds a new target appropriate for the new kind via `buildRefForKind`, and rebuilds its properties. Returns the genome unchanged if no valid target exists for the new kind.
 - `effect-reorder`: swaps two effects within a random action's effects list.
-- `action-add-small`: creates a new action with 1-2 random effects and a unique id.
+- `action-add-small`: creates a new action with 1-2 random effects and a unique id. ~20% chance to include a `dec` cost referencing an int variable (created on-demand via `pickOrCreateVariable` if none exist).
+- `action-cost-add`: adds a cost to a random action. Builds from three weighted pools: `dec` (spend resource variable, weight 3), `destroy` (sacrifice token, weight 1), `move` (relocate token between zones, weight 1). Falls back to `dec` when `move` pool has no eligible token types, and no-ops when no cost pools are available.
+- `action-cost-remove`: removes a random cost from an action that has costs. Deletes the `costs` property entirely when the last cost is removed. No-op when no actions have costs.
 - `action-cost-tweak`: tweaks a `dec` cost amount by +/-1 or +/-2 (clamped to min 1).
 - `motif-inject`: inserts a motif effect sequence into a random action. Ships with a default library of curated motifs (dec+inc, set+inc, inc+dec patterns). When motif mining is enabled, the runner dynamically replaces this operator each generation with a fresh instance created via `createMotifInjectMutation(minedMotifEffects)`, using DSL effect sequences discovered from elite trajectory analysis.
-- `zone-add`: adds a new zone referencing an existing token type with random scope, order, and visibility. No-op if no token types exist.
-- `token-type-add`: adds a new token type with a single integer attribute and a companion zone. Works even when no token types exist yet.
-- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`, `state_change`, `threshold`) and 1-2 random effects. `threshold` triggers include a condition expression comparing a variable to a threshold value. No-op if no variables, token types, or zones exist.
+- `trigger-add`: adds a trigger with a random event (`start_turn`, `end_turn`, `start_phase`, `end_phase`, `start_round`, `end_round`, `after_action`, `state_change`, `threshold`) and 1-2 random effects. `threshold` triggers include a condition expression comparing a variable to a threshold value. Uses `pickOrCreateVariable` to obtain or create an int variable for threshold conditions.
 - `trigger-remove`: removes a random trigger from the definition. No-op when no triggers exist.
-- `trigger-edit`: picks a random trigger and applies one of: event swap (to any of the 9 DSL-supported events), condition add/remove/mutate, or effect insert/delete/reorder. No-op when no triggers exist.
-- `variable-add`: adds a new state variable with a unique id (via `generateSemanticId`), random scope (`global` or `per_player`), and random type/initial value. Biases toward `per_player` int when a `priority_queue` scheduler is present.
+- `trigger-edit`: picks a random trigger and applies one of: event swap (to any of the 9 DSL-supported events), condition add/remove/mutate, or effect insert/delete/reorder. Uses `pickOrCreateVariable` for threshold conditions. No-op when no triggers exist.
 - `variable-remove`: removes one variable (preserving at least 1). Rewrites all dangling variable refs in action effects, preconditions, trigger conditions, termination conditions, and `turn.orderBy.variable`. Redirects refs to a compatible remaining variable; replaces unrewritable expression subtrees with `{ kind: "value", value: false }`. No-op with ≤1 variables.
 - `variable-scope-toggle`: flips a random variable's scope between `global` and `per_player`. No-op with 0 variables.
-- `termination-add`: generates a new termination condition referencing an existing int variable with a reachable threshold (greater than initial, within bounds), plus a random outcome (`win`/`lose`/`draw`). Creates the `termination` section if missing. No-op when no int variables exist.
+- `termination-add`: generates a new termination condition referencing an int variable (created on-demand via `pickOrCreateVariable` if none exist) with a reachable threshold (greater than initial, within bounds), plus a random outcome (`win`/`lose`/`draw`). Creates the `termination` section if missing.
 - `termination-remove`: removes one termination condition, never reducing below 1. No-op with exactly 1 or 0 conditions.
 - `termination-condition-mutate`: applies one of: comparator swap, variable ref swap, constant adjustment (+/-1 within bounds), wrap with `not`, or unwrap existing `not`. No-op when no termination conditions exist.
 - `scheduler-swap`: changes `turn.scheduler` to a different type (`round_robin`, `priority_queue`, `token_holder`, `reactive`, `simultaneous`, `random_draw`). Generates required auxiliary fields (`orderBy` for priority_queue; `tokenType` + `zone` for token_holder; `resolution.order` for simultaneous) from existing definition state, and strips fields that are no longer relevant. `reactive`, `round_robin`, and `random_draw` require no auxiliary fields. No-op only when no valid swap target exists (e.g., the only excluded candidates are priority_queue without per-player int vars, or token_holder without matching per-player zones).
 - `scheduler-param-tweak`: tweaks parameters of the current scheduler without changing type. For `priority_queue`: flips `direction` (`asc`/`desc`) or swaps `variable` to a different per-player int variable. For `token_holder`: swaps `tokenType` or `zone` to a different valid option. For `simultaneous`: flips `resolution.order` between `by_player_id` and `random`. No-op for `round_robin`, `reactive`, and `random_draw` (no parameters to tweak).
-- `conditional-effect-insert`: wraps an existing effect from a random action in a `conditional` block. The `then` branch contains the original effect, and the condition is a `cmp` expression comparing a random game variable to a random threshold. No-op when no actions have effects or no variables exist for condition generation.
-- `turn-order-effect-insert`: inserts a `set_turn_order` effect into an `end_round` trigger. Creates the trigger if none exists. References a random per-player integer variable with random direction (`asc`/`desc`). No-op when no per-player integer variables exist.
+- `conditional-effect-insert`: wraps an existing effect from a random action in a `conditional` block. The `then` branch contains the original effect, and the condition is a `cmp` expression comparing a game variable (obtained via `pickOrCreateVariable`) to a random threshold. No-op when no actions have effects.
+- `turn-order-effect-insert`: inserts a `set_turn_order` effect into an `end_round` trigger. Creates the trigger if none exists. References a per-player integer variable (created on-demand via `pickOrCreateVariable` if none exist) with random direction (`asc`/`desc`).
 - `choose-effect-insert`: wraps an existing action effect in an `rng_choose` block with two options: the original effect and a randomly generated alternative. No-op when no actions have effects.
 - `worker-count-tweak`: adjusts the `count` field on `spawn` effects found in triggers or action effect lists by ±1, clamped to min 1. Defaults missing `count` to 1 before tweaking. No-op when no spawn effects exist.
 
@@ -187,10 +186,10 @@ Operator weights in `configs/evolution-operators.json` follow a three-tier schem
 
 | Tier | Weight | Operators |
 |------|--------|-----------|
-| Conservative | 3 | `numeric-tweak`, `boolean-toggle`, `enum-cycle`, `action-effect-magnitude`, `precondition-negation`, `termination-threshold`, `termination-outcome`, `effect-param-tweak`, `zone-add`, `token-type-add`, `trigger-add` |
+| Conservative | 3 | `numeric-tweak`, `boolean-toggle`, `enum-cycle`, `action-effect-magnitude`, `precondition-negation`, `termination-threshold`, `termination-outcome`, `effect-param-tweak`, `trigger-add` |
 | Moderate | 2 | `action-duplicate`, `phase-add`, `token-zone-target-add`, `effect-insert`, `effect-kind-swap`, `effect-reorder`, `action-add-small`, `action-cost-tweak`, `motif-inject`, `termination-condition-mutate`, `worker-count-tweak` |
-| Structural | 1–1.5 | `scheduler-swap` (1), `scheduler-param-tweak` (1.5), `conditional-effect-insert` (1.5), `turn-order-effect-insert` (1.5), `choose-effect-insert` (1.5), `trigger-edit` (1.5), `effect-delete` (1), `variable-add` (1), `variable-scope-toggle` (1), `termination-add` (1) |
-| Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove`, `trigger-remove`, `variable-remove`, `termination-remove` |
+| Structural | 1–1.5 | `scheduler-swap` (1), `scheduler-param-tweak` (1.5), `conditional-effect-insert` (1.5), `turn-order-effect-insert` (1.5), `choose-effect-insert` (1.5), `trigger-edit` (1.5), `action-cost-add` (1.5), `effect-delete` (1), `variable-scope-toggle` (1), `termination-add` (1) |
+| Destructive | 0.5 | `action-remove`, `phase-remove`, `token-type-remove`, `zone-remove`, `trigger-remove`, `variable-remove`, `termination-remove`, `action-cost-remove` |
 
 The tiering ensures destructive removal mutations fire less frequently than
 conservative value tweaks, reducing invalid-offspring rates.
@@ -247,6 +246,42 @@ If the selector picks an operator name that does not match any operator in the
 list, the orchestrator throws an `Error` immediately (fail-fast) rather than
 silently returning an unmutated clone.
 
+### Pick-or-Create Helpers
+
+Implemented in `src/evolutionary-engine/mutation/pick-or-create.js`.
+
+Many mutation operators need a zone, token type, or variable to reference. Instead
+of standalone add operators (`zone-add`, `token-type-add`, `variable-add` — now
+removed), the codebase uses **pick-or-create** helpers that either select an
+existing element or create a new one on-demand with a configurable probability.
+This ensures newly created elements are always immediately wired into an effect,
+condition, or cost — they are never orphaned.
+
+- `pickOrCreateZone(definition, rng)`: returns an existing zone or creates a new
+  one (with a random token type, scope, order, and visibility) and appends it to
+  `definition.state.zones`. Returns `null` only when no token types exist and
+  creation is impossible.
+- `pickOrCreateTokenType(definition, rng)`: returns an existing token type or
+  creates one (with a single int attribute and a companion zone) and appends it
+  to `definition.state.tokenTypes` and `definition.state.zones`.
+- `pickOrCreateVariable(definition, rng, options?)`: returns an existing variable
+  (optionally filtered by `{ kind, scope }`) or creates a new int variable and
+  appends it to `definition.state.variables`. An optional `filter` narrows the
+  pick pool (e.g., `{ kind: "int", scope: "per_player" }`).
+
+Creation probabilities are configured in `configs/evolution-operators.json` under
+`pickOrCreate`:
+
+| Element | Default probability | Config key |
+|---------|-------------------|------------|
+| Zone | 0.10 | `pickOrCreate.zone` |
+| Token type | 0.10 | `pickOrCreate.tokenType` |
+| Variable | 0.15 | `pickOrCreate.variable` |
+
+These helpers are used by `buildRefForKind`, `buildEffectProps`, and directly by
+operators that need specific element types (e.g., `termination-add` needs an int
+variable, `turn-order-effect-insert` needs a per-player int variable).
+
 ### Effect Helpers
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
@@ -258,16 +293,18 @@ Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
   See [simulation-engine.md](simulation-engine.md) for the full effect dispatch reference.
 - `buildRandomEffect(definition, rng)`: generates a random effect with a valid
   target and properties drawn from the game definition.
-- `buildRefForKind(kind, definition, rng)`: selects a target reference appropriate for
-  the given effect kind (variable for set/inc/dec, token for move/spawn/destroy/
-  move_spatial/set_flag, zone for reveal/hide/shuffle, token for queue_push).
-  Returns `null` for queue_pop (uses `fromZone` prop instead) and when the required
-  structures are absent (e.g., no token types for a `move` kind), allowing callers
-  to re-roll or skip the mutation.
+- `buildRefForKind(kind, definition, rng)`: selects or creates a target reference
+  appropriate for the given effect kind (variable for set/inc/dec via
+  `pickOrCreateVariable`, token for move/spawn/destroy/move_spatial/set_flag via
+  `pickOrCreateTokenType`, zone for reveal/hide/shuffle via `pickOrCreateZone`,
+  token for queue_push). Returns `null` for queue_pop (uses `fromZone` prop instead).
+  Because pick-or-create can synthesize missing elements, `null` returns are rare
+  (only when creation is structurally impossible).
 - `buildEffectProps(kind, definition, rng)`: returns kind-specific properties (e.g.,
   `{ amount: 1 }` for inc/dec, `{ toZone, toPlayer? }` for move, `{ toZone }` for
   spawn, `{ zone, toNode, distance? }` for move_spatial, `{ flag, duration }` for set_flag,
   `{ count, effects }` for repeat, `{ toZone }` for queue_push, `{ fromZone }` for queue_pop).
+  Zone-requiring props use `pickOrCreateZone` instead of direct random selection.
 
 ## Crossover Operators
 
@@ -290,6 +327,15 @@ Implemented in `src/evolutionary-engine/repair.js`.
   `repairTerminationOutcomes()` from `src/evolutionary-engine/repair/termination-repair.js`.
   Valid values are `"all"`, `"active"`, or an array of non-negative integers. Invalid
   values (e.g., `"inactive"`) are reset to `"active"`.
+- `unused-element-prune` (implemented in `src/evolutionary-engine/repair/unused-prune.js`)
+  removes unused zones, token types, and variables after mutation/crossover. Uses
+  `collectUsedIds()` from `src/dsl/semantic/used-id-collector.js` to walk the
+  definition (actions, triggers, termination, turn config) and identify all
+  referenced element IDs. Elements not in the used set are pruned, with cascading:
+  zones whose `tokenType` was pruned are also removed. Safety guards keep at least
+  one element of each type. This repair acts as a safety net against genome bloat
+  from element creation (via pick-or-create), removals that orphan references, and
+  crossover that introduces unreferenced elements.
 
 ### Structural Minimums
 

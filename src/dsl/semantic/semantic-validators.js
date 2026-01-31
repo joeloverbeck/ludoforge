@@ -2,6 +2,7 @@ export function createSemanticValidators({
   validateRef,
   validateZoneRef,
   validateTokenTypeRef,
+  validateVariableRef,
   joinPath,
   zoneById,
   pushIssue,
@@ -28,6 +29,7 @@ export function createSemanticValidators({
       });
     }
     validateZoneRef(effect.toZone, joinPath(path, "toZone"));
+    validateZoneRef(effect.fromZone, joinPath(path, "fromZone"));
 
     if (effect.kind === "move_spatial") {
       validateZoneRef(effect.zone, joinPath(path, "zone"));
@@ -52,6 +54,20 @@ export function createSemanticValidators({
       elseEffects.forEach((subEffect, idx) => {
         validateEffect(subEffect, joinPath(path, `else/${idx}`), options);
       });
+    }
+
+    if (effect.kind === "rng_choose" && Array.isArray(effect.options)) {
+      effect.options.forEach((optionEffects, optIdx) => {
+        if (Array.isArray(optionEffects)) {
+          optionEffects.forEach((subEffect, subIdx) => {
+            validateEffect(subEffect, joinPath(path, `options/${optIdx}/${subIdx}`), options);
+          });
+        }
+      });
+    }
+
+    if (effect.kind === "set_turn_order" && typeof effect.variable === "string") {
+      validateVariableRef(effect.variable, joinPath(path, "variable"));
     }
 
     if (effect.kind === "move" && typeof effect.toPlayer === "string" && typeof effect.toZone === "string") {

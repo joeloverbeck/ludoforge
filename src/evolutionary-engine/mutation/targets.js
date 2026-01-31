@@ -50,6 +50,12 @@ export function collectActionEffectTargets(definition) {
   return targets;
 }
 
+export function collectIntVariableTargets(definition) {
+  return collectVariableTargets(definition).filter(
+    (entry) => entry.variable?.type?.kind === "int",
+  );
+}
+
 export function collectZoneTargets(definition) {
   return Array.isArray(definition?.state?.zones) ? definition.state.zones : [];
 }

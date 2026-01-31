@@ -273,6 +273,44 @@ describe("mutation", () => {
       assert.equal(definition.actions[0].preconditions.kind, "cmp");
       assert.equal(mutated.definition.actions[0].preconditions.kind, "not");
     });
+
+    it("skips targets where negation would be unsatisfiable (returns no-op)", () => {
+      const definition = cloneDefinition(baseDefinition);
+      // score min:0, max:10; precondition score < 15 is always true
+      // NOT(score < 15) = impossible → should be filtered out
+      definition.actions[0].preconditions = {
+        kind: "cmp",
+        op: "<",
+        left: { kind: "ref", ref: { kind: "var", id: "score" } },
+        right: { kind: "value", value: 15 },
+      };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = preconditionNegationMutation.mutate(genome, rng);
+
+      // No targets remain, so precondition should be unchanged (no-op)
+      assert.equal(mutated.definition.actions[0].preconditions.kind, "cmp");
+      assert.equal(mutated.definition.actions[0].preconditions.op, "<");
+    });
+
+    it("applies negation when result is satisfiable", () => {
+      const definition = cloneDefinition(baseDefinition);
+      // score min:0, max:10; precondition score >= 5 is NOT always true
+      // NOT(score >= 5) = score < 5, which is possible
+      definition.actions[0].preconditions = {
+        kind: "cmp",
+        op: ">=",
+        left: { kind: "ref", ref: { kind: "var", id: "score" } },
+        right: { kind: "value", value: 5 },
+      };
+      const genome = { definition };
+      const rng = { nextInt: () => 0 };
+
+      const mutated = preconditionNegationMutation.mutate(genome, rng);
+
+      assert.equal(mutated.definition.actions[0].preconditions.kind, "not");
+    });
   });
 
   describe("terminationThresholdMutation", () => {
@@ -638,14 +676,23 @@ describe("mutation", () => {
       assert.equal(endRoundTriggers[0].effects[1].kind, "set_turn_order");
     });
 
-    it("returns unchanged genome when no per-player int variables exist", () => {
+    it("creates a per-player int variable and adds trigger when none exist", () => {
       const definition = cloneDefinition(baseDefinition);
       const genome = { definition };
       const rng = createSeededRng(1);
 
       const mutated = turnOrderEffectInsertMutation.mutate(genome, rng);
 
-      assert.deepStrictEqual(mutated.definition, definition);
+      // pickOrCreateVariable now creates a per_player int variable
+      const perPlayerVars = mutated.definition.state.variables.filter(
+        (v) => v.scope === "per_player" && v.type?.kind === "int",
+      );
+      assert.ok(perPlayerVars.length > 0, "should have created a per_player int variable");
+      const triggers = mutated.definition.triggers ?? [];
+      const setTurnOrder = triggers.flatMap((t) => t.effects ?? []).find(
+        (e) => e.kind === "set_turn_order",
+      );
+      assert.ok(setTurnOrder, "should have added a set_turn_order effect");
     });
 
     it("is deterministic with seeded RNG", () => {

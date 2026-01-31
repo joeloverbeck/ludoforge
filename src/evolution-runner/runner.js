@@ -165,6 +165,12 @@ export async function runEvolutionRunner(options) {
       let evolvedPopulation = evolutionResult.population;
       pendingOperatorNames = evolutionResult.operatorNames;
 
+      const maxPopSize = runnerConfig.maxPopulationSize ?? config.seeding?.populationSize ?? Infinity;
+      if (Number.isFinite(maxPopSize) && evolvedPopulation.length > maxPopSize) {
+        evolvedPopulation = evolvedPopulation.slice(0, maxPopSize);
+        pendingOperatorNames = pendingOperatorNames.slice(0, maxPopSize);
+      }
+
       const minPopulationSize = runnerConfig.minPopulationSize;
       if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
         const replenished = replenishPopulation(evolvedPopulation, {

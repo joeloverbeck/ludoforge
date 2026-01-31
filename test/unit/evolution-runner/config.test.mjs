@@ -153,6 +153,39 @@ describe("config", () => {
     });
   });
 
+  describe("runner.maxPopulationSize", () => {
+    it("returns valid true when maxPopulationSize is a positive integer", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxPopulationSize = 48;
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("rejects maxPopulationSize less than 1", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.maxPopulationSize = 0;
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/runner/maxPopulationSize" &&
+            error.keyword === "minimum",
+        ),
+      );
+    });
+
+    it("accepts config with both minPopulationSize and maxPopulationSize", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = 8;
+      candidate.runner.maxPopulationSize = 48;
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+  });
+
   describe("seeding validation", () => {
     it("accepts valid generate mode config", () => {
       const result = validateRunnerConfig(cloneConfig(baseConfig));

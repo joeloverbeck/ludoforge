@@ -32,7 +32,8 @@
     "degeneracy.high-skipped-triggers": 0,
     "degeneracy.high-pass-rate": 0,
     "degeneracy.high-no-legal-actions-termination": 0,
-    "degeneracy.non-finite-metrics": 0
+    "degeneracy.non-finite-metrics": 0,
+    "unused_element_ratio": 0
   },
   "weightNormalization": true,
   "preferenceWeight": 1,

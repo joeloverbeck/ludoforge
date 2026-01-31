@@ -121,10 +121,23 @@ export function createRefValidator({
     }
   }
 
+  function validateVariableRef(variableId, path, options = {}) {
+    const { trackUsage = true } = options;
+    if (typeof variableId !== "string") {
+      return;
+    }
+    if (!variableIds.has(variableId)) {
+      pushIssue(path, `Unknown variable: ${variableId}`, "ref-unknown");
+    } else if (trackUsage) {
+      usedVariableIds.add(variableId);
+    }
+  }
+
   return {
     validateRef,
     validateZoneRef,
     validateTokenTypeRef,
+    validateVariableRef,
     usedVariableIds,
     usedTokenTypeIds,
     usedZoneIds,

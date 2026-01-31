@@ -14,6 +14,7 @@ import {
 import { computePreferenceAwareFitness } from "./fitness.js";
 import { createRunCache } from "../simulation-engine/run-cache.js";
 import { runSuites } from "./suite-runner.js";
+import { collectUsedIds } from "../dsl/semantic/used-id-collector.js";
 
 /**
  * @param {import("../dsl/types.js").GameDefinition} definition
@@ -175,6 +176,17 @@ export function createEvaluator(options = {}) {
       }
     }
     featureVector.structural_complexity = tokenTypeCount + zoneCount + triggerCount + effectKinds.size;
+
+    // Step 10d: Compute unused element ratio
+    const { usedZoneIds, usedTokenTypeIds, usedVariableIds } = collectUsedIds(definition);
+    const variableCount = Array.isArray(definition.state?.variables) ? definition.state.variables.length : 0;
+    const totalElements = tokenTypeCount + zoneCount + variableCount;
+    const usedElements = Math.min(usedTokenTypeIds.size, tokenTypeCount)
+      + Math.min(usedZoneIds.size, zoneCount)
+      + Math.min(usedVariableIds.size, variableCount);
+    featureVector.unused_element_ratio = totalElements > 0
+      ? (totalElements - usedElements) / totalElements
+      : 0;
 
     // Step 10c: Non-finite metric policy enforcement (reject)
     if (nonFiniteKeys.length > 0 && nonFinitePolicy === "reject") {

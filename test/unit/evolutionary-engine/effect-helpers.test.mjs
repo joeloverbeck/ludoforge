@@ -56,7 +56,7 @@ describe("effect-helpers", () => {
 
     it("adds amount for inc/dec kinds", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: (n) => 1 };
+      const rng = { nextInt: (n) => 1, next: () => 0.5 };
 
       const effect = buildRandomEffect(definition, rng);
 
@@ -67,7 +67,7 @@ describe("effect-helpers", () => {
 
     it("adds value for set kind", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: (n) => 0 };
+      const rng = { nextInt: (n) => 0, next: () => 0 };
 
       const effect = buildRandomEffect(definition, rng);
 
@@ -78,7 +78,7 @@ describe("effect-helpers", () => {
 
     it("adds toZone for move/spawn kinds", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: (n) => 3 };
+      const rng = { nextInt: (n) => 3, next: () => 0.5 };
 
       const effect = buildRandomEffect(definition, rng);
 
@@ -91,6 +91,7 @@ describe("effect-helpers", () => {
       const definition = cloneDefinition(baseDefinition);
       const rng = {
         nextInt: (n) => n - 1,
+        next: () => 0.99,
       };
 
       const effect = buildRandomEffect(definition, rng);
@@ -105,7 +106,7 @@ describe("effect-helpers", () => {
   describe("buildRefForKind", () => {
     it("returns var ref for inc/dec/set", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("inc", definition, rng);
       assert.equal(ref.kind, "var");
@@ -114,7 +115,7 @@ describe("effect-helpers", () => {
 
     it("returns token ref for move/spawn/destroy", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("move", definition, rng);
       assert.equal(ref.kind, "token");
@@ -123,7 +124,7 @@ describe("effect-helpers", () => {
 
     it("returns zone ref for reveal/hide", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("reveal", definition, rng);
       assert.equal(ref.kind, "zone");
@@ -132,7 +133,7 @@ describe("effect-helpers", () => {
 
     it("returns zone ref for shuffle", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("shuffle", definition, rng);
       assert.equal(ref.kind, "zone");
@@ -141,7 +142,7 @@ describe("effect-helpers", () => {
 
     it("returns token ref for queue_push", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("queue_push", definition, rng);
       assert.equal(ref.kind, "token");
@@ -150,7 +151,7 @@ describe("effect-helpers", () => {
 
     it("returns null for queue_pop", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const ref = buildRefForKind("queue_pop", definition, rng);
       assert.equal(ref, null);
@@ -160,7 +161,7 @@ describe("effect-helpers", () => {
   describe("buildEffectProps", () => {
     it("returns amount for inc", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("inc", definition, rng);
       assert.equal(props.amount, 1);
@@ -168,7 +169,7 @@ describe("effect-helpers", () => {
 
     it("returns value for set", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("set", definition, rng);
       assert.equal(props.value, 0);
@@ -176,7 +177,7 @@ describe("effect-helpers", () => {
 
     it("returns toZone for move", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("move", definition, rng);
       assert.equal(typeof props.toZone, "string");
@@ -184,7 +185,7 @@ describe("effect-helpers", () => {
 
     it("returns empty object for destroy", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("destroy", definition, rng);
       assert.deepStrictEqual(props, {});
@@ -192,7 +193,7 @@ describe("effect-helpers", () => {
 
     it("returns condition and branches for conditional", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("conditional", definition, rng);
 
@@ -203,7 +204,7 @@ describe("effect-helpers", () => {
 
     it("returns empty object for shuffle", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("shuffle", definition, rng);
       assert.deepStrictEqual(props, {});
@@ -211,7 +212,7 @@ describe("effect-helpers", () => {
 
     it("returns toZone for queue_push", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("queue_push", definition, rng);
       assert.equal(typeof props.toZone, "string");
@@ -219,7 +220,7 @@ describe("effect-helpers", () => {
 
     it("returns fromZone for queue_pop", () => {
       const definition = cloneDefinition(baseDefinition);
-      const rng = { nextInt: () => 0 };
+      const rng = { nextInt: () => 0, next: () => 0.99 };
 
       const props = buildEffectProps("queue_pop", definition, rng);
       assert.equal(typeof props.fromZone, "string");

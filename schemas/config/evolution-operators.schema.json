@@ -8,11 +8,21 @@
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
     "updatedAt": { "type": "string" },
+    "pickOrCreate": { "$ref": "#/$defs/PickOrCreateConfig" },
     "mutation": { "$ref": "#/$defs/MutationGroup" },
     "crossover": { "$ref": "#/$defs/CrossoverGroup" },
     "repair": { "$ref": "#/$defs/RepairGroup" }
   },
   "$defs": {
+    "PickOrCreateConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "zone": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tokenType": { "type": "number", "minimum": 0, "maximum": 1 },
+        "variable": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
     "MutationOperatorKind": {
       "type": "string",
       "enum": [
@@ -37,6 +47,8 @@
         "effect-reorder",
         "action-add-small",
         "action-cost-tweak",
+        "action-cost-add",
+        "action-cost-remove",
         "motif-inject",
         "zone-add",
         "token-type-add",
@@ -66,7 +78,8 @@
     "RepairOperatorKind": {
       "type": "string",
       "enum": [
-        "dsl-safety"
+        "dsl-safety",
+        "unused-element-prune"
       ]
     },
     "MutationGroup": {

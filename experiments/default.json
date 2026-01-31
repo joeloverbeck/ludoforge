@@ -5,7 +5,8 @@
     "maxRetainedGenerations": 20,
     "shortlistSize": 8,
     "saveEvery": 5,
-    "minPopulationSize": 8
+    "minPopulationSize": 8,
+    "maxPopulationSize": 48
   },
   "evolution": {
     "mutation": {
@@ -76,7 +77,7 @@
     }
   },
   "humanFeedback": {
-    "enabled": false,
+    "enabled": true,
     "mode": "comparison",
     "maxSamplesPerGen": 5,
     "activeLearning": {

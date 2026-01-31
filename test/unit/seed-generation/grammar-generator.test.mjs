@@ -111,9 +111,9 @@ describe("generateGameDefinition", () => {
     }
   });
 
-  it("weights: { inc: 1 } produces only inc effects", () => {
+  it("weights: { inc: 1 } produces only inc effects (excluding wired token effects)", () => {
     const grammar = {
-      limits: { minVariables: 3, maxVariables: 3, minActions: 2, maxActions: 2 },
+      limits: { minVariables: 3, maxVariables: 3, minActions: 2, maxActions: 2, minTokenTypes: 0, maxTokenTypes: 0 },
       weights: { inc: 1 },
     };
     for (let seed = 0; seed < 20; seed++) {
@@ -126,9 +126,13 @@ describe("generateGameDefinition", () => {
     }
   });
 
-  it("weights: { dec: 1 } produces only dec effects", () => {
+  it("weights: { dec: 1 } produces only dec effects (excluding wired token effects)", () => {
+    const grammar = {
+      limits: { minVariables: 2, maxVariables: 2, minActions: 2, maxActions: 2, minTokenTypes: 0, maxTokenTypes: 0 },
+      weights: { dec: 1 },
+    };
     for (let seed = 0; seed < 20; seed++) {
-      const def = generateGameDefinition({ rng: makeRng(seed), grammar: decOnlyGrammar });
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar });
       for (const action of def.actions) {
         for (const effect of action.effects) {
           assert.equal(effect.kind, "dec", `seed ${seed}: expected dec, got ${effect.kind}`);
@@ -206,6 +210,26 @@ describe("generateGameDefinition", () => {
       const semantic = validateSemanticDefinition(def);
       assert.ok(semantic.valid, `seed ${seed} semantic: ${JSON.stringify(semantic.issues)}`);
     }
+  });
+
+  it("some actions have costs across many seeds", () => {
+    let foundCost = false;
+    for (let seed = 0; seed < 200; seed++) {
+      const def = generateGameDefinition({ rng: makeRng(seed), grammar: defaultGrammar });
+      for (const action of def.actions) {
+        if (Array.isArray(action.costs) && action.costs.length > 0) {
+          const cost = action.costs[0];
+          assert.equal(cost.kind, "dec", `seed ${seed}: cost kind should be dec`);
+          assert.equal(cost.target.kind, "var", `seed ${seed}: cost target should be var`);
+          assert.ok(
+            cost.amount >= 1 && cost.amount <= 3,
+            `seed ${seed}: cost amount should be 1-3, got ${cost.amount}`,
+          );
+          foundCost = true;
+        }
+      }
+    }
+    assert.ok(foundCost, "should find at least one action with costs across 200 seeds");
   });
 
   it("no node:fs import in source files", () => {

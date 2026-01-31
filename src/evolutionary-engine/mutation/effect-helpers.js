@@ -1,5 +1,6 @@
 import { getRandomIndex } from "./random.js";
 import { collectVariableTargets, collectZoneTargets, collectTokenTypeTargets } from "./targets.js";
+import { pickOrCreateZone, pickOrCreateTokenType, pickOrCreateVariable } from "./pick-or-create.js";
 
 export const EFFECT_KINDS = [
   "set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide",
@@ -22,53 +23,35 @@ function collectSpatialZones(definition) {
 }
 
 export function buildRefForKind(kind, definition, rng) {
-  const variables = Array.isArray(definition?.state?.variables)
-    ? definition.state.variables
-    : [];
-  const tokenTypes = collectTokenTypeTargets(definition);
-  const zones = collectZoneTargets(definition);
-
   if (kind === "move" || kind === "spawn" || kind === "destroy" || kind === "move_spatial") {
-    if (tokenTypes.length > 0) {
-      const index = getRandomIndex(tokenTypes.length, rng);
-      return { kind: "token", id: tokenTypes[clampIndex(index, tokenTypes.length)].id };
-    }
+    const tt = pickOrCreateTokenType(definition, rng);
+    if (tt) return { kind: "token", id: tt.id };
   }
 
   if (kind === "set" || kind === "inc" || kind === "dec") {
-    if (variables.length > 0) {
-      const index = getRandomIndex(variables.length, rng);
-      return { kind: "var", id: variables[clampIndex(index, variables.length)].id };
-    }
+    const v = pickOrCreateVariable(definition, rng);
+    if (v) return { kind: "var", id: v.id };
   }
 
   if (kind === "reveal" || kind === "hide") {
-    if (zones.length > 0) {
-      const index = getRandomIndex(zones.length, rng);
-      return { kind: "zone", id: zones[clampIndex(index, zones.length)].id };
-    }
+    const z = pickOrCreateZone(definition, rng);
+    if (z) return { kind: "zone", id: z.id };
   }
 
   if (kind === "set_flag") {
-    if (tokenTypes.length > 0) {
-      const index = getRandomIndex(tokenTypes.length, rng);
-      return { kind: "token", id: tokenTypes[clampIndex(index, tokenTypes.length)].id };
-    }
+    const tt = pickOrCreateTokenType(definition, rng);
+    if (tt) return { kind: "token", id: tt.id };
     return { kind: "player", id: "self" };
   }
 
   if (kind === "shuffle") {
-    if (zones.length > 0) {
-      const index = getRandomIndex(zones.length, rng);
-      return { kind: "zone", id: zones[clampIndex(index, zones.length)].id };
-    }
+    const z = pickOrCreateZone(definition, rng);
+    if (z) return { kind: "zone", id: z.id };
   }
 
   if (kind === "queue_push") {
-    if (tokenTypes.length > 0) {
-      const index = getRandomIndex(tokenTypes.length, rng);
-      return { kind: "token", id: tokenTypes[clampIndex(index, tokenTypes.length)].id };
-    }
+    const tt = pickOrCreateTokenType(definition, rng);
+    if (tt) return { kind: "token", id: tt.id };
   }
 
   if (kind === "queue_pop") {
@@ -79,7 +62,6 @@ export function buildRefForKind(kind, definition, rng) {
 }
 
 export function buildEffectProps(kind, definition, rng) {
-  const zones = collectZoneTargets(definition);
   const variableKinds = ["inc", "dec", "set"];
 
   switch (kind) {
@@ -90,11 +72,8 @@ export function buildEffectProps(kind, definition, rng) {
       return { value: 0 };
     case "move":
     case "spawn": {
-      if (zones.length > 0) {
-        const index = getRandomIndex(zones.length, rng);
-        return { toZone: zones[clampIndex(index, zones.length)].id };
-      }
-      return { toZone: "default" };
+      const z = pickOrCreateZone(definition, rng);
+      return { toZone: z ? z.id : "default" };
     }
     case "destroy":
     case "reveal":
@@ -154,18 +133,12 @@ export function buildEffectProps(kind, definition, rng) {
     case "shuffle":
       return {};
     case "queue_push": {
-      if (zones.length > 0) {
-        const index = getRandomIndex(zones.length, rng);
-        return { toZone: zones[clampIndex(index, zones.length)].id };
-      }
-      return { toZone: "default" };
+      const zPush = pickOrCreateZone(definition, rng);
+      return { toZone: zPush ? zPush.id : "default" };
     }
     case "queue_pop": {
-      if (zones.length > 0) {
-        const index = getRandomIndex(zones.length, rng);
-        return { fromZone: zones[clampIndex(index, zones.length)].id };
-      }
-      return { fromZone: "default" };
+      const zPop = pickOrCreateZone(definition, rng);
+      return { fromZone: zPop ? zPop.id : "default" };
     }
     default:
       return {};

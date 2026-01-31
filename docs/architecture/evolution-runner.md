@@ -27,7 +27,7 @@ Describe the evolution runner responsibilities, the per-run directory layout, an
 - Emit structured logging for major phases and generation boundaries.
 - Thread the logger through to the generation loop, evaluation adapter, evaluator,
   and simulation engine so that per-genome evaluation progress, simulation batch
-  start/complete, and step milestones are visible at debug/warn levels.
+  start/complete, and step progress are visible at debug level.
 
 ## Run Naming and Selection
 
@@ -149,6 +149,7 @@ persists them as `health.json`.
 | `operatorInefficiencyRate` | number | `(attempts - validEvaluated) / attempts` across all operators |
 | `repairFailureRate` | number | `repairFailed / attempts` across all operators (truthful: counts only actual repair failures) |
 | `noOpRate` | number | `noOp / attempts` across all operators |
+| `unusedElementRatio` | number | Fraction of zones + tokenTypes + variables unreferenced by any action, trigger, termination, or scoring expression (computed via `collectUsedIds()` from `src/dsl/semantic/used-id-collector.js`) |
 
 Health metrics support observability dashboards and early-stopping decisions.
 
@@ -196,6 +197,10 @@ retries unproductive mutation attempts per offspring slot:
 4. If all retries are exhausted without a productive mutation, the slot keeps the
    unmutated parent genome (this fallback is **not** counted as `validEvaluated`).
 
+Note: since the create-at-use pattern (`pickOrCreate*` helpers) now creates
+missing prerequisites on demand, `"noOp"` outcomes are significantly rarer than
+before standalone add operators were the only way to introduce new elements.
+
 **Configuration**: `maxMutationRetries` (default `3`, configurable via
 `config.evolution.mutation.maxMutationRetries`). Total attempts per slot =
 `maxMutationRetries + 1`.
@@ -216,9 +221,27 @@ requiring a larger elite set.
 Output arrays (`population`, `operatorNames`, `outcomes`) have length
 `parents.length * offspringPerParent`.
 
+## Population Cap
+
+After evolution produces offspring, the runner truncates the population to
+prevent unbounded growth across generations. Without a cap,
+`offspringPerParent > 1` causes compounding: each generation's output becomes
+the next generation's input, and backfill preserves the inflated size.
+
+**Configuration**: `runner.maxPopulationSize` (positive integer, optional).
+Falls back to `seeding.populationSize` when not set. When neither is
+configured, no cap is applied.
+
+The truncation takes the first `maxPopulationSize` genomes from the evolved
+population (via `slice`). The `pendingOperatorNames` array is sliced in
+lockstep to maintain alignment.
+
+The cap is applied **before** population replenishment, so `minPopulationSize`
+can still inject genomes up to the floor after truncation.
+
 ## Population Replenishment
 
-After evolution produces the next-generation population, the runner checks
+After the population cap is applied, the runner checks
 whether the population has fallen below a minimum floor. If so,
 `replenishPopulation()` from `src/evolution-runner/population-replenisher.js`
 generates fresh random genomes using `generateGameDefinition()` and validates
@@ -313,7 +336,7 @@ Seeding mode is configured via the `seeding` block in the runner config
 
 | Mode | Description |
 |------|-------------|
-| `generate` | Grammar-based generation with descriptor-aware coverage targeting. The core `src/seed-generation/` module produces schema-valid definitions and bins them against MAP-Elites descriptors to fill niches. Generated seeds include variables, actions with effects, and optionally token types (with companion zones) and triggers — controlled by `grammar.limits` (`minTokenTypes`, `maxTokenTypes`, `minTriggers`, `maxTriggers`). |
+| `generate` | Grammar-based generation with descriptor-aware coverage targeting. The core `src/seed-generation/` module produces schema-valid definitions and bins them against MAP-Elites descriptors to fill niches. Generated seeds include variables, actions with effects (and ~25% chance of `dec` costs per action), and optionally token types (with companion zones) and triggers — controlled by `grammar.limits` (`minTokenTypes`, `maxTokenTypes`, `minTriggers`, `maxTriggers`). After generation, `wireTokenTypesToActions()` ensures every token type and zone is referenced by at least one action effect, so seeds start with zero unused elements. |
 | `folder` | Load user-provided game definitions from a directory on disk. Each JSON file contains a single DSL game definition (not a Genome wrapper). The runner assigns deterministic genome IDs via content hashing. |
 | `mixed` | Load folder seeds first (up to `mix.folderFraction` of `populationSize`), then fill the remainder with the generator. |
 

@@ -19,6 +19,8 @@ import { effectKindSwapMutation } from "./mutation/operators/effect-kind-swap.js
 import { effectReorderMutation } from "./mutation/operators/effect-reorder.js";
 import { actionAddSmallMutation } from "./mutation/operators/action-add-small.js";
 import { actionCostTweakMutation } from "./mutation/operators/action-cost-tweak.js";
+import { actionCostAddMutation } from "./mutation/operators/action-cost-add.js";
+import { actionCostRemoveMutation } from "./mutation/operators/action-cost-remove.js";
 import { motifInjectMutation, createMotifInjectMutation } from "./mutation/operators/motif-inject.js";
 import { zoneAddMutation } from "./mutation/operators/zone-add.js";
 import { tokenTypeAddMutation } from "./mutation/operators/token-type-add.js";
@@ -66,6 +68,8 @@ export {
   effectReorderMutation,
   actionAddSmallMutation,
   actionCostTweakMutation,
+  actionCostAddMutation,
+  actionCostRemoveMutation,
   motifInjectMutation,
   createMotifInjectMutation,
   zoneAddMutation,

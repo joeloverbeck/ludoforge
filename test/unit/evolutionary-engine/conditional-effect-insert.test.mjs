@@ -108,7 +108,7 @@ describe("conditionalEffectInsertMutation", () => {
     assert.deepStrictEqual(result1.definition, result2.definition);
   });
 
-  it("falls back to value condition when no variables exist", () => {
+  it("creates a variable and builds cmp condition when no variables exist", () => {
     const definition = cloneDefinition(baseDefinition);
     definition.state.variables = [];
     definition.state.tokenTypes = [];
@@ -119,6 +119,13 @@ describe("conditionalEffectInsertMutation", () => {
 
     const conditional = mutated.definition.actions[0].effects[0];
     assert.equal(conditional.kind, "conditional");
-    assert.deepStrictEqual(conditional.condition, { kind: "value", value: true });
+    // pickOrCreateVariable now creates a variable, so we get a cmp condition
+    assert.equal(conditional.condition.kind, "cmp");
+    assert.equal(conditional.condition.left.kind, "ref");
+    assert.equal(conditional.condition.left.ref.kind, "var");
+    // The created variable should exist in the mutated definition
+    const createdVarId = conditional.condition.left.ref.id;
+    const varIds = mutated.definition.state.variables.map((v) => v.id);
+    assert.ok(varIds.includes(createdVarId), "created variable should be in definition");
   });
 });

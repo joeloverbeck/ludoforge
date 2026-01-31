@@ -83,9 +83,11 @@ async function runSimulationLoop(config) {
     }
 
     if (logger && stepsTaken > 0 && stepsTaken % 1000 === 0) {
-      logger.warn(
-        { stepsTaken, turn: state.turn.turn, player: state.turn.currentPlayer },
-        "simulation step milestone",
+      logger.debug(
+        { stepsTaken, maxSteps: effectiveMaxSteps, turn: state.turn.turn, player: state.turn.currentPlayer },
+        "simulation progress: %d / %d steps",
+        stepsTaken,
+        effectiveMaxSteps,
       );
     }
 
