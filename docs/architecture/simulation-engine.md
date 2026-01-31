@@ -35,6 +35,24 @@ Config keys used by the simulation engine:
   - Next, match the active player's role.
   - Finally, fall back to positional ordering.
 
+## Agent Contract
+
+Agent `selectAction` receives `{ definition, state, legalActions, legalMoves, context, rng }`:
+
+- `legalActions`: plain action objects (backward compat for custom agents).
+- `legalMoves`: enriched array of `{ action, domains }` entries. Each `domains`
+  is a map from param ID to an array of valid candidate values, computed via
+  `resolveParamDomains`. Agents should prefer `legalMoves` when available.
+
+Agent return format:
+- **New**: `{ actionId: string, args: Record<string, any> }` — explicit action
+  choice with param arguments.
+- **Legacy**: action object or action ID string — args default to `{}`.
+
+`selectAndValidateAction` returns `{ action, args }` to the loop. When args are
+non-empty, they are validated via `validateActionChoice(definition, state, actionId,
+context, { args })` and passed to `executeActionStep` for binding resolution.
+
 ## Action Resolution
 
 Per step:
@@ -58,12 +76,18 @@ otherwise it falls back to `configs/simulation.json`.
    param domains via `resolveParamDomains` — if any param has an empty domain,
    the action is rejected. When `options.args` is provided, chosen arg values
    are validated for domain membership, count, and uniqueness.
-8. Resolve action params (`resolveActionTargets` from `selectors.js`) to bind
-   abstract param names to concrete token instance IDs. The runtime reads
-   `action.params` first, falling back to `action.targets` for backward
-   compatibility. For `params`, selectors are nested under `domain.selector`;
-   for legacy `targets`, selectors are at the top level. Bindings are passed
-   into the effect context so effects can reference params by binding name.
+8. Resolve action param bindings. When explicit choice `args` are provided
+   (non-empty object), bindings are built directly from args — each key maps
+   a param name to a concrete value (token ID, player ID, or zone ID). When
+   args are absent or empty, the engine falls back to `resolveActionTargets`
+   (from `selectors.js`), which auto-picks the first matching candidate for
+   each param/target. The fallback reads `action.params` first, falling back
+   to `action.targets` for backward compatibility. Bindings are passed into
+   the effect context so effects can reference params by binding name.
+   Both baseline agents (random and greedy) return `{ actionId, args }`
+   with explicit arg choices selected from param domains. Legacy agents
+   that return a plain action object or string still work — args default
+   to `{}` and the auto-resolve fallback remains active.
 9. Apply action costs, then action effects (`applyEffect`). Effect dispatch
    handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement

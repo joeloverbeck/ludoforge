@@ -100,6 +100,114 @@ describe("applyAction", () => {
     const action = { costs: [], effects: [] };
     assert.doesNotThrow(() => applyAction(definition, state, action, {}));
   });
+
+  it("uses explicit args as bindings when args are non-empty", () => {
+    const definition = {
+      state: { variables: [] },
+      turn: {},
+      tokenTypes: [{ id: "unit", attributes: [{ id: "hp", type: { kind: "int" }, initial: 10 }] }],
+    };
+    const state = {
+      variables: {},
+      tokens: {
+        token_1: { type: "unit", attributes: { hp: 10 } },
+        token_2: { type: "unit", attributes: { hp: 10 } },
+      },
+      zones: {
+        board: {
+          scope: "shared",
+          tokens: ["token_1", "token_2"],
+        },
+      },
+    };
+    const action = {
+      id: "attack",
+      params: [
+        { id: "t", kind: "token", domain: { selector: { zone: "board", tokenType: "unit" } } },
+      ],
+      effects: [
+        { kind: "destroy", target: { kind: "token", id: "t" } },
+      ],
+    };
+    const context = { playerId: 1 };
+    const args = { t: "token_2" };
+
+    const result = applyAction(definition, state, action, context, args);
+    assert.ok(!result.costAborted);
+    assert.equal(state.tokens.token_2, undefined, "token_2 should be destroyed via args binding");
+    assert.ok(state.tokens.token_1, "token_1 should remain untouched");
+  });
+
+  it("falls back to resolveActionTargets when args are empty", () => {
+    const definition = {
+      state: { variables: [] },
+      turn: {},
+      tokenTypes: [{ id: "unit", attributes: [{ id: "hp", type: { kind: "int" }, initial: 10 }] }],
+    };
+    const state = {
+      variables: {},
+      tokens: {
+        token_1: { type: "unit", attributes: { hp: 10 } },
+        token_2: { type: "unit", attributes: { hp: 10 } },
+      },
+      zones: {
+        board: {
+          scope: "shared",
+          tokens: ["token_1", "token_2"],
+        },
+      },
+    };
+    const action = {
+      id: "attack",
+      params: [
+        { id: "t", kind: "token", domain: { selector: { zone: "board", tokenType: "unit" } } },
+      ],
+      effects: [
+        { kind: "destroy", target: { kind: "token", id: "t" } },
+      ],
+    };
+    const context = { playerId: 1 };
+
+    // Empty args — should fall back to resolveActionTargets (auto-picks first match)
+    const result = applyAction(definition, state, action, context, {});
+    assert.ok(!result.costAborted);
+    // resolveActionTargets picks the first token in the domain (token_1)
+    assert.equal(state.tokens.token_1, undefined, "token_1 should be destroyed via auto-resolve");
+    assert.ok(state.tokens.token_2, "token_2 should remain");
+  });
+
+  it("falls back to resolveActionTargets when args are undefined", () => {
+    const definition = {
+      state: { variables: [] },
+      turn: {},
+    };
+    const state = { variables: {}, tokens: {}, zones: {} };
+    const action = { id: "noop", effects: [] };
+    const context = {};
+
+    // No args at all — should not throw
+    assert.doesNotThrow(() => applyAction(definition, state, action, context));
+    assert.doesNotThrow(() => applyAction(definition, state, action, context, undefined));
+  });
+
+  it("no-param action works with empty args", () => {
+    const definition = {
+      state: {
+        variables: [{ id: "counter", scope: "global", type: { kind: "int" }, initial: 0 }],
+      },
+      turn: {},
+    };
+    const state = { variables: { global: { counter: 0 } }, tokens: {}, zones: {} };
+    const action = {
+      id: "tick",
+      effects: [{ kind: "inc", target: { kind: "var", id: "counter" }, amount: 1 }],
+    };
+    const context = { playerId: 1 };
+
+    const result = applyAction(definition, state, action, context, {});
+    assert.ok(!result.costAborted);
+    assert.equal(state.variables.global.counter, 1);
+  });
 });
 
 describe("applyAfterActionTriggers", () => {

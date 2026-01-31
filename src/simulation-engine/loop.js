@@ -116,11 +116,12 @@ async function runSimulationLoop(config) {
       continue;
     }
 
-    const action = await selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
+    const { action, args } = await selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
 
     executeActionStep({
       definition, state, action, context, legalActionCount,
       rng, events, trajectory, stepControl: config.stepControl,
+      args,
     });
     stepsTaken += 1;
 

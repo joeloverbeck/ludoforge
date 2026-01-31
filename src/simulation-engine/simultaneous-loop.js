@@ -92,7 +92,7 @@ export async function runSimultaneousLoop({
         break;
       }
 
-      const action = await selectAndValidateAction({
+      const { action, args } = await selectAndValidateAction({
         agents,
         definition,
         state,
@@ -100,7 +100,7 @@ export async function runSimultaneousLoop({
         context,
         rng,
       });
-      planned.push({ playerId, action, legalActionCount });
+      planned.push({ playerId, action, args, legalActionCount });
     }
 
     if (aborted) {
@@ -128,7 +128,7 @@ export async function runSimultaneousLoop({
         };
       }
 
-      const { playerId, action, legalActionCount } = plan;
+      const { playerId, action, args, legalActionCount } = plan;
       state.turn.currentPlayer = playerId;
       const context = {
         playerId,
@@ -139,6 +139,7 @@ export async function runSimultaneousLoop({
       executeActionStep({
         definition, state, action, context, legalActionCount,
         rng, events, trajectory, stepControl: config.stepControl,
+        args,
       });
       stepsTaken += 1;
 

@@ -3,7 +3,7 @@
  * @module simulation-engine/agent-action
  */
 
-import { validateActionChoice } from "../game-kernel/index.js";
+import { validateActionChoice, resolveParamDomains, buildVariableIndex } from "../game-kernel/index.js";
 
 /**
  * Resolve the agent for the current player.
@@ -32,11 +32,32 @@ export function resolveAgent(agents, state) {
 }
 
 /**
+ * Build enriched legal moves with param domains for each legal action.
+ *
+ * @param {object} definition
+ * @param {object} state
+ * @param {object[]} legalActions
+ * @param {object} context
+ * @returns {Array<{ action: object, domains: Record<string, Array> }>}
+ */
+export function buildLegalMoves(definition, state, legalActions, context) {
+  const variableIndex = buildVariableIndex(definition);
+  return legalActions.map((action) => {
+    const params = action.params ?? [];
+    const domains = resolveParamDomains(params, state, {
+      ...context,
+      variableIndex,
+    });
+    return { action, domains };
+  });
+}
+
+/**
  * Select an action via the agent and validate it against legal actions
  * and the game kernel's action validator.
  *
  * @param {{ agents: object[], definition: object, state: object, legalActions: object[], context: object, rng: object|undefined }} opts
- * @returns {object} The validated action object from the definition.
+ * @returns {{ action: object, args: Record<string, any> }} The validated action and its args.
  * @throws {Error} If no agent is available, the selection is unknown, illegal, or invalid.
  */
 export async function selectAndValidateAction({ agents, definition, state, legalActions, context, rng }) {
@@ -45,17 +66,31 @@ export async function selectAndValidateAction({ agents, definition, state, legal
     throw new Error("No agent available to select an action.");
   }
 
+  const legalMoves = buildLegalMoves(definition, state, legalActions, context);
+
   const selection = await agent.selectAction({
     definition,
     state,
     legalActions,
+    legalMoves,
     context,
     rng,
   });
-  const action =
-    typeof selection === "string"
-      ? definition.actions.find((candidate) => candidate.id === selection)
-      : selection;
+
+  let action;
+  let args;
+
+  if (selection != null && typeof selection === "object" && "actionId" in selection) {
+    action = definition.actions.find((candidate) => candidate.id === selection.actionId);
+    args = selection.args ?? {};
+  } else {
+    action =
+      typeof selection === "string"
+        ? definition.actions.find((candidate) => candidate.id === selection)
+        : selection;
+    args = {};
+  }
+
   if (!action) {
     throw new Error("Agent selected an unknown action.");
   }
@@ -63,9 +98,17 @@ export async function selectAndValidateAction({ agents, definition, state, legal
   if (!isLegal) {
     throw new Error(`Agent selected illegal action: ${action.id}`);
   }
-  const validation = validateActionChoice(definition, state, action.id, context);
+
+  const hasArgs = Object.keys(args).length > 0;
+  const validation = validateActionChoice(
+    definition,
+    state,
+    action.id,
+    context,
+    hasArgs ? { args } : {},
+  );
   if (!validation.ok) {
     throw new Error(`Agent selected invalid action: ${validation.reason ?? "unknown"}`);
   }
-  return action;
+  return { action, args };
 }

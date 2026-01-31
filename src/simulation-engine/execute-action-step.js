@@ -27,6 +27,7 @@ import { defaultStateHasher } from "./loop-detection.js";
  * @param {object} [params.rng]
  * @param {{ steps: object[] }} params.trajectory
  * @param {object} [params.stepControl]
+ * @param {Record<string, string|number|Array<string|number>>} [params.args] - Explicit choice args forwarded to applyAction.
  * @returns {void}
  */
 export function executeActionStep({
@@ -39,10 +40,11 @@ export function executeActionStep({
   events,
   trajectory,
   stepControl,
+  args,
 }) {
   const impact = createStepImpact();
   const effectContext = { ...context, impact, rng };
-  const actionResult = applyAction(definition, state, action, effectContext);
+  const actionResult = applyAction(definition, state, action, effectContext, args);
   const triggerResult = applyAfterActionTriggers(definition, state, effectContext);
   recordStateUpdate(events, state, { actionId: action.id, playerId: context.playerId });
 
