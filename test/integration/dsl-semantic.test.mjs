@@ -348,6 +348,129 @@ describe("dsl-semantic", () => {
     });
   });
 
+  describe("zone validation", () => {
+    it("reports zone with nonexistent tokenType", () => {
+      const definition = baseDefinition();
+      definition.state.zones.push({
+        id: "extra",
+        tokenType: "nonexistent",
+        scope: "global",
+        order: "ordered",
+        visibility: "public",
+      });
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      const issue = findIssue(result.issues, "token-type-unknown");
+      assert.ok(issue);
+      assert.ok(issue.path.includes("/state/zones/"));
+    });
+  });
+
+  describe("termination block validation", () => {
+    it("reports empty termination conditions", () => {
+      const definition = baseDefinition();
+      definition.termination.conditions = [];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "termination-conditions"));
+    });
+
+    it("reports missing maxTurns", () => {
+      const definition = baseDefinition();
+      delete definition.termination.maxTurns;
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "termination-max-turns"));
+    });
+  });
+
+  describe("trigger validation", () => {
+    it("reports trigger with unknown var ref", () => {
+      const definition = baseDefinition();
+      definition.triggers = [
+        {
+          condition: {
+            kind: "cmp",
+            op: "==",
+            left: { kind: "ref", ref: { kind: "var", id: "nonexistentVar" } },
+            right: { kind: "value", value: 1 },
+          },
+          effects: [],
+        },
+      ];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "ref-unknown"));
+    });
+  });
+
+  describe("step effects validation", () => {
+    it("reports stepEffect with unknown var ref", () => {
+      const definition = baseDefinition();
+      definition.turn.stepEffects = [
+        {
+          condition: {
+            kind: "cmp",
+            op: "==",
+            left: { kind: "ref", ref: { kind: "var", id: "nonexistentVar" } },
+            right: { kind: "value", value: 1 },
+          },
+          effects: [],
+        },
+      ];
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "ref-unknown"));
+    });
+  });
+
+  describe("scheduler validation", () => {
+    it("reports priority_queue with unknown variable", () => {
+      const definition = baseDefinition();
+      definition.turn.scheduler = "priority_queue";
+      definition.turn.orderBy = { variable: "nonexistentVar" };
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "ref-unknown"));
+    });
+
+    it("reports token_holder with unknown tokenType and zone", () => {
+      const definition = baseDefinition();
+      definition.turn.scheduler = "token_holder";
+      definition.turn.tokenType = "nonexistentType";
+      definition.turn.zone = "nonexistentZone";
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "token-type-unknown"));
+      assert.ok(hasRule(result.issues, "zone-unknown"));
+    });
+
+    it("reports simultaneous with invalid resolution order", () => {
+      const definition = baseDefinition();
+      definition.turn.scheduler = "simultaneous";
+      definition.turn.resolution = { order: "invalid_order" };
+
+      const result = validateSemanticDefinition(definition);
+
+      assertValidMatchesIssues(result);
+      assert.ok(hasRule(result.issues, "turn-resolution-order"));
+    });
+  });
+
   describe("no-legal-actions policy", () => {
     it("enforces no-legal-actions defaultOutcome policy", () => {
       const missingOutcome = baseDefinition();

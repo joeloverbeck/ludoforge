@@ -13,7 +13,6 @@ import {
 import { clonePopulation } from "./population-utils.js";
 import { resolveRate } from "./evolution-rates.js";
 import {
-  assertNonEmptyArray,
   assertPopulation,
   isPlainObject,
 } from "./runner-validation.js";
@@ -21,12 +20,13 @@ import { createMutationSelector, loadOperatorStats } from "./operator-setup.js";
 import { buildOperatorOutcomes } from "./operator-outcomes.js";
 import {
   serializeMapElites,
-  defaultPreferenceModelSnapshot,
   resolveSnapshotProvider,
   resolveFeedbackProvider,
 } from "./serialization-utils.js";
 import { applyEvolution } from "./evolution-applicator.js";
-import { computeHealthMetrics } from "./health-metrics.js";
+import { assembleDeterminism } from "./determinism-assembly.js";
+import { checkPopulationExtinction, checkHighRejectionHalt } from "./termination-checks.js";
+import { buildGenerationContext } from "./generation-context.js";
 
 export async function runEvolutionRunner(options) {
   if (!options || typeof options !== "object") {
@@ -159,46 +159,19 @@ export async function runEvolutionRunner(options) {
       mutationSelector.observe(telemetry);
     }
 
-    if (loopResult.nextGeneration.length === 0) {
-      haltedReason = {
-        generation,
-        cause: "population-extinction",
-        evaluated: loopResult.evaluated.length,
-        rejected: loopResult.rejected.length,
-      };
-
-      if (logger) {
-        logger.warn(haltedReason, "evolution halted: no viable genomes survived evaluation");
-      }
-
-      const health = computeHealthMetrics({
-        evaluated: loopResult.evaluated,
-        rejected: loopResult.rejected,
-        mapElites: loopResult.mapElites,
-        telemetry,
-      });
-
-      const preferenceModelSnapshots = snapshotProvider
-        ? snapshotProvider({ generation, runId, baseDir, loopResult, population: currentPopulation })
-        : [defaultPreferenceModelSnapshot({ runId, generation, seed })];
-
-      await writeGenerationArtifacts({
-        baseDir,
-        runId,
-        generation,
-        population: currentPopulation.map((genome) => ({
-          id: genome.id,
-          definition: genome.definition,
-        })),
-        evaluated: loopResult.evaluated,
-        rejected: loopResult.rejected,
-        mapElites: serializeMapElites(loopResult.mapElites),
-        shortlist: loopResult.shortlist,
-        preferenceModelSnapshots,
-        operatorStats: serializeTelemetry(telemetry),
-        health,
-      });
-
+    const extinctionResult = await checkPopulationExtinction({
+      generation,
+      loopResult,
+      currentPopulation,
+      telemetry,
+      snapshotProvider,
+      runId,
+      baseDir,
+      seed,
+      logger,
+    });
+    if (extinctionResult) {
+      haltedReason = extinctionResult.haltedReason;
       break;
     }
 
@@ -219,36 +192,18 @@ export async function runEvolutionRunner(options) {
 
     assertPopulation(evolvedPopulation);
 
-    let determinism = options.determinism;
-    if (!determinism && rng) {
-      determinism = {};
-      if (Number.isFinite(seed)) {
-        determinism.seed = seed;
-      }
-      if (Object.keys(determinism).length === 0) {
-        determinism = undefined;
-      }
-    }
+    const determinism = assembleDeterminism(options.determinism, rng, seed);
 
-    const generationContext = {
+    const { feedback, preferenceModelSnapshots, health } = await buildGenerationContext({
       generation,
       runId,
       baseDir,
       loopResult,
       population: evolvedPopulation,
-    };
-
-    const feedback =
-      feedbackEnabled && feedbackProvider ? await feedbackProvider(generationContext) : undefined;
-    const preferenceModelSnapshots = snapshotProvider
-      ? snapshotProvider(generationContext)
-      : [defaultPreferenceModelSnapshot({ runId, generation, seed })];
-    assertNonEmptyArray(preferenceModelSnapshots, "Preference model snapshots");
-
-    const health = computeHealthMetrics({
-      evaluated: loopResult.evaluated,
-      rejected: loopResult.rejected,
-      mapElites: loopResult.mapElites,
+      feedbackEnabled,
+      feedbackProvider,
+      snapshotProvider,
+      seed,
       telemetry,
     });
 
@@ -307,38 +262,18 @@ export async function runEvolutionRunner(options) {
       );
     }
 
-    if (rejectionRate > rejectionRateThreshold) {
-      consecutiveHighRejections += 1;
-    } else {
-      consecutiveHighRejections = 0;
-    }
-
-    if (consecutiveHighRejections >= maxConsecutiveRejections) {
-      const reasonCounts = new Map();
-      for (const entry of loopResult.rejected) {
-        const reason = entry.reason ?? "unknown";
-        reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
-      }
-      let dominantReason = "unknown";
-      let dominantCount = 0;
-      for (const [reason, count] of reasonCounts) {
-        if (count > dominantCount) {
-          dominantReason = reason;
-          dominantCount = count;
-        }
-      }
-
-      haltedReason = {
-        generation,
-        rejectionRate,
-        consecutiveHighRejections,
-        dominantReason,
-      };
-
-      if (logger) {
-        logger.warn(haltedReason, "evolution halted due to high rejection rate");
-      }
-
+    const haltCheck = checkHighRejectionHalt({
+      rejectionRate,
+      rejectionRateThreshold,
+      consecutiveHighRejections,
+      maxConsecutiveRejections,
+      generation,
+      rejected: loopResult.rejected,
+      logger,
+    });
+    consecutiveHighRejections = haltCheck.consecutiveHighRejections;
+    if (haltCheck.haltedReason) {
+      haltedReason = haltCheck.haltedReason;
       break;
     }
 

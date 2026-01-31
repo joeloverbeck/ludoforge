@@ -5,11 +5,13 @@ import { domainForRef } from "./semantic/domain.js";
 import { evaluateExpr } from "./semantic/expr-evaluator.js";
 import { createRefValidator } from "./semantic/ref-validator.js";
 import { createSemanticValidators } from "./semantic/semantic-validators.js";
-import {
-  reportAggregateActionIssues,
-  reportFreeLunchIssue,
-  summarizeAction,
-} from "./semantic/action-analysis.js";
+import { validateZoneTokenTypes } from "./semantic/zone-validator.js";
+import { validateTerminationBlock, validateTerminationExpressions } from "./semantic/termination-validator.js";
+import { validateNoLegalActionsPolicy } from "./semantic/no-legal-actions-validator.js";
+import { validateScheduler } from "./semantic/scheduler-validator.js";
+import { validateActions } from "./semantic/action-validator.js";
+import { validateTriggers } from "./semantic/trigger-validator.js";
+import { reportUnusedResources } from "./semantic/unused-detector.js";
 
 const warningRules = new Set([
   "action-precondition-unsatisfiable",
@@ -79,52 +81,11 @@ export function collectSemanticIssues(definition) {
     });
   });
 
-  zones.forEach((zone, index) => {
-    const tokenType = zone?.tokenType;
-    if (typeof tokenType === "string" && !tokenTypeIds.has(tokenType)) {
-      pushIssue(
-        `/state/zones/${index}/tokenType`,
-        `Unknown token type: ${tokenType}`,
-        "token-type-unknown"
-      );
-    }
-  });
+  validateZoneTokenTypes(zones, tokenTypeIds, pushIssue);
 
-  const terminationConditions = normalizeArray(definition.termination?.conditions);
-  const maxTurns = definition.termination?.maxTurns;
-  if (terminationConditions.length === 0) {
-    pushIssue(
-      "/termination/conditions",
-      "At least one termination condition is required",
-      "termination-conditions"
-    );
-  }
-  if (typeof maxTurns !== "number") {
-    pushIssue("/termination/maxTurns", "A maxTurns fallback is required", "termination-max-turns");
-  }
+  const terminationConditions = validateTerminationBlock(definition, pushIssue);
 
-  const noLegalActions = definition.turn?.noLegalActions;
-  if (noLegalActions && typeof noLegalActions === "object") {
-    const policy = noLegalActions.policy;
-    const defaultOutcome = noLegalActions.defaultOutcome;
-    if (policy === "terminate") {
-      if (!defaultOutcome) {
-        pushIssue(
-          "/turn/noLegalActions/defaultOutcome",
-          "defaultOutcome is required when policy is terminate",
-          "no-legal-actions-default-outcome"
-        );
-      }
-    } else if (policy === "pass" || policy === "error") {
-      if (defaultOutcome) {
-        pushIssue(
-          "/turn/noLegalActions/defaultOutcome",
-          "defaultOutcome is only valid for terminate policy",
-          "no-legal-actions-default-outcome"
-        );
-      }
-    }
-  }
+  validateNoLegalActionsPolicy(definition, pushIssue);
 
   const allowedMetaIds = new Set(["legalActionCount", "hasLegalActions"]);
   const {
@@ -144,7 +105,6 @@ export function collectSemanticIssues(definition) {
   });
 
   const domainContext = { variableById, tokenAttributeDefs };
-
   const exprEvalContext = { domainForRef, domainContext };
 
   const { validateSelector, validateEffect, validateExpr } = createSemanticValidators({
@@ -156,142 +116,30 @@ export function collectSemanticIssues(definition) {
     pushIssue,
   });
 
-  const actions = normalizeArray(definition.actions);
-  const actionSummaries = [];
-  actions.forEach((action, index) => {
-    const costs = normalizeArray(action?.costs);
-    const effects = normalizeArray(action?.effects);
-    const targets = normalizeArray(action?.params);
-    const preconditionEvaluation = action?.preconditions
-      ? evaluateExpr(action.preconditions, exprEvalContext)
-      : { possible: true, alwaysTrue: true };
-    if (action?.preconditions) {
-      validateExpr(action.preconditions, `/actions/${index}/preconditions`);
-      if (preconditionEvaluation.possible === false) {
-        pushIssue(
-          `/actions/${index}/preconditions`,
-          "Action preconditions are unsatisfiable given declared bounds",
-          "action-precondition-unsatisfiable"
-        );
-      }
-    }
-    const actionBindingIds = new Set(
-      targets.map((t) => t?.id).filter((id) => typeof id === "string")
-    );
-    const effectOptions = actionBindingIds.size > 0 ? { actionBindingIds } : {};
-    costs.forEach((effect, effectIndex) => {
-      validateEffect(effect, `/actions/${index}/costs/${effectIndex}`, effectOptions);
-    });
-    effects.forEach((effect, effectIndex) => {
-      validateEffect(effect, `/actions/${index}/effects/${effectIndex}`, effectOptions);
-    });
-    targets.forEach((target, targetIndex) => {
-      validateSelector(target?.domain?.selector, `/actions/${index}/params/${targetIndex}/selector`);
-    });
-
-    const summary = summarizeAction({
-      action,
-      costs,
-      effects,
-      targets,
-      preconditionEvaluation,
-    });
-    reportFreeLunchIssue({ actionIndex: index, summary, pushIssue });
-    actionSummaries.push({ index, ...summary });
+  validateActions(definition, {
+    validateExpr,
+    validateEffect,
+    validateSelector,
+    evaluateExpr,
+    exprEvalContext,
+    pushIssue,
   });
 
-  reportAggregateActionIssues({ actions, actionSummaries, pushIssue });
+  validateTriggers(normalizeArray(definition.triggers), "/triggers", { validateExpr, validateEffect });
+  validateTriggers(normalizeArray(definition.turn?.stepEffects), "/turn/stepEffects", { validateExpr, validateEffect });
 
-  const triggers = normalizeArray(definition.triggers);
-  triggers.forEach((trigger, index) => {
-    if (trigger?.condition) {
-      validateExpr(trigger.condition, `/triggers/${index}/condition`);
-    }
-    normalizeArray(trigger?.effects).forEach((effect, effectIndex) => {
-      validateEffect(effect, `/triggers/${index}/effects/${effectIndex}`);
-    });
-  });
+  validateScheduler(definition, { variableIds, tokenTypeIds, zoneIds, pushIssue });
 
-  const stepEffects = normalizeArray(definition.turn?.stepEffects);
-  stepEffects.forEach((trigger, index) => {
-    if (trigger?.condition) {
-      validateExpr(trigger.condition, `/turn/stepEffects/${index}/condition`);
-    }
-    normalizeArray(trigger?.effects).forEach((effect, effectIndex) => {
-      validateEffect(effect, `/turn/stepEffects/${index}/effects/${effectIndex}`);
-    });
-  });
+  validateTerminationExpressions(terminationConditions, definition, validateExpr);
 
-  const scheduler = definition.turn?.scheduler;
-  if (scheduler === "priority_queue") {
-    const orderByVar = definition.turn?.orderBy?.variable;
-    if (typeof orderByVar === "string" && !variableIds.has(orderByVar)) {
-      pushIssue(
-        "/turn/orderBy/variable",
-        `priority_queue orderBy references unknown variable: ${orderByVar}`,
-        "ref-unknown"
-      );
-    }
-  }
-  if (scheduler === "token_holder") {
-    const tokenType = definition.turn?.tokenType;
-    if (typeof tokenType === "string" && !tokenTypeIds.has(tokenType)) {
-      pushIssue(
-        "/turn/tokenType",
-        `token_holder references unknown token type: ${tokenType}`,
-        "token-type-unknown"
-      );
-    }
-    const zone = definition.turn?.zone;
-    if (typeof zone === "string" && !zoneIds.has(zone)) {
-      pushIssue(
-        "/turn/zone",
-        `token_holder references unknown zone: ${zone}`,
-        "zone-unknown"
-      );
-    }
-  }
-  if (scheduler === "simultaneous") {
-    const order = definition.turn?.resolution?.order;
-    if (order != null && order !== "by_player_id" && order !== "random") {
-      pushIssue(
-        "/turn/resolution/order",
-        `simultaneous resolution order is invalid: ${order}`,
-        "turn-resolution-order"
-      );
-    }
-  }
-
-  terminationConditions.forEach((termination, index) => {
-    if (termination?.condition) {
-      validateExpr(termination.condition, `/termination/conditions/${index}/condition`);
-    }
-  });
-
-  if (definition.termination?.scoring?.perPlayer) {
-    validateExpr(definition.termination.scoring.perPlayer, "/termination/scoring/perPlayer");
-  }
-
-  variableIds.forEach((id) => {
-    if (!usedVariableIds.has(id)) {
-      pushIssue("/state/variables", `Variable is never referenced: ${id}`, "unused-variable");
-    }
-  });
-
-  tokenTypeIds.forEach((id) => {
-    if (!usedTokenTypeIds.has(id)) {
-      pushIssue(
-        "/state/tokenTypes",
-        `Token type is never referenced: ${id}`,
-        "unused-token-type"
-      );
-    }
-  });
-
-  zoneIds.forEach((id) => {
-    if (!usedZoneIds.has(id)) {
-      pushIssue("/state/zones", `Zone is never referenced: ${id}`, "unused-zone");
-    }
+  reportUnusedResources({
+    variableIds,
+    tokenTypeIds,
+    zoneIds,
+    usedVariableIds,
+    usedTokenTypeIds,
+    usedZoneIds,
+    pushIssue,
   });
 
   return issues;
