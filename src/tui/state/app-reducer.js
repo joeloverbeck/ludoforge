@@ -134,6 +134,13 @@ export function appReducer(state, action) {
     case "SET_OUTCOME":
       return { ...state, screen: "gameover", outcome: action.outcome };
 
+    case "RESTART_GAME":
+      return {
+        ...initialAppState,
+        definition: state.definition,
+        playerAssignments: state.playerAssignments.map((a) => ({ ...a })),
+      };
+
     case "TOGGLE_PAUSE":
       return { ...state, isPaused: !state.isPaused };
 

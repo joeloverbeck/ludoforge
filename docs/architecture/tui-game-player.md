@@ -100,6 +100,7 @@ State shape (`src/tui/state/app-reducer.js`):
 | `CANCEL_TARGET` | — | Return to action selection, keep action cursor |
 | `APPEND_LOG` | `{ turn, playerId, message }` | Add entry to effect log |
 | `SET_OUTCOME` | `{ outcome }` | Transition screen to `gameover` |
+| `RESTART_GAME` | — | Reset to setup screen, preserve definition and assignments |
 | `TOGGLE_PAUSE` | — | Flip `isPaused` |
 | `ADJUST_SPEED` | `{ delta }` | Adjust `watchSpeed` by 100ms (clamped 100-2000) |
 
@@ -123,18 +124,32 @@ State shape (`src/tui/state/app-reducer.js`):
 │       └── <EffectLog>      src/tui/components/effect-log.jsx
 │
 └── screen: "gameover"
-    └── inline Box (outcome display + quit prompt)
+    └── <GameOverScreen>  src/tui/components/game-over-screen.jsx
 ```
 
 ### App (`app.jsx`)
 
-Root component. Owns the `useReducer` and screen switching logic.
+Root component. Owns the `useReducer`, screen switching logic, and game loop
+integration via `useGameLoop`.
 
 Initialization sequence:
 1. `SET_DEFINITION` — stores the loaded definition.
 2. `INIT_PLAYER_ASSIGNMENTS` — creates slots from `definition.players.count`.
 3. CLI `--player` flags applied via `ASSIGN_PLAYER` dispatches.
 4. If `--watch`, `START_GAME` is dispatched to skip setup.
+
+Game loop integration:
+- Calls `useGameLoop()` with state, dispatch, and a shared `legalMovesRef`.
+- Receives `resolveAction` callback to complete human turns.
+- Wires `GameScreen` event handlers: `onMoveCursor`, `onConfirmAction`,
+  `onConfirmTarget`, `onCancelTarget`.
+- Multi-param target selection: tracks pending action/params/bindings via refs,
+  advancing through each param's candidates sequentially before resolving.
+
+Keyboard controls:
+- `q` — quit (global on setup/playing screens; shows confirmation on gameover).
+- Watch mode (all-AI, playing screen): `Space` toggles pause, `+`/`-` adjusts speed.
+- Gameover screen: `q` shows quit confirmation (`y`/`n`), `r` replays (resets to setup).
 
 ### GameSetupScreen (`game-setup-screen.jsx`)
 
@@ -249,8 +264,10 @@ src/tui/
 │   ├── action-panel.jsx        Action selection wrapper (human/AI)
 │   ├── action-list.jsx         Cursor-selectable legal action list
 │   ├── target-list.jsx         Param candidate picker
-│   └── effect-log.jsx          Scrollable effect log (PgUp/PgDn)
+│   ├── effect-log.jsx          Scrollable effect log (PgUp/PgDn)
+│   └── game-over-screen.jsx   Outcome display + quit/replay controls
 ├── hooks/
+│   ├── use-game-loop.js        Game loop orchestration hook
 │   └── use-scroll.js           Scroll offset arithmetic (pure functions)
 ├── utils/
 │   ├── load-definition.js      File loading + DSL validation
@@ -288,12 +305,45 @@ CLI launch
     ┌─────────┐     START_GAME     ┌─────────┐     SET_OUTCOME     ┌──────────┐
     │  setup  │ ──────────────────▶│ playing │ ──────────────────▶│ gameover │
     └─────────┘                    └─────────┘                    └──────────┘
-    Player assignments              Turn loop                     Outcome display
-    j/k, Tab, s                     (future tickets)              q to quit
+         ▲     Player assignments    Turn loop                     Outcome display
+         │     j/k, Tab, s          useGameLoop hook               q→confirm, r→replay
+         │                                                              │
+         └──────────────────── RESTART_GAME ◀───────────────────────────┘
 ```
+
+## Hooks
+
+### use-game-loop (`src/tui/hooks/use-game-loop.js`)
+
+Orchestrates the full game loop. Three exports:
+
+- **`buildAgents(opts)`** — Creates agents from player assignments. Human agents
+  use `createHumanAgent` with an `onActionNeeded` callback that dispatches
+  `SET_LEGAL_ACTIONS` and returns a Promise resolved when the user confirms.
+  AI agents wrap `selectAction` with async delay (200ms mixed mode, configurable
+  watch speed for all-AI mode) and pause polling.
+
+- **`buildOnStep(dispatch)`** — Returns an `onStep` callback for `stepControl`.
+  Dispatches `UPDATE_GAME_STATE` (when step has state) and `APPEND_LOG` with
+  formatted effect messages for every step.
+
+- **`useGameLoop(opts)`** — React hook. Starts `runSimulation()` when screen
+  transitions to `"playing"`. Builds agents with delay/pause wrappers, wires
+  `onStep`, and dispatches `SET_OUTCOME` on completion or error. Returns
+  `{ resolveAction }` for the App to complete human turns.
+
+Key design decisions:
+- Watch mode delay lives in AI agent wrappers (not in `onStep`) because
+  `recordStep` fires `onStep` synchronously and does not await it.
+- Pause support polls `isPausedRef` in a while loop inside the AI wrapper.
+- `legalMovesRef` is shared between the hook and App: the hook writes enriched
+  legal moves (action + param domains) inside `onActionNeeded`; App reads them
+  to compute target candidates for multi-param selection.
+
+### use-scroll (`src/tui/hooks/use-scroll.js`)
+
+Pure scroll offset arithmetic for the effect log panel.
 
 ## Future Work
 
-- **Game loop hook** (`use-game-loop.js`) — orchestrates `runSimulation` + human agent + `onStep`
-- **Watch mode loop** — automated AI step execution with speed/pause controls
-- **Game over screen** — outcome display with replay option
+(No outstanding items.)

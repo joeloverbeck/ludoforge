@@ -289,6 +289,79 @@ describe("appReducer", () => {
     });
   });
 
+  describe("RESTART_GAME", () => {
+    it("resets screen to setup", () => {
+      const state = {
+        ...initialAppState,
+        screen: "gameover",
+        outcome: { outcomes: { 1: "win" } },
+        gameState: { turn: { turn: 5 } },
+        effectLog: [{ turn: 1, playerId: 1, message: "x" }],
+      };
+      const next = appReducer(state, { type: "RESTART_GAME" });
+      assert.equal(next.screen, "setup");
+    });
+
+    it("preserves definition", () => {
+      const def = { players: { count: 2 } };
+      const state = {
+        ...initialAppState,
+        screen: "gameover",
+        definition: def,
+      };
+      const next = appReducer(state, { type: "RESTART_GAME" });
+      assert.equal(next.definition, def);
+    });
+
+    it("preserves playerAssignments as copies", () => {
+      const assignments = [
+        { playerId: 1, type: "human" },
+        { playerId: 2, type: "greedy" },
+      ];
+      const state = {
+        ...initialAppState,
+        screen: "gameover",
+        playerAssignments: assignments,
+      };
+      const next = appReducer(state, { type: "RESTART_GAME" });
+      assert.equal(next.playerAssignments.length, 2);
+      assert.deepStrictEqual(next.playerAssignments[0], { playerId: 1, type: "human" });
+      assert.deepStrictEqual(next.playerAssignments[1], { playerId: 2, type: "greedy" });
+      // Verify they are copies, not the same objects.
+      assert.notEqual(next.playerAssignments[0], assignments[0]);
+    });
+
+    it("clears transient state (outcome, gameState, effectLog, legalActions)", () => {
+      const state = {
+        ...initialAppState,
+        screen: "gameover",
+        outcome: { outcomes: { 1: "win" } },
+        gameState: { turn: { turn: 5 } },
+        effectLog: [{ turn: 1, playerId: 1, message: "x" }],
+        legalActions: [{ id: "a" }],
+        selectedActionIndex: 3,
+        isPaused: true,
+      };
+      const next = appReducer(state, { type: "RESTART_GAME" });
+      assert.equal(next.outcome, null);
+      assert.equal(next.gameState, null);
+      assert.deepStrictEqual(next.effectLog, []);
+      assert.deepStrictEqual(next.legalActions, []);
+      assert.equal(next.selectedActionIndex, 0);
+      assert.equal(next.isPaused, false);
+    });
+
+    it("resets watchSpeed to default", () => {
+      const state = {
+        ...initialAppState,
+        screen: "gameover",
+        watchSpeed: 1500,
+      };
+      const next = appReducer(state, { type: "RESTART_GAME" });
+      assert.equal(next.watchSpeed, 500);
+    });
+  });
+
   it("returns same state for unknown action type", () => {
     const next = appReducer(initialAppState, { type: "UNKNOWN" });
     assert.equal(next, initialAppState);
