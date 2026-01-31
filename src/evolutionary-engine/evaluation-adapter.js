@@ -101,7 +101,11 @@ export async function evaluateGenome(genome, options) {
       descriptors: null,
       diagnostics: {
         ...diagnostics,
-        evaluation: { error: "invalid-evaluator-output" },
+        evaluation: {
+          error: "invalid-evaluator-output",
+          returnedFitness: evaluation?.fitness,
+          returnedDescriptors: evaluation?.descriptors != null,
+        },
       },
       ...(repairDiagnostics ? { genome: candidate } : {}),
     };

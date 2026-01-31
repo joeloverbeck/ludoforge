@@ -20,6 +20,8 @@ Describe the evolution runner responsibilities, the per-run directory layout, an
   persist it per generation.
 - Monitor per-generation rejection rates and halt early when thresholds are exceeded.
 - Compute and persist population health metrics (`health.json`) each generation.
+- Compute and persist preference model diagnostic metrics (`preference-metrics.json`)
+  each generation when comparison feedback is available.
 - Integrate adaptive operator weighting by feeding telemetry to the `WeightedSelector`
   (see [evolutionary-engine.md](evolutionary-engine.md) § Adaptive Weighting).
 - Emit structured logging for major phases and generation boundaries.
@@ -42,6 +44,7 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `motifs.jsonl` (when motif mining is enabled)
   - `operator-stats.json` (per-operator telemetry snapshot)
   - `health.json` (population health metrics snapshot)
+  - `preference-metrics.json` (preference model accuracy/calibration diagnostic, when comparison feedback exists)
 
 ## Run Isolation Rules
 
@@ -127,6 +130,29 @@ persists them as `health.json`.
 
 Health metrics support observability dashboards and early-stopping decisions.
 
+## Preference Metrics
+
+When comparison feedback is available in a generation, the runner computes
+preference model diagnostic metrics via `computePreferenceMetrics()` from
+`src/evaluation-analytics/preference-metrics.js` and persists them as
+`preference-metrics.json`. This is purely diagnostic — no runtime code consumes
+the output.
+
+The function takes the first snapshot's model state (`weights`, `bias`) and the
+comparison-type feedback samples, then measures:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `accuracy` | number | Fraction of comparisons where the model's predicted preference matches the human's |
+| `correct` | number | Count of correct predictions |
+| `total` | number | Total comparison samples evaluated |
+| `ties` | number | Count of samples where the human preferred "tie" |
+| `bucketSize` | number | Calibration bucket width (default 0.1) |
+| `calibrationBuckets` | array | Per-bucket predicted vs actual outcome averages for calibration analysis |
+
+When no comparison feedback exists in a generation, the field is omitted from the
+artifact output.
+
 ## Adaptive Weight Integration
 
 After evaluating each generation, the runner calls
@@ -155,6 +181,35 @@ retries unproductive mutation attempts per offspring slot:
 The applicator returns `{ population, operatorNames, outcomes }` where `outcomes`
 is an array with one entry per offspring slot: `"ok"`, `"noOp"`, `"repairFailed"`,
 or `"exhausted"`.
+
+## Multi-Offspring
+
+The evolution applicator supports producing multiple children per parent via
+`offspringPerParent` (default `1`, configurable via
+`config.evolution.mutation.offspringPerParent`). Each parent runs the full
+mutation/crossover/retry loop N times independently, producing N offspring.
+This grows the candidate pool for MAP-Elites niche competition without
+requiring a larger elite set.
+
+Output arrays (`population`, `operatorNames`, `outcomes`) have length
+`parents.length * offspringPerParent`.
+
+## Population Replenishment
+
+After evolution produces the next-generation population, the runner checks
+whether the population has fallen below a minimum floor. If so,
+`replenishPopulation()` from `src/evolution-runner/population-replenisher.js`
+generates fresh random genomes using `generateGameDefinition()` and validates
+each with `validateGameDefinition()` before adding it. Up to 20 attempts are
+made per needed genome.
+
+**Configuration**: `runner.minPopulationSize` (positive integer, optional). When
+set and the evolved population is smaller, random genomes are injected to reach
+the minimum. The runner logs `{ injectedCount, generation }` when injection
+occurs.
+
+This acts as a safety net against population extinction when MAP-Elites niche
+coverage is sparse or many mutations are rejected.
 
 ## Motif Mining
 

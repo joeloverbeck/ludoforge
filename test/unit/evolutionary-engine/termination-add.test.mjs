@@ -76,13 +76,30 @@ describe("terminationAddMutation", () => {
     const genome = { definition };
     const rng = createSeededRng(1);
     const validTypes = ["win", "lose", "draw"];
-    const validPlayers = ["active", "all", "inactive"];
+    const validPlayers = ["active", "all"];
 
     const mutated = terminationAddMutation.mutate(genome, rng);
     const newCond = mutated.definition.termination.conditions.at(-1);
 
     assert.ok(validTypes.includes(newCond.outcome.type));
     assert.ok(validPlayers.includes(newCond.outcome.players));
+  });
+
+  it("never produces players: 'inactive' (invalid per JSON Schema)", () => {
+    const definition = structuredClone(baseDefinition);
+    for (let seed = 0; seed < 200; seed++) {
+      const genome = { definition: structuredClone(definition) };
+      const rng = createSeededRng(seed);
+      const mutated = terminationAddMutation.mutate(genome, rng);
+      const conditions = mutated.definition.termination.conditions;
+      for (const cond of conditions) {
+        assert.notEqual(
+          cond.outcome.players,
+          "inactive",
+          `Seed ${seed} produced invalid players: "inactive"`,
+        );
+      }
+    }
   });
 
   it("no-op when no int variables exist", () => {

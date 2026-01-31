@@ -1,3 +1,4 @@
+import { computePreferenceMetrics } from "../evaluation-analytics/preference-metrics.js";
 import { computeHealthMetrics } from "./health-metrics.js";
 import { defaultPreferenceModelSnapshot } from "./serialization-utils.js";
 import { assertNonEmptyArray } from "./runner-validation.js";
@@ -17,7 +18,7 @@ import { assertNonEmptyArray } from "./runner-validation.js";
  * @param {Function|null} params.snapshotProvider
  * @param {number|undefined} params.seed
  * @param {object} params.telemetry
- * @returns {Promise<{ feedback: any, preferenceModelSnapshots: Array, health: object }>}
+ * @returns {Promise<{ feedback: any, preferenceModelSnapshots: Array, health: object, preferenceMetrics: object|undefined }>}
  */
 export async function buildGenerationContext({
   generation,
@@ -54,5 +55,17 @@ export async function buildGenerationContext({
     telemetry,
   });
 
-  return { feedback, preferenceModelSnapshots, health };
+  const comparisonSamples = Array.isArray(feedback)
+    ? feedback.filter((s) => s && s.type === "comparison")
+    : [];
+
+  const preferenceMetrics =
+    comparisonSamples.length > 0
+      ? computePreferenceMetrics(
+          preferenceModelSnapshots[0]?.models?.[0] ?? { weights: {}, bias: 0 },
+          comparisonSamples,
+        )
+      : undefined;
+
+  return { feedback, preferenceModelSnapshots, health, preferenceMetrics };
 }

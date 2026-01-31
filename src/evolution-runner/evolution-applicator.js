@@ -4,78 +4,88 @@ import { cloneGenome, clonePopulation, selectMateIndex } from "./population-util
 import { shouldApply } from "./evolution-rates.js";
 import { recordAttempt, recordNoOp, recordRepairFailed } from "./operator-telemetry.js";
 
+function produceOffspring(parent, parentIndex, parents, options, maxRetries) {
+  let child = cloneGenome(parent);
+  let operatorName = null;
+  let slotOutcome = null;
+
+  if (options.crossoverRate > 0 && shouldApply(options.crossoverRate, options.rng)) {
+    const mateIndex = selectMateIndex(parents.length, parentIndex, options.rng);
+    const mate = mateIndex >= 0 ? parents[mateIndex] : null;
+    if (mate) {
+      const crossed = crossoverGenome(parent, mate, {
+        operators: options.crossoverOperators,
+        rng: options.rng,
+      });
+      if (crossed) {
+        child = crossed;
+      }
+    }
+  }
+
+  if (options.mutationRate > 0 && shouldApply(options.mutationRate, options.rng)) {
+    let resolved = false;
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      const mutated = mutateAndRepairGenome(child, {
+        operators: options.mutationOperators,
+        rng: options.rng,
+        repairOperators: options.repairOperators,
+        selector: options.mutationSelector,
+      });
+      if (mutated && typeof mutated === "object") {
+        operatorName = mutated.operatorName ?? null;
+        if (operatorName && options.telemetry) {
+          recordAttempt(options.telemetry, operatorName);
+        }
+        if (mutated.outcome === "noOp") {
+          if (operatorName && options.telemetry) {
+            recordNoOp(options.telemetry, operatorName);
+          }
+          slotOutcome = "noOp";
+          continue;
+        }
+        if (mutated.outcome === "repairFailed") {
+          if (operatorName && options.telemetry) {
+            recordRepairFailed(options.telemetry, operatorName);
+          }
+          slotOutcome = "repairFailed";
+          continue;
+        }
+        if (mutated.genome) {
+          child = mutated.genome;
+          slotOutcome = "ok";
+          resolved = true;
+          break;
+        }
+      }
+    }
+    if (!resolved) {
+      slotOutcome = slotOutcome ?? "exhausted";
+    }
+  }
+
+  return { child: cloneGenome(child), operatorName, slotOutcome };
+}
+
 export function applyEvolution(population, options) {
   const parents = clonePopulation(population);
   const next = [];
-  const operatorNames = new Array(parents.length).fill(null);
-  const outcomes = new Array(parents.length).fill(null);
+  const operatorNames = [];
+  const outcomes = [];
   const maxRetries = Number.isInteger(options.maxMutationRetries) && options.maxMutationRetries >= 0
     ? options.maxMutationRetries
     : 3;
+  const offspringPerParent = Number.isInteger(options.offspringPerParent) && options.offspringPerParent >= 1
+    ? options.offspringPerParent
+    : 1;
 
-  parents.forEach((parent, index) => {
-    let child = cloneGenome(parent);
-    let operatorName = null;
-    let slotOutcome = null;
-
-    if (options.crossoverRate > 0 && shouldApply(options.crossoverRate, options.rng)) {
-      const mateIndex = selectMateIndex(parents.length, index, options.rng);
-      const mate = mateIndex >= 0 ? parents[mateIndex] : null;
-      if (mate) {
-        const crossed = crossoverGenome(parent, mate, {
-          operators: options.crossoverOperators,
-          rng: options.rng,
-        });
-        if (crossed) {
-          child = crossed;
-        }
-      }
+  parents.forEach((parent, parentIndex) => {
+    for (let offspring = 0; offspring < offspringPerParent; offspring += 1) {
+      const result = produceOffspring(parent, parentIndex, parents, options, maxRetries);
+      next.push(result.child);
+      operatorNames.push(result.operatorName);
+      outcomes.push(result.slotOutcome);
     }
-
-    if (options.mutationRate > 0 && shouldApply(options.mutationRate, options.rng)) {
-      let resolved = false;
-      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-        const mutated = mutateAndRepairGenome(child, {
-          operators: options.mutationOperators,
-          rng: options.rng,
-          repairOperators: options.repairOperators,
-          selector: options.mutationSelector,
-        });
-        if (mutated && typeof mutated === "object") {
-          operatorName = mutated.operatorName ?? null;
-          if (operatorName && options.telemetry) {
-            recordAttempt(options.telemetry, operatorName);
-          }
-          if (mutated.outcome === "noOp") {
-            if (operatorName && options.telemetry) {
-              recordNoOp(options.telemetry, operatorName);
-            }
-            slotOutcome = "noOp";
-            continue;
-          }
-          if (mutated.outcome === "repairFailed") {
-            if (operatorName && options.telemetry) {
-              recordRepairFailed(options.telemetry, operatorName);
-            }
-            slotOutcome = "repairFailed";
-            continue;
-          }
-          if (mutated.genome) {
-            child = mutated.genome;
-            slotOutcome = "ok";
-            resolved = true;
-            break;
-          }
-        }
-      }
-      if (!resolved) {
-        slotOutcome = slotOutcome ?? "exhausted";
-      }
-    }
-
-    next.push(cloneGenome(child));
-    operatorNames[index] = operatorName;
-    outcomes[index] = slotOutcome;
   });
 
   return { population: next, operatorNames, outcomes };

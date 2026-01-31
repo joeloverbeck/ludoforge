@@ -192,6 +192,15 @@ Function-level overrides (like prompt labels) may still be provided to callers.
 Per-run overrides are configured via the `humanFeedback` block in the runner
 config (see CLI Integration above).
 
+## Preference Model Diagnostics
+
+Each generation that produces comparison feedback, the runner computes preference
+model accuracy and calibration metrics via `computePreferenceMetrics()` and
+persists them as `preference-metrics.json`. This is a diagnostic artifact — it
+measures how well the current model state predicts human preferences but does not
+affect fitness or evolution. See [evolution-runner.md](evolution-runner.md) §
+Preference Metrics for the metric table.
+
 ## Use in Fitness
 
 Preference scores are computed from the model weights and feature vectors and

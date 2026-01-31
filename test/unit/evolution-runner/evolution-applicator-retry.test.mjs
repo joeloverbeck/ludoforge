@@ -219,6 +219,36 @@ describe("evolution-applicator retry loop", () => {
     assert.equal(result.outcomes[0], null);
   });
 
+  it("produces N * offspringPerParent children when offspringPerParent > 1", () => {
+    mutateAndRepairGenomeMock.mock.mockImplementation(() => ({
+      genome: { id: "gx", definition: { name: "child", phases: [] } },
+      operatorName: "test-op",
+      outcome: "ok",
+    }));
+
+    const population = [makeGenome("g1"), makeGenome("g2")];
+    const result = applyEvolution(population, makeOptions({ offspringPerParent: 3 }));
+
+    assert.equal(result.population.length, 6);
+    assert.equal(result.operatorNames.length, 6);
+    assert.equal(result.outcomes.length, 6);
+  });
+
+  it("defaults to 1 offspring per parent when offspringPerParent is not set", () => {
+    mutateAndRepairGenomeMock.mock.mockImplementation(() => ({
+      genome: { id: "gx", definition: { name: "child", phases: [] } },
+      operatorName: "test-op",
+      outcome: "ok",
+    }));
+
+    const population = [makeGenome("g1"), makeGenome("g2")];
+    const opts = makeOptions();
+    delete opts.offspringPerParent;
+    const result = applyEvolution(population, opts);
+
+    assert.equal(result.population.length, 2);
+  });
+
   it("retry loop is deterministic with same RNG sequence", () => {
     function makeCallSequence() {
       let callCount = 0;

@@ -2,7 +2,7 @@ import { getRandomIndex } from "../random.js";
 
 const COMPARATORS = [">=", "<=", ">", "<", "=="];
 const OUTCOME_TYPES = ["win", "lose", "draw"];
-const PLAYER_SELECTORS = ["active", "all", "inactive"];
+const PLAYER_SELECTORS = ["active", "all"];
 
 export const terminationAddMutation = {
   name: "termination-add",

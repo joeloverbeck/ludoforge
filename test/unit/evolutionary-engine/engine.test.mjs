@@ -176,6 +176,62 @@ describe("engine", () => {
     });
   });
 
+  describe("parent preservation backfill", () => {
+    it("preserves population size when MAP-Elites fills fewer niches than input", async () => {
+      // 4 genomes all map to the same niche → only 1 elite.
+      // Without backfill, nextGeneration would shrink to 1.
+      // With backfill, nextGeneration should stay at 4.
+      const population = [
+        { id: "g1", definition: baseDefinition },
+        { id: "g2", definition: baseDefinition },
+        { id: "g3", definition: baseDefinition },
+        { id: "g4", definition: baseDefinition },
+      ];
+
+      const result = await runGenerationLoop({
+        population,
+        evaluation: {
+          evaluator: (genome) => ({
+            fitness: genome.id === "g1" ? 0.9 : genome.id === "g2" ? 0.7 : 0.5,
+            descriptors: { length: 5, randomness: 0.1 }, // all same niche
+          }),
+        },
+        mapElites: mapElitesConfig,
+        shortlistSize: 0,
+      });
+
+      // All 4 evaluated, only 1 elite (best fitness in single niche).
+      assert.equal(result.evaluated.length, 4);
+      // nextGeneration should be backfilled to original population size.
+      assert.equal(result.nextGeneration.length, 4);
+      // The elite (highest fitness) should be first.
+      assert.equal(result.nextGeneration[0].id, "g1");
+    });
+
+    it("does not duplicate elites in backfill", async () => {
+      const population = [
+        { id: "g1", definition: baseDefinition },
+        { id: "g2", definition: baseDefinition },
+      ];
+
+      const result = await runGenerationLoop({
+        population,
+        evaluation: {
+          evaluator: (genome) => ({
+            fitness: genome.id === "g1" ? 1 : 0.5,
+            descriptors: { length: 5, randomness: 0.1 }, // same niche
+          }),
+        },
+        mapElites: mapElitesConfig,
+        shortlistSize: 0,
+      });
+
+      assert.equal(result.nextGeneration.length, 2);
+      const ids = result.nextGeneration.map((g) => g.id);
+      assert.equal(new Set(ids).size, 2, "no duplicate genomes");
+    });
+  });
+
   describe("shortlist novelty tie-break", () => {
     it("prefers higher novelty when useNovelty is true and fitness is equal", async () => {
       // Four genomes in different niches, all equal fitness.

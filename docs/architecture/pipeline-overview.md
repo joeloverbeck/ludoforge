@@ -82,10 +82,13 @@ then repeats.
    - Relevant code: `src/evaluation-analytics/feature-vector.js`, `src/evaluation-analytics/fitness.js`.
    - Config: `configs/fitness.json` (weights, preference blending).
 
-6. MAP-Elites placement
+6. MAP-Elites placement and parent preservation
    - Evaluated genomes are binned into descriptor niches.
-   - The best genome per niche becomes the elite for the next generation.
-   - Relevant code: `src/evolutionary-engine/map-elites.js`.
+   - The best genome per niche becomes an elite.
+   - `nextGeneration` starts as all elites, then is backfilled with non-elite
+     evaluated genomes (sorted by fitness descending) up to the input population
+     size. This prevents single-generation population collapse.
+   - Relevant code: `src/evolutionary-engine/map-elites.js`, `src/evolutionary-engine/engine.js`.
    - Config: `configs/map-elites.json` (descriptors, tie-break policy).
 
 7. Shortlisting (optional)
@@ -104,10 +107,17 @@ then repeats.
      selection uses differentiated weights (conservative tweaks at 3, moderate
      structural at 2, destructive removals at 0.5) with adaptive runtime adjustment
      based on per-operator failure rates.
+   - Each parent produces `offspringPerParent` children (default `1`, configurable
+     via `config.evolution.mutation.offspringPerParent`), growing the candidate pool
+     for MAP-Elites niche competition.
    - Removal operators enforce structural minimum guards (e.g., `action-remove` is
      a no-op when only one action exists) to prevent producing empty definitions.
    - The `phase-remove` operator rebinds dangling action phase references after
-     removal. Repair also validates trigger conditions and step-effect references.
+     removal. Repair also validates trigger conditions, step-effect references,
+     and termination outcome `players` fields (invalid values reset to `"active"`).
+   - After evolution, if the population falls below `runner.minPopulationSize`,
+     fresh random genomes are injected via `replenishPopulation()` as a safety net
+     against extinction.
    - See [evolutionary-engine.md](evolutionary-engine.md#mutation-operators) for the
      full operator catalogue, effect helpers, and configuration.
 
@@ -139,6 +149,14 @@ then repeats.
 
 The engine returns `nextGeneration` and optional `shortlist` for the caller to
 re-seed the next iteration. Repetition is orchestrated outside core modules.
+
+Population size is maintained across generations by three mechanisms:
+1. **Parent preservation**: the engine backfills `nextGeneration` with non-elite
+   evaluated genomes up to the input population size.
+2. **Multi-offspring**: the evolution applicator produces `offspringPerParent`
+   children per parent (default 1), growing the candidate pool.
+3. **Population replenishment**: the runner injects random genomes when the
+   population falls below `runner.minPopulationSize`.
 
 The runner monitors per-generation rejection rates and halts the run early when
 the population is overwhelmingly degenerate. After `maxConsecutiveRejections`

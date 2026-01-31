@@ -211,9 +211,25 @@ export async function runGenerationLoop(options) {
   }
 
   const mapElites = placePopulationInMapElites(evaluated, options.mapElites);
-  const nextGeneration = Array.from(mapElites.elites.values()).map(
+  const eliteGenomes = Array.from(mapElites.elites.values()).map(
     (member) => member.genome
   );
+
+  const eliteIds = new Set(eliteGenomes.map((g) => g.id));
+  const backfillCandidates = evaluated
+    .filter((entry) => !eliteIds.has(entry.genome.id))
+    .sort((a, b) => {
+      const fa = typeof a.fitness === "number" ? a.fitness : -Infinity;
+      const fb = typeof b.fitness === "number" ? b.fitness : -Infinity;
+      return fb - fa;
+    })
+    .map((entry) => entry.genome);
+
+  const targetSize = options.population.length;
+  const nextGeneration =
+    eliteGenomes.length >= targetSize
+      ? eliteGenomes
+      : [...eliteGenomes, ...backfillCandidates.slice(0, targetSize - eliteGenomes.length)];
 
   const shortlist = selectShortlist(mapElites.placements, options.mapElites, {
     size: options.shortlistSize ?? 0,

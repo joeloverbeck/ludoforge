@@ -4,11 +4,13 @@
     "generations": 500,
     "maxRetainedGenerations": 20,
     "shortlistSize": 8,
-    "saveEvery": 5
+    "saveEvery": 5,
+    "minPopulationSize": 8
   },
   "evolution": {
     "mutation": {
-      "rate": 1.0
+      "rate": 1.0,
+      "offspringPerParent": 2
     },
     "crossover": {
       "rate": 0.15

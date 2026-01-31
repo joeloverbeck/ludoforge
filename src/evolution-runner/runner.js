@@ -8,6 +8,8 @@ import { resolveSeedPopulation } from "./seed-resolver.js";
 import {
   createTelemetry,
   recordOutcome,
+  recordEvaluated,
+  recordValidEvaluated,
   serializeTelemetry,
 } from "./operator-telemetry.js";
 import { clonePopulation } from "./population-utils.js";
@@ -24,6 +26,7 @@ import {
   resolveFeedbackProvider,
 } from "./serialization-utils.js";
 import { applyEvolution } from "./evolution-applicator.js";
+import { replenishPopulation } from "./population-replenisher.js";
 import { assembleDeterminism } from "./determinism-assembly.js";
 import { checkPopulationExtinction, checkHighRejectionHalt } from "./termination-checks.js";
 import { buildGenerationContext } from "./generation-context.js";
@@ -102,6 +105,9 @@ export async function runEvolutionRunner(options) {
   const maxMutationRetries = Number.isInteger(mutationConfig.maxMutationRetries)
     ? mutationConfig.maxMutationRetries
     : undefined;
+  const offspringPerParent = Number.isInteger(mutationConfig.offspringPerParent)
+    ? mutationConfig.offspringPerParent
+    : undefined;
 
   const mutationOperators = Array.isArray(options.mutationOperators)
     ? [...options.mutationOperators]
@@ -151,6 +157,7 @@ export async function runEvolutionRunner(options) {
 
     if (pendingOperatorNames) {
       const outcomes = buildOperatorOutcomes(loopResult);
+      const evaluatedGenomes = new Set(loopResult.evaluated.map((e) => e.genome));
       currentPopulation.forEach((genome, index) => {
         const operatorName = pendingOperatorNames[index];
         if (!operatorName) {
@@ -159,6 +166,15 @@ export async function runEvolutionRunner(options) {
         const outcome = outcomes.get(genome);
         if (outcome) {
           recordOutcome(telemetry, operatorName, outcome);
+          if (evaluatedGenomes.has(genome)) {
+            recordEvaluated(telemetry, operatorName);
+          }
+          if (
+            outcome.gridContribution === "filledEmpty" ||
+            outcome.gridContribution === "improvedElite"
+          ) {
+            recordValidEvaluated(telemetry, operatorName);
+          }
         }
       });
     }
@@ -206,16 +222,39 @@ export async function runEvolutionRunner(options) {
       mutationSelector,
       telemetry,
       ...(maxMutationRetries !== undefined ? { maxMutationRetries } : {}),
+      ...(offspringPerParent !== undefined ? { offspringPerParent } : {}),
     });
 
-    const evolvedPopulation = evolutionResult.population;
+    let evolvedPopulation = evolutionResult.population;
     pendingOperatorNames = evolutionResult.operatorNames;
+
+    const minPopulationSize = runnerConfig.minPopulationSize;
+    if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
+      const replenished = replenishPopulation(evolvedPopulation, {
+        minSize: minPopulationSize,
+        rng,
+        grammarConfig: config.seeding?.generate?.grammar,
+      });
+      if (replenished.injectedCount > 0) {
+        evolvedPopulation = replenished.population;
+        pendingOperatorNames = [
+          ...pendingOperatorNames,
+          ...new Array(replenished.injectedCount).fill(null),
+        ];
+        if (logger) {
+          logger.info(
+            { injectedCount: replenished.injectedCount, generation },
+            "population replenished",
+          );
+        }
+      }
+    }
 
     assertPopulation(evolvedPopulation);
 
     const determinism = assembleDeterminism(options.determinism, rng, seed);
 
-    const { feedback, preferenceModelSnapshots, health } = await buildGenerationContext({
+    const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
       generation,
       runId,
       baseDir,
@@ -245,6 +284,7 @@ export async function runEvolutionRunner(options) {
       determinism,
       operatorStats: serializeTelemetry(telemetry),
       health,
+      preferenceMetrics,
     });
 
     if (runnerConfig.maxRetainedGenerations != null) {

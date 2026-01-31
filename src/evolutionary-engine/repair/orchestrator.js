@@ -7,6 +7,7 @@ import { repairVariables, repairTokenTypes } from "./variable-repair.js";
 import { repairActions, repairTriggers } from "./action-repair.js";
 import { repairEffects } from "./effect-repair.js";
 import { hasZoneReferencingEffects } from "./effect-queries.js";
+import { repairTerminationOutcomes } from "./termination-repair.js";
 
 export const dslSafetyRepair = {
   name: "dsl-safety",
@@ -47,7 +48,9 @@ export const dslSafetyRepair = {
       };
     }
 
-    const actions = normalizeArray(definition.actions);
+    const repairedDefinition = repairTerminationOutcomes(definition);
+
+    const actions = normalizeArray(repairedDefinition.actions);
     if (actions.length === 0) {
       return null;
     }
@@ -59,19 +62,19 @@ export const dslSafetyRepair = {
       return null;
     }
 
-    const conditions = normalizeArray(definition?.termination?.conditions);
+    const conditions = normalizeArray(repairedDefinition?.termination?.conditions);
     if (conditions.length === 0) {
       return null;
     }
 
-    const zones = normalizeArray(definition?.state?.zones);
-    if (zones.length === 0 && hasZoneReferencingEffects(definition)) {
+    const zones = normalizeArray(repairedDefinition?.state?.zones);
+    if (zones.length === 0 && hasZoneReferencingEffects(repairedDefinition)) {
       return null;
     }
 
     return {
       ...genome,
-      definition,
+      definition: repairedDefinition,
     };
   },
 };

@@ -101,7 +101,9 @@ export function mutateGenome(genome, options = {}) {
   const operatorName = selector.pick(rng);
   const operator = operators.find((candidate) => candidate.name === operatorName);
   if (!operator) {
-    return { genome: structuredClone(genome), operatorName };
+    throw new Error(
+      `Operator "${operatorName}" selected by weighted selector but not found in operators list`,
+    );
   }
   return { genome: operator.mutate(genome, rng), operatorName };
 }

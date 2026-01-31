@@ -21,7 +21,9 @@ Steps per genome:
    produced by `createEvaluator()` from
    `src/evaluation-analytics/create-evaluator.js`, which runs the full 13-step
    built-in evaluation pipeline (see `docs/architecture/metrics-and-fitness.md`).
-5. Reject if evaluator output is missing `fitness` or `descriptors`.
+5. Reject if evaluator output is missing `fitness` or `descriptors`. When the
+   evaluator returns invalid output, diagnostics include the returned `fitness`
+   value and whether `descriptors` was present, aiding debugging.
 
 Diagnostics include validation results, safety failures, and evaluator-specific payloads.
 
@@ -89,7 +91,11 @@ Implemented in `src/evolutionary-engine/engine.js`.
 
 - Evaluates each genome with the adapter.
 - Places evaluated genomes into MAP-Elites.
-- `nextGeneration` is all elites across niches.
+- `nextGeneration` starts as all elites across niches, then is backfilled with
+  non-elite evaluated genomes (sorted by fitness descending) up to the input
+  population size. This parent preservation prevents single-generation population
+  collapse when MAP-Elites fills fewer niches than the input population size.
+  Deduplication uses genome `id` to avoid including elites twice.
 - `shortlist` is an optional diversified subset of elites.
 
 ### Rejection Categorization
@@ -235,6 +241,10 @@ returns a structured outcome when an `OperatorSelector` is provided:
 A selector is always required. The runner builds one via `createMutationSelector()`
 at startup; missing or invalid operator weights cause an immediate startup error.
 
+If the selector picks an operator name that does not match any operator in the
+list, the orchestrator throws an `Error` immediately (fail-fast) rather than
+silently returning an unmutated clone.
+
 ### Effect Helpers
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:
@@ -274,6 +284,10 @@ Implemented in `src/evolutionary-engine/repair.js`.
   issues are handled by simulation + degeneracy filters rather than repair.
 - The repair orchestrator (`orchestrator.js`) also repairs `definition.turn.stepEffects`
   by running `repairEffects()` on each step-effect entry.
+- The repair orchestrator repairs termination outcome `players` fields via
+  `repairTerminationOutcomes()` from `src/evolutionary-engine/repair/termination-repair.js`.
+  Valid values are `"all"`, `"active"`, or an array of non-negative integers. Invalid
+  values (e.g., `"inactive"`) are reset to `"active"`.
 
 ### Structural Minimums
 

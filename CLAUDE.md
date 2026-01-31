@@ -39,7 +39,7 @@ CLI (src/cli/ludoforge-evolve.js)
 
 ### Generation Loop
 
-Each generation: evaluate all genomes → place in MAP-Elites grid → select diverse shortlist → apply mutation/crossover with repair → next generation.
+Each generation: evaluate all genomes → place in MAP-Elites grid → backfill non-elite parents to preserve population size → select diverse shortlist → apply mutation/crossover with repair (N offspring per parent via `offspringPerParent`) → replenish below `minPopulationSize` with random genomes → next generation.
 
 ### Mutation Pipeline
 

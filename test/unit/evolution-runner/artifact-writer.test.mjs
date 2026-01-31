@@ -193,6 +193,73 @@ describe("artifact-writer", () => {
       }
     });
 
+    it("writes preference-metrics.json when preferenceMetrics provided", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-pref-metrics-"));
+      const runId = createRunId();
+
+      const preferenceMetrics = {
+        accuracy: 0.75,
+        correct: 3,
+        total: 4,
+        ties: 0,
+        bucketSize: 0.1,
+        calibrationBuckets: [],
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        preferenceMetrics,
+      });
+
+      assert.ok(result.preferenceMetricsPath);
+      const contents = await readFile(result.preferenceMetricsPath, "utf8");
+      const parsed = JSON.parse(contents);
+      assert.equal(parsed.accuracy, 0.75);
+      assert.equal(parsed.correct, 3);
+      assert.equal(parsed.total, 4);
+    });
+
+    it("omits preference-metrics.json when preferenceMetrics is undefined", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-no-pref-"));
+      const runId = createRunId();
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+      });
+
+      assert.equal(result.preferenceMetricsPath, undefined);
+    });
+
     it("rejects invalid population entries", async () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-"));
       const runId = createRunId();

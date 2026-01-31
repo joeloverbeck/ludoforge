@@ -71,6 +71,7 @@ export async function writeGenerationArtifacts({
   determinism,
   operatorStats,
   health,
+  preferenceMetrics,
 }) {
   assertValidRunId(runId);
   assertGenerationNumber(generation);
@@ -162,6 +163,15 @@ export async function writeGenerationArtifacts({
     const healthPath = resolveRunPath(generationDir, "health.json");
     await writeJson(healthPath, health);
     paths.healthPath = healthPath;
+  }
+
+  if (preferenceMetrics !== undefined) {
+    if (!isPlainObject(preferenceMetrics)) {
+      throw new Error("Preference metrics must be an object");
+    }
+    const preferenceMetricsPath = resolveRunPath(generationDir, "preference-metrics.json");
+    await writeJson(preferenceMetricsPath, preferenceMetrics);
+    paths.preferenceMetricsPath = preferenceMetricsPath;
   }
 
   return paths;

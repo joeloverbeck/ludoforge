@@ -2,6 +2,7 @@ import type {
   FeedbackRecord,
   PreferenceModelSnapshotRecord,
 } from "../data-persistence/types.js";
+import type { PreferenceMetrics } from "../evaluation-analytics/types.js";
 
 export interface GenerationArtifactDeterminism {
   seed?: number;
@@ -27,6 +28,8 @@ export interface GenerationArtifactInput {
   preferenceModelSnapshots: PreferenceModelSnapshotRecord[];
   determinism?: GenerationArtifactDeterminism;
   operatorStats?: Record<string, unknown>;
+  health?: Record<string, unknown>;
+  preferenceMetrics?: PreferenceMetrics;
 }
 
 export interface GenerationArtifactPaths {
@@ -40,6 +43,8 @@ export interface GenerationArtifactPaths {
   feedbackPath?: string;
   determinismPath?: string;
   operatorStatsPath?: string;
+  healthPath?: string;
+  preferenceMetricsPath?: string;
 }
 
 export function writeGenerationArtifacts(
