@@ -22,6 +22,21 @@ import { resolveRunDir, resolveRunPath } from "./run-layout.js";
 import { validateRunnerOptions } from "./runner-options-validator.js";
 import { initializeRunner } from "./runner-initializer.js";
 
+function withTimeout(promise, ms, label) {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return promise;
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      resolve({ __timedOut: true, label });
+    }, ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 export async function runEvolutionRunner(options) {
   validateRunnerOptions(options);
 
@@ -66,6 +81,9 @@ export async function runEvolutionRunner(options) {
     const generation = startGeneration + offset;
 
     try {
+      const generationTimeoutMs = runnerConfig.generationTimeoutMs ?? 300_000;
+
+      const generationBody = async () => {
       if (logger) {
         logger.info(
           { generation, totalGenerations: generations, populationSize: currentPopulation.length },
@@ -102,18 +120,30 @@ export async function runEvolutionRunner(options) {
         logger,
       });
       if (extinctionResult) {
-        haltedReason = extinctionResult.haltedReason;
-        break;
+        return { __halt: true, haltedReason: extinctionResult.haltedReason };
       }
 
       const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
-      const miningResult = await runMotifMiningPipeline({
-        mapElitesResult: loopResult.mapElites,
-        motifMiningConfig,
-        simulationConfig: evaluation.simulationConfig ?? {},
-        generationDir: genDir,
-        seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
-      });
+      const motifTimeoutMs = motifMiningConfig.timeoutMs ?? 120_000;
+      const rawMiningResult = await withTimeout(
+        runMotifMiningPipeline({
+          mapElitesResult: loopResult.mapElites,
+          motifMiningConfig,
+          simulationConfig: evaluation.simulationConfig ?? {},
+          generationDir: genDir,
+          seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
+        }),
+        motifTimeoutMs,
+        "motif-mining",
+      );
+
+      let miningResult = rawMiningResult;
+      if (rawMiningResult && rawMiningResult.__timedOut) {
+        if (logger) {
+          logger.warn({ generation, timeoutMs: motifTimeoutMs }, "motif mining timed out — skipping");
+        }
+        miningResult = null;
+      }
 
       if (miningResult && miningResult.motifEffects.length > 0 && motifInjectIndex >= 0) {
         mutationOperators[motifInjectIndex] = createMotifInjectMutation(miningResult.motifEffects);
@@ -219,6 +249,30 @@ export async function runEvolutionRunner(options) {
         });
       }
 
+      return {
+        loopResult,
+        evolvedPopulation,
+        artifacts,
+      };
+      }; // end generationBody
+
+      const genResult = await withTimeout(
+        generationBody(),
+        generationTimeoutMs,
+        "generation",
+      );
+
+      if (genResult && genResult.__timedOut) {
+        throw new Error(`Generation ${generation} timed out after ${generationTimeoutMs}ms`);
+      }
+
+      if (genResult.__halt) {
+        haltedReason = genResult.haltedReason;
+        break;
+      }
+
+      const { loopResult, evolvedPopulation, artifacts } = genResult;
+
       results.push({
         generation,
         population: evolvedPopulation,
@@ -245,6 +299,7 @@ export async function runEvolutionRunner(options) {
           },
           "generation end",
         );
+        logger.flush?.();
       }
 
       const haltCheck = checkHighRejectionHalt({

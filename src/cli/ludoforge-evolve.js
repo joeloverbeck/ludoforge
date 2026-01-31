@@ -142,6 +142,26 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
 }
 
 async function main() {
+  let forceExitTimer = null;
+  let ctrlCCount = 0;
+
+  process.on("SIGINT", () => {
+    ctrlCCount += 1;
+    if (ctrlCCount === 1) {
+      process.stderr.write("\nCaught SIGINT — shutting down (press Ctrl-C again to force-exit)…\n");
+      forceExitTimer = setTimeout(() => process.exit(130), 3000);
+      forceExitTimer.unref();
+    } else {
+      process.stderr.write("\nForce-exiting.\n");
+      process.exit(130);
+    }
+  });
+
+  process.on("SIGTERM", () => {
+    process.stderr.write("\nCaught SIGTERM — exiting.\n");
+    process.exit(143);
+  });
+
   try {
     const result = await runLudoforgeEvolve({ argv: process.argv });
     if (result?.help) {

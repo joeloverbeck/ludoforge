@@ -36,10 +36,11 @@ export async function runMotifMiningPipeline(options) {
     return null;
   }
 
+  const simulationRuns = motifMiningConfig.simulationRuns ?? 3;
   const trajectories = await extractEliteTrajectories(elites, {
     simulationConfig,
     seed: motifMiningConfig.seed ?? seed,
-    simulationRuns: motifMiningConfig.simulationRuns ?? 3,
+    simulationRuns,
   });
 
   if (trajectories.length === 0) {
@@ -48,6 +49,7 @@ export async function runMotifMiningPipeline(options) {
 
   const effectMap = buildEffectMap(trajectories);
   const lts = buildLts(trajectories);
+
   const motifs = mineMotifs(lts, {
     ngramSizes: motifMiningConfig.ngramSizes,
     minSupport: motifMiningConfig.minSupport,

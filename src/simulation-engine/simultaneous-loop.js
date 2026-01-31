@@ -115,6 +115,21 @@ export async function runSimultaneousLoop({
         rng,
       });
       if (selectionResult == null) {
+        const noLegalResult = handleNoLegalActions({
+          config,
+          definition,
+          state,
+          trajectory,
+          events,
+          tracker,
+          maxTurns,
+          stepsTaken,
+          stepControl: config.stepControl,
+        });
+        if (noLegalResult.action === "return") {
+          return noLegalResult.result;
+        }
+        stepsTaken = noLegalResult.stepsTaken;
         aborted = true;
         break;
       }
