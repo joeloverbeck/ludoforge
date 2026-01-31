@@ -1,30 +1,16 @@
 import { runGenerationLoop } from "../evolutionary-engine/engine.js";
-import { defaultMutationOperators } from "../evolutionary-engine/mutation.js";
-import { createSeededRng } from "../simulation-engine/rng.js";
-import { writeGenerationArtifacts, writeSeedReport } from "./artifact-writer.js";
+import { writeGenerationArtifacts } from "./artifact-writer.js";
 import { pruneOldGenerations } from "./generation-cleanup.js";
-import { createRunId } from "./run-layout.js";
-import { resolveSeedPopulation } from "./seed-resolver.js";
 import {
-  createTelemetry,
-  recordOutcome,
-  recordEvaluated,
-  recordValidEvaluated,
   serializeTelemetry,
 } from "./operator-telemetry.js";
-import { clonePopulation } from "./population-utils.js";
-import { resolveRate } from "./evolution-rates.js";
 import {
   assertPopulation,
-  isPlainObject,
 } from "./runner-validation.js";
-import { createMutationSelector, loadOperatorStats } from "./operator-setup.js";
-import { buildOperatorOutcomes } from "./operator-outcomes.js";
 import {
   serializeMapElites,
-  resolveSnapshotProvider,
-  resolveFeedbackProvider,
 } from "./serialization-utils.js";
+import { recordGenerationTelemetry } from "./operator-telemetry-recorder.js";
 import { applyEvolution } from "./evolution-applicator.js";
 import { replenishPopulation } from "./population-replenisher.js";
 import { assembleDeterminism } from "./determinism-assembly.js";
@@ -33,104 +19,43 @@ import { buildGenerationContext } from "./generation-context.js";
 import { runMotifMiningPipeline } from "./motif-pipeline.js";
 import { createMotifInjectMutation } from "../evolutionary-engine/mutation/operators/motif-inject.js";
 import { resolveRunDir, resolveRunPath } from "./run-layout.js";
+import { validateRunnerOptions } from "./runner-options-validator.js";
+import { initializeRunner } from "./runner-initializer.js";
 
 export async function runEvolutionRunner(options) {
-  if (!options || typeof options !== "object") {
-    throw new Error("Runner options are required");
-  }
+  validateRunnerOptions(options);
 
   const config = options.config;
-  if (!config || typeof config !== "object") {
-    throw new Error("Runner config is required");
-  }
-
   const runnerConfig = config.runner;
-  if (!runnerConfig || typeof runnerConfig !== "object") {
-    throw new Error("Runner loop config is required");
-  }
-
   const generations = runnerConfig.generations;
-  if (!Number.isInteger(generations) || generations <= 0) {
-    throw new Error("Runner generations must be a positive integer");
-  }
-
   const mapElitesConfig = config.mapElites;
-  if (!mapElitesConfig || typeof mapElitesConfig !== "object") {
-    throw new Error("Runner requires a MAP-Elites config");
-  }
-
   const evaluation = options.evaluation;
-  if (!evaluation || typeof evaluation !== "object") {
-    throw new Error("Runner requires evaluation options");
-  }
 
-  const baseDir = options.baseDir ?? process.cwd();
-  const runId = options.runId ?? createRunId();
-  const startGeneration = Number.isInteger(options.startGeneration)
-    ? options.startGeneration
-    : 0;
+  const {
+    baseDir,
+    runId,
+    startGeneration,
+    seed,
+    rng,
+    currentPopulation: initialPopulation,
+    mutationRate,
+    crossoverRate,
+    maxMutationRetries,
+    offspringPerParent,
+    mutationOperators,
+    motifInjectIndex,
+    mutationSelector,
+    telemetry,
+    snapshotProvider,
+    feedbackProvider,
+    feedbackEnabled,
+    logger,
+    rejectionRateThreshold,
+    maxConsecutiveRejections,
+    motifMiningConfig,
+  } = await initializeRunner(options, config);
 
-  const seed = Number.isFinite(options.seed) ? options.seed : config.seed;
-
-  let currentPopulation;
-  if (Array.isArray(options.population) && options.population.length > 0) {
-    currentPopulation = clonePopulation(options.population);
-  } else if (config.seeding) {
-    const rngSeed = Number.isFinite(seed) ? seed : 0;
-    const seedResult = await resolveSeedPopulation({
-      config,
-      rngSeed,
-      evaluator: evaluation.evaluator,
-    });
-    currentPopulation = seedResult.genomes;
-    await writeSeedReport({ baseDir, runId, report: seedResult.report });
-  } else {
-    throw new Error(
-      "Runner requires either options.population or config.seeding",
-    );
-  }
-  assertPopulation(currentPopulation);
-  const rng = options.rng ?? (Number.isFinite(seed) ? createSeededRng(seed) : null);
-
-  const evolutionConfig = isPlainObject(config.evolution) ? config.evolution : {};
-  const mutationConfig = isPlainObject(evolutionConfig.mutation) ? evolutionConfig.mutation : {};
-  const crossoverConfig = isPlainObject(evolutionConfig.crossover) ? evolutionConfig.crossover : {};
-
-  const motifMiningConfig = isPlainObject(evolutionConfig.motifMining)
-    ? evolutionConfig.motifMining
-    : { enabled: false };
-
-  const mutationRate = resolveRate(mutationConfig.rate, "evolution.mutation.rate");
-  const crossoverRate = resolveRate(crossoverConfig.rate, "evolution.crossover.rate");
-  const maxMutationRetries = Number.isInteger(mutationConfig.maxMutationRetries)
-    ? mutationConfig.maxMutationRetries
-    : undefined;
-  const offspringPerParent = Number.isInteger(mutationConfig.offspringPerParent)
-    ? mutationConfig.offspringPerParent
-    : undefined;
-
-  const mutationOperators = Array.isArray(options.mutationOperators)
-    ? [...options.mutationOperators]
-    : [...defaultMutationOperators];
-  const motifInjectIndex = mutationOperators.findIndex((op) => op.name === "motif-inject");
-  const mutationSelector = options.mutationSelector ?? createMutationSelector(mutationOperators);
-  const operatorNames = mutationOperators.map((operator) => operator.name);
-  const telemetry =
-    (await loadOperatorStats({
-      baseDir,
-      runId,
-      startGeneration,
-      operatorNames,
-    })) ?? createTelemetry(operatorNames);
-
-  const snapshotProvider = resolveSnapshotProvider(options.preferenceModelSnapshots);
-  const feedbackProvider = resolveFeedbackProvider(options.feedback);
-  const feedbackEnabled = config.humanFeedback?.enabled === true;
-
-  const logger = options.logger ?? null;
-
-  const rejectionRateThreshold = runnerConfig.rejectionRateThreshold ?? 0.8;
-  const maxConsecutiveRejections = runnerConfig.maxConsecutiveRejections ?? 3;
+  let currentPopulation = initialPopulation;
   let consecutiveHighRejections = 0;
 
   const results = [];
@@ -155,33 +80,13 @@ export async function runEvolutionRunner(options) {
       shortlistSize: runnerConfig.shortlistSize,
     });
 
-    if (pendingOperatorNames) {
-      const outcomes = buildOperatorOutcomes(loopResult);
-      const evaluatedGenomes = new Set(loopResult.evaluated.map((e) => e.genome));
-      currentPopulation.forEach((genome, index) => {
-        const operatorName = pendingOperatorNames[index];
-        if (!operatorName) {
-          return;
-        }
-        const outcome = outcomes.get(genome);
-        if (outcome) {
-          recordOutcome(telemetry, operatorName, outcome);
-          if (evaluatedGenomes.has(genome)) {
-            recordEvaluated(telemetry, operatorName);
-          }
-          if (
-            outcome.gridContribution === "filledEmpty" ||
-            outcome.gridContribution === "improvedElite"
-          ) {
-            recordValidEvaluated(telemetry, operatorName);
-          }
-        }
-      });
-    }
-
-    if (mutationSelector) {
-      mutationSelector.observe(telemetry);
-    }
+    recordGenerationTelemetry({
+      pendingOperatorNames,
+      loopResult,
+      currentPopulation,
+      telemetry,
+      mutationSelector,
+    });
 
     const extinctionResult = await checkPopulationExtinction({
       generation,

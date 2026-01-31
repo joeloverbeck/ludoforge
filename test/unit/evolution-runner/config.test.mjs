@@ -143,6 +143,16 @@ describe("config", () => {
     });
   });
 
+  describe("runner.minPopulationSize", () => {
+    it("returns valid true when minPopulationSize is a positive integer", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = 8;
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+  });
+
   describe("seeding validation", () => {
     it("accepts valid generate mode config", () => {
       const result = validateRunnerConfig(cloneConfig(baseConfig));

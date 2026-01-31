@@ -203,6 +203,38 @@ describe("schema", () => {
     });
   });
 
+  describe("runner.minPopulationSize", () => {
+    it("accepts a positive integer", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = 8;
+      assertValid(candidate);
+    });
+
+    it("accepts config without minPopulationSize (optional)", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.runner.minPopulationSize;
+      assertValid(candidate);
+    });
+
+    it("rejects 0", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = 0;
+      assertInvalid(candidate);
+    });
+
+    it("rejects non-integer", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = 2.5;
+      assertInvalid(candidate);
+    });
+
+    it("rejects negative value", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.runner.minPopulationSize = -1;
+      assertInvalid(candidate);
+    });
+  });
+
   describe("evolution.motifMining", () => {
     const validMotifMining = {
       enabled: true,
