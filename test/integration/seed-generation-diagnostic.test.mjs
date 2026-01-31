@@ -79,16 +79,13 @@ describe("seed-generation diagnostic", () => {
       `Expected evaluator to return diagnostics, got breakdown: ${JSON.stringify(counts)}`
     );
 
-    // Success rate should be between 5% and 80% — high enough to eventually
-    // fill a population with sufficient maxAttempts, but low enough to confirm
-    // the pipeline needs headroom
+    // Success rate should be at least 5% — high enough to eventually
+    // fill a population with sufficient maxAttempts.  The grammar generator
+    // and evaluator are now robust enough that 100% is typical; no upper
+    // bound is enforced.
     assert.ok(
       successRate > 0.05,
       `Success rate too low (${(successRate * 100).toFixed(1)}%), pipeline may be broken`
-    );
-    assert.ok(
-      successRate < 0.8,
-      `Success rate unexpectedly high (${(successRate * 100).toFixed(1)}%), test assumptions may be outdated`
     );
   });
 });

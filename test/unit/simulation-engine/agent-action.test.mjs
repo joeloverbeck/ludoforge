@@ -88,7 +88,64 @@ describe("buildLegalMoves", () => {
   });
 });
 
+describe("resolveAgent", () => {
+  it("returns undefined for empty agents array", () => {
+    const state = {
+      turn: { currentPlayer: 1 },
+      agents: [{ id: 1 }],
+    };
+    const result = resolveAgent([], state);
+    assert.equal(result, undefined);
+  });
+});
+
 describe("selectAndValidateAction", () => {
+  it("error includes currentPlayer and agentCount when agents empty", async () => {
+    const action = { id: "noop", actor: "player", effects: [] };
+    const definition = makeDefinition({ actions: [action] });
+    const state = makeState();
+    const context = { playerId: 1, phase: "main", turn: 1 };
+
+    await assert.rejects(
+      () =>
+        selectAndValidateAction({
+          agents: [],
+          definition,
+          state,
+          legalActions: [action],
+          context,
+        }),
+      (err) => {
+        assert.ok(err.message.includes("currentPlayer"));
+        assert.ok(err.message.includes("agentCount"));
+        return true;
+      },
+    );
+  });
+
+  it("error includes context when agent lacks selectAction", async () => {
+    const action = { id: "noop", actor: "player", effects: [] };
+    const definition = makeDefinition({ actions: [action] });
+    const state = makeState();
+    const context = { playerId: 1, phase: "main", turn: 1 };
+
+    await assert.rejects(
+      () =>
+        selectAndValidateAction({
+          agents: [{ id: 1 }],
+          definition,
+          state,
+          legalActions: [action],
+          context,
+        }),
+      (err) => {
+        assert.ok(err.message.includes("currentPlayer"));
+        assert.ok(err.message.includes("selectAction"));
+        return true;
+      },
+    );
+  });
+
   it("handles agent returning { actionId, args } format", async () => {
     const action = {
       id: "attack",
@@ -198,16 +255,124 @@ describe("selectAndValidateAction", () => {
       },
     };
 
-    await assert.rejects(
-      () =>
-        selectAndValidateAction({
-          agents: [agent],
-          definition,
-          state,
-          legalActions: [action],
-          context,
-        }),
-      /invalid action/i,
-    );
+    // With pre-filtering, the action should still be offered (effects are empty so bounds pass).
+    // The arg-not-in-domain failure triggers retry, which exhausts remaining and returns null.
+    const result = await selectAndValidateAction({
+      agents: [agent],
+      definition,
+      state,
+      legalActions: [action],
+      context,
+    });
+    assert.equal(result, null);
+  });
+
+  it("returns null when all legal actions fail bounds", async () => {
+    const boundsViolatingAction = {
+      id: "overshoot",
+      actor: "player",
+      effects: [{ kind: "set", target: { kind: "var", id: "score" }, value: 200 }],
+    };
+    const definition = makeDefinition({ actions: [boundsViolatingAction] });
+    // Add variable with bounds so the action violates them
+    definition.state.variables = [
+      { id: "score", scope: "global", type: { kind: "int", min: 0, max: 100 }, initial: 0 },
+    ];
+    const state = makeState();
+    state.variables = { global: { score: 0 }, perPlayer: { 1: {}, 2: {} } };
+    const context = { playerId: 1, phase: "main", turn: 1 };
+    const agent = {
+      selectAction() {
+        return { actionId: "overshoot" };
+      },
+    };
+
+    const result = await selectAndValidateAction({
+      agents: [agent],
+      definition,
+      state,
+      legalActions: [boundsViolatingAction],
+      context,
+    });
+    assert.equal(result, null);
+  });
+
+  it("retries with remaining actions when agent picks bounds-failing action", async () => {
+    const goodAction = {
+      id: "safe",
+      actor: "player",
+      effects: [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
+    };
+    const badAction = {
+      id: "overshoot",
+      actor: "player",
+      effects: [{ kind: "set", target: { kind: "var", id: "score" }, value: 200 }],
+    };
+    const definition = makeDefinition({ actions: [goodAction, badAction] });
+    definition.state.variables = [
+      { id: "score", scope: "global", type: { kind: "int", min: 0, max: 100 }, initial: 0 },
+    ];
+    const state = makeState();
+    state.variables = { global: { score: 0 }, perPlayer: { 1: {}, 2: {} } };
+    const context = { playerId: 1, phase: "main", turn: 1 };
+
+    // Pre-filtering removes "overshoot", so agent only sees "safe"
+    let receivedActions;
+    const agent = {
+      selectAction(input) {
+        receivedActions = input.legalActions.map((a) => a.id);
+        return { actionId: "safe" };
+      },
+    };
+
+    const result = await selectAndValidateAction({
+      agents: [agent],
+      definition,
+      state,
+      legalActions: [goodAction, badAction],
+      context,
+    });
+    assert.notEqual(result, null);
+    assert.equal(result.action.id, "safe");
+    assert.ok(!receivedActions.includes("overshoot"), "agent should not see bounds-violating action");
+    assert.ok(receivedActions.includes("safe"), "agent should see bounds-compliant action");
+  });
+
+  it("agent receives only bounds-compliant actions", async () => {
+    const goodAction = {
+      id: "heal",
+      actor: "player",
+      effects: [{ kind: "inc", target: { kind: "var", id: "score" }, amount: 1 }],
+    };
+    const badAction = {
+      id: "overshoot",
+      actor: "player",
+      effects: [{ kind: "set", target: { kind: "var", id: "score" }, value: 9999 }],
+    };
+    const definition = makeDefinition({ actions: [goodAction, badAction] });
+    definition.state.variables = [
+      { id: "score", scope: "global", type: { kind: "int", min: 0, max: 100 }, initial: 50 },
+    ];
+    const state = makeState();
+    state.variables = { global: { score: 50 }, perPlayer: { 1: {}, 2: {} } };
+    const context = { playerId: 1, phase: "main", turn: 1 };
+
+    let agentReceivedIds;
+    const agent = {
+      selectAction(input) {
+        agentReceivedIds = input.legalActions.map((a) => a.id);
+        return { actionId: "heal" };
+      },
+    };
+
+    await selectAndValidateAction({
+      agents: [agent],
+      definition,
+      state,
+      legalActions: [goodAction, badAction],
+      context,
+    });
+
+    assert.deepEqual(agentReceivedIds, ["heal"]);
   });
 });

@@ -96,7 +96,7 @@ export async function runSimultaneousLoop({
         break;
       }
 
-      const { action, args } = await selectAndValidateAction({
+      const selectionResult = await selectAndValidateAction({
         agents,
         definition,
         state,
@@ -104,6 +104,11 @@ export async function runSimultaneousLoop({
         context,
         rng,
       });
+      if (selectionResult == null) {
+        aborted = true;
+        break;
+      }
+      const { action, args } = selectionResult;
       planned.push({
         playerId, action, args, legalActionCount,
         decisionSpaceRaw: decisionSpace.decisionSpaceRaw,

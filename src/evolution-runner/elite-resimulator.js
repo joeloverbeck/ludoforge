@@ -22,7 +22,7 @@ export async function extractEliteTrajectories(elites, options) {
 
     const agents = [];
     for (let p = 0; p < playerCount; p += 1) {
-      agents.push({ playerId: p, policy: createRandomPolicy() });
+      agents.push(createRandomPolicy());
     }
 
     const rngSeed = ((seed + eliteIndex) >>> 0) % (2 ** 32);

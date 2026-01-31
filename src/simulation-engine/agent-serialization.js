@@ -28,7 +28,7 @@ function materializeAgent(agent) {
 }
 
 export function normalizeAgents(agents = []) {
-  return agents.map((agent) => {
+  return agents.map((agent, index) => {
     if (agent && typeof agent.selectAction === "function") {
       return agent;
     }
@@ -42,6 +42,9 @@ export function normalizeAgents(agents = []) {
       }
       return controller;
     }
-    return agent;
+    throw new Error(
+      `Invalid agent at index ${index}: expected object with selectAction() ` +
+      `or AgentDescriptor { kind }, got ${JSON.stringify(agent)}`
+    );
   });
 }

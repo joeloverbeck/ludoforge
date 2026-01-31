@@ -134,42 +134,36 @@ describe("createEvaluator", () => {
     assert.ok(factoryCalled);
   });
 
+  it("returns degraded result when engine creation fails (agentFactory returns [])", async () => {
+    const { evaluator } = createEvaluator({
+      simulationRuns: 1,
+      agentFactory() {
+        return [];
+      },
+    });
+    const result = await evaluator(makeGenome());
+    assert.equal(result.fitness, null);
+    assert.equal(result.descriptors, null);
+    assert.equal(result.diagnostics.simulationError, true);
+    assert.equal(typeof result.diagnostics.error, "string");
+  });
+
   it("returns degraded result when simulation throws", async () => {
     // Create a game definition that will cause the simulation to throw.
-    // A dec-at-zero action with boundsMode "reject" should cause a bounds error.
-    const decAtZeroGame = {
+    // A game with no actions and noLegalActions policy "error" triggers immediately.
+    const noActionsGame = {
       version: "1.0",
       players: { count: 2 },
-      state: {
-        variables: [
-          { id: "v", scope: "global", type: { kind: "int", min: 0, max: 10 }, initial: 0 },
-        ],
+      state: { variables: [] },
+      actions: [],
+      turn: {
+        scheduler: "round_robin",
+        noLegalActions: { policy: "error", reason: "no-legal-actions" },
       },
-      actions: [
-        {
-          id: "dec_v",
-          actor: "player",
-          effects: [{ kind: "dec", target: { kind: "var", id: "v" }, amount: 1 }],
-        },
-      ],
-      turn: { scheduler: "round_robin" },
-      termination: {
-        conditions: [
-          {
-            condition: {
-              kind: "cmp",
-              op: ">=",
-              left: { kind: "ref", ref: { kind: "var", id: "v" } },
-              right: { kind: "value", value: 10 },
-            },
-            outcome: { type: "win", players: "active" },
-          },
-        ],
-        maxTurns: 50,
-      },
+      termination: { conditions: [], maxTurns: 50 },
     };
     const { evaluator } = createEvaluator({ simulationRuns: 1 });
-    const result = await evaluator({ id: "dec-at-zero", definition: decAtZeroGame });
+    const result = await evaluator({ id: "no-actions", definition: noActionsGame });
     assert.equal(result.fitness, null);
     assert.equal(result.descriptors, null);
     assert.equal(result.diagnostics.simulationError, true);

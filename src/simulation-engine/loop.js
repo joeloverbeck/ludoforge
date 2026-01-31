@@ -120,7 +120,26 @@ async function runSimulationLoop(config) {
       continue;
     }
 
-    const { action, args } = await selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
+    const selectionResult = await selectAndValidateAction({ agents, definition, state, legalActions, context, rng });
+    if (selectionResult == null) {
+      const noLegalResult = handleNoLegalActions({
+        config,
+        definition,
+        state,
+        trajectory,
+        events,
+        tracker,
+        maxTurns,
+        stepsTaken,
+        stepControl: config.stepControl,
+      });
+      if (noLegalResult.action === "return") {
+        return noLegalResult.result;
+      }
+      stepsTaken = noLegalResult.stepsTaken;
+      continue;
+    }
+    const { action, args } = selectionResult;
 
     executeActionStep({
       definition, state, action, context, legalActionCount,

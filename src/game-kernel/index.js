@@ -1,5 +1,5 @@
 export { allocateTokenId, createInitialState } from "./state.js";
-export { isActionLegal, listLegalActions, validateActionChoice } from "./actions.js";
+export { isActionLegal, listLegalActions, validateActionChoice, filterBoundsCompliant } from "./actions.js";
 export { advanceTurnPhase } from "./scheduler.js";
 export { applyTriggers } from "./triggers.js";
 export { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";

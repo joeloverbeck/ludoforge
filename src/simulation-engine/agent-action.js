@@ -3,7 +3,7 @@
  * @module simulation-engine/agent-action
  */
 
-import { validateActionChoice, resolveParamDomains, buildVariableIndex } from "../game-kernel/index.js";
+import { validateActionChoice, resolveParamDomains, buildVariableIndex, filterBoundsCompliant } from "../game-kernel/index.js";
 
 /**
  * Resolve the agent for the current player.
@@ -16,6 +16,9 @@ import { validateActionChoice, resolveParamDomains, buildVariableIndex } from ".
  * @returns {object|undefined}
  */
 export function resolveAgent(agents, state) {
+  if (!agents || agents.length === 0) {
+    return undefined;
+  }
   const playerId = state.turn.currentPlayer;
   const agentById = agents.find((agent) => agent.id === playerId);
   if (agentById) {
@@ -56,22 +59,44 @@ export function buildLegalMoves(definition, state, legalActions, context) {
  * Select an action via the agent and validate it against legal actions
  * and the game kernel's action validator.
  *
+ * Returns null when all legal actions fail bounds checking (no valid
+ * actions available). Callers should handle null by delegating to
+ * handleNoLegalActions or equivalent.
+ *
  * @param {{ agents: object[], definition: object, state: object, legalActions: object[], context: object, rng: object|undefined }} opts
- * @returns {{ action: object, args: Record<string, any> }} The validated action and its args.
- * @throws {Error} If no agent is available, the selection is unknown, illegal, or invalid.
+ * @returns {Promise<{ action: object, args: Record<string, any> } | null>} The validated action and its args, or null if none pass bounds.
+ * @throws {Error} If no agent is available, the selection is unknown, or illegal.
  */
 export async function selectAndValidateAction({ agents, definition, state, legalActions, context, rng }) {
   const agent = resolveAgent(agents, state);
   if (!agent || typeof agent.selectAction !== "function") {
-    throw new Error("No agent available to select an action.");
+    const currentPlayer = state.turn.currentPlayer;
+    const agentCount = agents ? agents.length : 0;
+    const agentIds = agents ? agents.map((a) => a?.id).filter(Boolean) : [];
+    const agentRoles = agents ? agents.map((a) => a?.role).filter(Boolean) : [];
+    const stateAgentIds = state.agents ? state.agents.map((a) => a?.id) : [];
+    const stateAgentRoles = state.agents ? state.agents.map((a) => a?.role).filter(Boolean) : [];
+    const resolved = agent ? `object without selectAction (keys: ${Object.keys(agent).join(", ")})` : "undefined";
+    throw new Error(
+      `No agent available to select an action. ` +
+      `currentPlayer=${currentPlayer}, agentCount=${agentCount}, ` +
+      `agentIds=[${agentIds}], agentRoles=[${agentRoles}], ` +
+      `stateAgentIds=[${stateAgentIds}], stateAgentRoles=[${stateAgentRoles}], ` +
+      `resolveAgent returned: ${resolved}`
+    );
   }
 
-  const legalMoves = buildLegalMoves(definition, state, legalActions, context);
+  const boundsCompliant = filterBoundsCompliant(definition, state, legalActions, context);
+  if (boundsCompliant.length === 0) {
+    return null;
+  }
+
+  const legalMoves = buildLegalMoves(definition, state, boundsCompliant, context);
 
   const selection = await agent.selectAction({
     definition,
     state,
-    legalActions,
+    legalActions: boundsCompliant,
     legalMoves,
     context,
     rng,
@@ -86,7 +111,7 @@ export async function selectAndValidateAction({ agents, definition, state, legal
   if (!action) {
     throw new Error("Agent selected an unknown action.");
   }
-  const isLegal = legalActions.some((candidate) => candidate.id === action.id);
+  const isLegal = boundsCompliant.some((candidate) => candidate.id === action.id);
   if (!isLegal) {
     throw new Error(`Agent selected illegal action: ${action.id}`);
   }
@@ -100,7 +125,12 @@ export async function selectAndValidateAction({ agents, definition, state, legal
     hasArgs ? { args } : {},
   );
   if (!validation.ok) {
-    throw new Error(`Agent selected invalid action: ${validation.reason ?? "unknown"}`);
+    // Retry: remove the failing action and try again with remaining
+    const remaining = boundsCompliant.filter((candidate) => candidate.id !== action.id);
+    if (remaining.length > 0) {
+      return selectAndValidateAction({ agents, definition, state, legalActions: remaining, context, rng });
+    }
+    return null;
   }
   return { action, args };
 }

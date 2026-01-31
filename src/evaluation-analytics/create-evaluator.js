@@ -70,12 +70,10 @@ export function createEvaluator(options = {}) {
       ...simulationConfig,
     });
 
-    // Step 3: Create simulation engine
-    const engine = createSimulationEngine(resolvedConfig);
-
-    // Step 4: Run N simulations
+    // Step 3: Create simulation engine + Step 4: Run N simulations
     let results;
     try {
+      const engine = createSimulationEngine(resolvedConfig);
       results = await engine.runBatch(simulationRuns);
     } catch (err) {
       return {

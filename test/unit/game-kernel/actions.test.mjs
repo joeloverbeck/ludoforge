@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createInitialState } from "../../../src/game-kernel/state.js";
-import { isActionLegal, listLegalActions, validateActionChoice } from "../../../src/game-kernel/actions.js";
+import { isActionLegal, listLegalActions, validateActionChoice, filterBoundsCompliant } from "../../../src/game-kernel/actions.js";
 import { applyTokenSpawn } from "../../../src/game-kernel/token-effects.js";
 
 const baseDefinition = {
@@ -333,6 +333,78 @@ describe("validateActionChoice with args", () => {
     // No args passed — skips arg validation
     const result = validateActionChoice(
       paramDefinition, state, "attack", { playerId: 1 }
+    );
+    assert.equal(result.ok, true);
+  });
+});
+
+describe("filterBoundsCompliant", () => {
+  it("removes actions whose effects exceed bounds", () => {
+    const state = createInitialState(baseDefinition);
+    const context = { playerId: 1, phase: "main" };
+    const legalActions = listLegalActions(baseDefinition, state, context);
+    const compliant = filterBoundsCompliant(baseDefinition, state, legalActions, context);
+    const ids = compliant.map((a) => a.id);
+    assert.ok(ids.includes("heal"), "heal should pass bounds");
+    assert.ok(!ids.includes("overheal"), "overheal should fail bounds (health 9 + 5 > 10)");
+    assert.ok(!ids.includes("set-score"), "set-score should fail bounds (set 20 > max 10)");
+    assert.ok(ids.includes("role-action"), "role-action should pass bounds");
+  });
+
+  it("returns empty array when all actions fail bounds", () => {
+    const state = createInitialState(baseDefinition);
+    // Only pass the actions that violate bounds
+    const overheal = baseDefinition.actions.find((a) => a.id === "overheal");
+    const setScore = baseDefinition.actions.find((a) => a.id === "set-score");
+    const context = { playerId: 1, phase: "main" };
+    const compliant = filterBoundsCompliant(baseDefinition, state, [overheal, setScore], context);
+    assert.equal(compliant.length, 0);
+  });
+
+  it("returns all actions when none violate bounds", () => {
+    const state = createInitialState(baseDefinition);
+    const heal = baseDefinition.actions.find((a) => a.id === "heal");
+    const context = { playerId: 1, phase: "main" };
+    const compliant = filterBoundsCompliant(baseDefinition, state, [heal], context);
+    assert.equal(compliant.length, 1);
+    assert.equal(compliant[0].id, "heal");
+  });
+});
+
+describe("validateActionChoice enriched bounds errors", () => {
+  it("includes actionId, effectKind, and targetId on bounds failure", () => {
+    const state = createInitialState(baseDefinition);
+    const result = validateActionChoice(baseDefinition, state, "overheal", {
+      playerId: 1,
+      phase: "main",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "bounds");
+    assert.equal(result.actionId, "overheal");
+    assert.equal(result.effectKind, "inc");
+    assert.equal(result.targetId, "health");
+  });
+
+  it("includes targetId for set-score bounds failure", () => {
+    const state = createInitialState(baseDefinition);
+    const result = validateActionChoice(baseDefinition, state, "set-score", {
+      playerId: 1,
+      phase: "main",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.actionId, "set-score");
+    assert.equal(result.effectKind, "set");
+    assert.equal(result.targetId, "score");
+  });
+});
+
+describe("checkActionBounds uses explicit args", () => {
+  it("uses provided args instead of autoBindParams for parameterized actions", () => {
+    const state = createInitialState(paramDefinition);
+    const t1 = spawnUnit(state);
+    // attack with explicit arg should pass bounds (effects are just inc score by 1, score max is 100)
+    const result = validateActionChoice(
+      paramDefinition, state, "attack", { playerId: 1 }, { args: { t: t1 } }
     );
     assert.equal(result.ok, true);
   });

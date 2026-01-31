@@ -103,13 +103,15 @@ export function listLegalActions(definition, state, context = {}) {
   return definition.actions.filter((action) => isActionLegal(definition, state, action, context));
 }
 
-function checkActionBounds(definition, state, action, context, boundsMode) {
+function checkActionBounds(definition, state, action, context, boundsMode, explicitBindings) {
   const variableIndex = buildVariableIndex(definition);
   const workingState = structuredClone(state);
-  const bindings = autoBindParams(action.params ?? [], workingState, {
-    ...context,
-    variableIndex,
-  });
+  const bindings = explicitBindings
+    ? { ...(context.bindings ?? {}), ...explicitBindings }
+    : autoBindParams(action.params ?? [], workingState, {
+        ...context,
+        variableIndex,
+      });
   const workingContext = {
     ...context,
     state: workingState,
@@ -124,7 +126,7 @@ function checkActionBounds(definition, state, action, context, boundsMode) {
   for (const effect of effects) {
     const result = applyEffect(workingState, effect, workingContext, { boundsMode });
     if (!result.ok) {
-      return { ok: false, reason: result.reason };
+      return { ok: false, reason: result.reason, effectKind: effect.kind, targetId: effect.target?.id ?? null };
     }
     if (result.clamped) {
       clamped = true;
@@ -132,6 +134,22 @@ function checkActionBounds(definition, state, action, context, boundsMode) {
   }
 
   return { ok: true, clamped };
+}
+
+/**
+ * Filter legal actions to only those whose effects pass bounds checking.
+ *
+ * @param {object} definition
+ * @param {object} state
+ * @param {object[]} legalActions
+ * @param {object} context
+ * @returns {object[]}
+ */
+export function filterBoundsCompliant(definition, state, legalActions, context) {
+  return legalActions.filter((action) => {
+    const result = checkActionBounds(definition, state, action, context, "reject");
+    return result.ok;
+  });
 }
 
 /**
@@ -206,9 +224,9 @@ export function validateActionChoice(definition, state, actionId, context = {}, 
   }
 
   const boundsMode = options.bounds ?? DEFAULT_BOUNDS_MODE;
-  const boundsResult = checkActionBounds(definition, state, action, context, boundsMode);
+  const boundsResult = checkActionBounds(definition, state, action, context, boundsMode, args);
   if (!boundsResult.ok) {
-    return boundsResult;
+    return { ok: false, reason: boundsResult.reason, actionId: action.id, effectKind: boundsResult.effectKind, targetId: boundsResult.targetId };
   }
 
   return { ok: true, clamped: boundsResult.clamped };

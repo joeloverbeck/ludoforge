@@ -155,36 +155,18 @@ describe("runSuites", () => {
   });
 
   it("captures errors gracefully per suite", async () => {
-    // Definition that will cause simulation to fail
+    // Definition that will cause simulation to fail:
+    // no actions + noLegalActions policy "error" triggers immediately.
     const badDef = {
       version: "1.0",
       players: { count: 2 },
-      state: {
-        variables: [
-          { id: "v", scope: "global", type: { kind: "int", min: 0, max: 10 }, initial: 0 },
-        ],
+      state: { variables: [] },
+      actions: [],
+      turn: {
+        scheduler: "round_robin",
+        noLegalActions: { policy: "error", reason: "no-legal-actions" },
       },
-      actions: [
-        {
-          id: "dec_v",
-          actor: "player",
-          effects: [{ kind: "dec", target: { kind: "var", id: "v" }, amount: 1 }],
-        },
-      ],
-      turn: { scheduler: "round_robin" },
-      termination: {
-        conditions: [
-          {
-            condition: {
-              kind: "cmp", op: ">=",
-              left: { kind: "ref", ref: { kind: "var", id: "v" } },
-              right: { kind: "value", value: 10 },
-            },
-            outcome: { type: "win", players: "active" },
-          },
-        ],
-        maxTurns: 50,
-      },
+      termination: { conditions: [], maxTurns: 50 },
     };
 
     const suites = [
