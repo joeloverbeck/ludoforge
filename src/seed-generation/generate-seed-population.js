@@ -39,7 +39,8 @@ export function hasSpecialBin(nicheId) {
  *   evaluator: (genome: { id: string, definition: object }) => { descriptors: Record<string, number> },
  *   mapElitesConfig: { descriptors: Array<{ id: string, min: number, max: number, bins: number }> },
  *   coverageStrategy?: string,
- *   fallback?: { strategy: string }
+ *   fallback?: { strategy: string },
+ *   specialOnly?: { policy?: string, maxFraction?: number, maxCount?: number, countTowardCoverage?: boolean }
  * }} options
  * @returns {{ genomes: Array<{ id: string, definition: object }>, report: object }}
  */
@@ -52,7 +53,12 @@ export async function generateSeedPopulation({
   mapElitesConfig,
   coverageStrategy = "random",
   fallback,
+  specialOnly,
 }) {
+  const specialOnlyPolicy = specialOnly?.policy ?? "reject";
+  const specialOnlyMaxFraction = specialOnly?.maxFraction ?? 0.10;
+  const specialOnlyMaxCount = specialOnly?.maxCount ?? Infinity;
+  const specialOnlyCountTowardCoverage = specialOnly?.countTowardCoverage ?? false;
   const rng = createSeededRng(rngSeed);
   const totalBinCount = computeTotalBinCount(mapElitesConfig.descriptors);
   const targetPerBin = computeTargetPerBin(
@@ -70,6 +76,8 @@ export async function generateSeedPopulation({
   const rejectedByReason = {};
   let attempts = 0;
   let inFallback = false;
+  let acceptedSpecialOnly = 0;
+  let specialOnlyCapHit = false;
   let coverageRejectStreak = 0;
   const streakLimit = Math.max(populationSize * 5, 50);
 
@@ -140,11 +148,35 @@ export async function generateSeedPopulation({
     );
     const nicheId = getNicheId(mapElitesConfig, coordinates);
 
-    // Special-bin niches are rejected but tracked separately.
+    // Special-bin niches are handled by policy (reject/cap/allow).
     if (hasSpecialBin(nicheId)) {
-      rejectedByReason["special-bin"] =
-        (rejectedByReason["special-bin"] ?? 0) + 1;
       specialBinCounts.set(nicheId, (specialBinCounts.get(nicheId) ?? 0) + 1);
+
+      if (specialOnlyPolicy === "reject") {
+        rejectedByReason["special-only-bin"] =
+          (rejectedByReason["special-only-bin"] ?? 0) + 1;
+        continue;
+      }
+
+      if (specialOnlyPolicy === "cap") {
+        const maxByFraction = Math.floor(populationSize * specialOnlyMaxFraction);
+        const effectiveMax = Math.min(maxByFraction, specialOnlyMaxCount);
+        if (acceptedSpecialOnly >= effectiveMax) {
+          rejectedByReason["special-only-cap"] =
+            (rejectedByReason["special-only-cap"] ?? 0) + 1;
+          specialOnlyCapHit = true;
+          continue;
+        }
+      }
+
+      // policy === "allow" or "cap" with room remaining
+      seenIds.add(id);
+      genomes.push(genome);
+      acceptedSpecialOnly += 1;
+
+      if (specialOnlyCountTowardCoverage) {
+        binCounts.set(nicheId, (binCounts.get(nicheId) ?? 0) + 1);
+      }
       continue;
     }
 
@@ -202,6 +234,8 @@ export async function generateSeedPopulation({
       rejectedByReason,
       binCounts: binCountsObject,
       specialBinCounts: specialBinCountsObject,
+      acceptedSpecialOnly,
+      specialOnlyCapHit,
       coverageTargetSummary: {
         strategy: coverageStrategy,
         targetPerBin,

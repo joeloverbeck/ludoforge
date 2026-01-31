@@ -39,6 +39,7 @@ async function resolveGenerate({ seeding, mapElitesConfig, rngSeed, evaluator })
     mapElitesConfig,
     coverageStrategy: generateConfig.coverage.strategy,
     fallback: generateConfig.coverage.fallback,
+    specialOnly: generateConfig.coverage.specialOnly,
   });
 
   return {
@@ -98,6 +99,7 @@ async function resolveMixed({ seeding, mapElitesConfig, rngSeed, evaluator }) {
       mapElitesConfig,
       coverageStrategy: generateConfig.coverage.strategy,
       fallback: generateConfig.coverage.fallback,
+      specialOnly: generateConfig.coverage.specialOnly,
     });
     generatedGenomes = genResult.genomes;
     generateReport = genResult.report;

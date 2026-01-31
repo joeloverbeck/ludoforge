@@ -267,8 +267,10 @@ Seeding mode is configured via the `seeding` block in the runner config
 ### Artifacts
 
 - `seed-report.json`: persisted per run, contains generation statistics (`attempts`,
-  `accepted`, `rejectedByReason`), bin distribution (`binCounts`), coverage target
-  summary, and folder file list (if applicable).
+  `accepted`, `rejectedByReason`, `acceptedSpecialOnly`, `specialOnlyCapHit`),
+  bin distribution (`binCounts`, `specialBinCounts`), coverage target summary,
+  and folder file list (if applicable). Seeds that bin into special MAP-Elites bins
+  are governed by the `specialOnly` policy in `seeding.generate.coverage`.
 
 ### Relevant Code
 

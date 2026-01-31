@@ -43,6 +43,8 @@ describe("generateSeedPopulation", () => {
     assert.equal(typeof result.report.binCounts, "object");
     assert.equal(typeof result.report.specialBinCounts, "object");
     assert.equal(typeof result.report.coverageTargetSummary, "object");
+    assert.equal(typeof result.report.acceptedSpecialOnly, "number");
+    assert.equal(typeof result.report.specialOnlyCapHit, "boolean");
   });
 
   it("genomes have id (string) and definition (object)", async () => {
@@ -229,8 +231,8 @@ describe("generateSeedPopulation", () => {
     });
   });
 
-  describe("special bin exclusion from coverage", () => {
-    it("rejects special-bin genomes and counts them as special-bin", async () => {
+  describe("special-bin policy (default=reject)", () => {
+    it("rejects special-bin genomes with reason 'special-only-bin'", async () => {
       let callCount = 0;
       const evaluator = () => {
         callCount++;
@@ -247,8 +249,9 @@ describe("generateSeedPopulation", () => {
         coverageStrategy: "random",
       });
       assert.equal(result.genomes.length, 2);
-      assert.equal(result.report.rejectedByReason["special-bin"], 3);
+      assert.equal(result.report.rejectedByReason["special-only-bin"], 3);
       assert.deepStrictEqual(result.report.specialBinCounts, { "axis:unknown": 3 });
+      assert.equal(result.report.acceptedSpecialOnly, 0);
     });
 
     it("special-bin genomes appear in specialBinCounts, not binCounts", async () => {
@@ -386,6 +389,255 @@ describe("generateSeedPopulation", () => {
         (result.report.rejectedByReason["bin-full"] ?? 0) > 0,
         "should have bin-full rejections before fallback"
       );
+    });
+  });
+
+  describe("special-bin policy=allow", () => {
+    it("accepts all special-bin seeds", async () => {
+      // All evaluations return null → all bin to special bins
+      const allSpecialEvaluator = () => ({ descriptors: { axis: null } });
+      const result = await generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 4,
+        maxAttempts: 200,
+        evaluator: allSpecialEvaluator,
+        coverageStrategy: "random",
+        specialOnly: { policy: "allow" },
+      });
+      assert.equal(result.genomes.length, 4);
+      assert.equal(result.report.acceptedSpecialOnly, 4);
+      assert.equal(result.report.rejectedByReason["special-only-bin"], undefined);
+      assert.equal(result.report.rejectedByReason["special-only-cap"], undefined);
+      assert.equal(result.report.specialOnlyCapHit, false);
+    });
+
+    it("countTowardCoverage=false: special-bin seeds do not appear in binCounts", async () => {
+      const allSpecialEvaluator = () => ({ descriptors: { axis: null } });
+      const result = await generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 200,
+        evaluator: allSpecialEvaluator,
+        coverageStrategy: "random",
+        specialOnly: { policy: "allow", countTowardCoverage: false },
+      });
+      assert.equal(result.genomes.length, 3);
+      assert.equal(result.report.acceptedSpecialOnly, 3);
+      // binCounts should be empty since specials don't count toward coverage
+      assert.deepStrictEqual(result.report.binCounts, {});
+    });
+
+    it("countTowardCoverage=true: special-bin seeds appear in binCounts", async () => {
+      const allSpecialEvaluator = () => ({ descriptors: { axis: null } });
+      const result = await generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 3,
+        maxAttempts: 200,
+        evaluator: allSpecialEvaluator,
+        coverageStrategy: "random",
+        specialOnly: { policy: "allow", countTowardCoverage: true },
+      });
+      assert.equal(result.genomes.length, 3);
+      assert.equal(result.report.acceptedSpecialOnly, 3);
+      // binCounts should contain the special niche
+      const binTotal = Object.values(result.report.binCounts).reduce(
+        (sum, c) => sum + c,
+        0
+      );
+      assert.equal(binTotal, 3);
+    });
+  });
+
+  describe("special-bin policy=reject", () => {
+    it("rejects all special-bin seeds (explicit reject)", async () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 3) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const result = await generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 2,
+        maxAttempts: 100,
+        evaluator,
+        coverageStrategy: "random",
+        specialOnly: { policy: "reject" },
+      });
+      assert.equal(result.genomes.length, 2);
+      assert.equal(result.report.rejectedByReason["special-only-bin"], 3);
+      assert.equal(result.report.acceptedSpecialOnly, 0);
+    });
+  });
+
+  describe("special-bin policy=cap", () => {
+    it("enforces maxFraction", async () => {
+      let callCount = 0;
+      // First 20 calls return special (null), rest return in-range
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 20) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const result = await generateSeedPopulation({
+        populationSize: 10,
+        maxAttempts: 500,
+        rngSeed: 42,
+        evaluator,
+        mapElitesConfig,
+        coverageStrategy: "random",
+        specialOnly: { policy: "cap", maxFraction: 0.20 },
+      });
+      assert.equal(result.genomes.length, 10);
+      // maxFraction=0.20 of populationSize=10 → floor(10*0.20)=2
+      assert.ok(
+        result.report.acceptedSpecialOnly <= 2,
+        `acceptedSpecialOnly (${result.report.acceptedSpecialOnly}) should be <= 2`
+      );
+    });
+
+    it("enforces maxCount", async () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 20) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const result = await generateSeedPopulation({
+        populationSize: 10,
+        maxAttempts: 500,
+        rngSeed: 42,
+        evaluator,
+        mapElitesConfig,
+        coverageStrategy: "random",
+        specialOnly: { policy: "cap", maxFraction: 1.0, maxCount: 3 },
+      });
+      assert.equal(result.genomes.length, 10);
+      assert.ok(
+        result.report.acceptedSpecialOnly <= 3,
+        `acceptedSpecialOnly (${result.report.acceptedSpecialOnly}) should be <= 3`
+      );
+    });
+
+    it("cap uses min(maxFraction*size, maxCount)", async () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 20) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      // maxFraction=0.10 of 10 → floor(1) = 1, maxCount=5 → effective cap = min(1,5) = 1
+      const result = await generateSeedPopulation({
+        populationSize: 10,
+        maxAttempts: 500,
+        rngSeed: 42,
+        evaluator,
+        mapElitesConfig,
+        coverageStrategy: "random",
+        specialOnly: { policy: "cap", maxFraction: 0.10, maxCount: 5 },
+      });
+      assert.equal(result.genomes.length, 10);
+      assert.ok(
+        result.report.acceptedSpecialOnly <= 1,
+        `acceptedSpecialOnly (${result.report.acceptedSpecialOnly}) should be <= 1`
+      );
+    });
+
+    it("specialOnlyCapHit reported when cap reached", async () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 20) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const result = await generateSeedPopulation({
+        populationSize: 10,
+        maxAttempts: 500,
+        rngSeed: 42,
+        evaluator,
+        mapElitesConfig,
+        coverageStrategy: "random",
+        specialOnly: { policy: "cap", maxFraction: 0.10, maxCount: 1 },
+      });
+      assert.equal(result.genomes.length, 10);
+      assert.equal(result.report.specialOnlyCapHit, true);
+      assert.ok(
+        (result.report.rejectedByReason["special-only-cap"] ?? 0) > 0,
+        "should have special-only-cap rejections"
+      );
+    });
+  });
+
+  describe("special-bin policy determinism", () => {
+    it("same rngSeed produces identical results with allow policy", async () => {
+      let callCountA = 0;
+      const evaluatorA = () => {
+        callCountA++;
+        if (callCountA % 3 === 0) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      let callCountB = 0;
+      const evaluatorB = () => {
+        callCountB++;
+        if (callCountB % 3 === 0) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const opts = {
+        populationSize: 4,
+        maxAttempts: 200,
+        rngSeed: 42,
+        mapElitesConfig,
+        coverageStrategy: "random",
+        specialOnly: { policy: "allow" },
+      };
+      const a = await generateSeedPopulation({ ...opts, evaluator: evaluatorA });
+      const b = await generateSeedPopulation({ ...opts, evaluator: evaluatorB });
+      assert.deepStrictEqual(
+        a.genomes.map((g) => g.id),
+        b.genomes.map((g) => g.id)
+      );
+      assert.deepStrictEqual(a.report, b.report);
+    });
+  });
+
+  describe("backward compatibility", () => {
+    it("no specialOnly param defaults to reject (previous behavior)", async () => {
+      let callCount = 0;
+      const evaluator = () => {
+        callCount++;
+        if (callCount <= 3) {
+          return { descriptors: { axis: null } };
+        }
+        return { descriptors: { axis: 0.5 } };
+      };
+      const result = await generateSeedPopulation({
+        ...baseOptions,
+        populationSize: 2,
+        maxAttempts: 100,
+        evaluator,
+        coverageStrategy: "random",
+        // no specialOnly parameter
+      });
+      assert.equal(result.genomes.length, 2);
+      // Should reject special-bin seeds as before
+      assert.equal(result.report.rejectedByReason["special-only-bin"], 3);
+      assert.equal(result.report.acceptedSpecialOnly, 0);
+      // Old key should not exist
+      assert.equal(result.report.rejectedByReason["special-bin"], undefined);
     });
   });
 
