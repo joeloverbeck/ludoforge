@@ -170,34 +170,4 @@ describe("preference-model-modules integration", () => {
     assert.equal(next.ensemble.size, 2);
   });
 
-  it("legacy model format without models array handled correctly", () => {
-    // Simulate a legacy state that has weights/bias at top level but no models array
-    const legacyState = {
-      version: 1,
-      sampleCount: 3,
-      weights: { agency: 0.5, variety: -0.2 },
-      bias: 0.1,
-      history: [],
-      learningRate: 0.1,
-      maxHistory: 100,
-      comparisonWeight: 1,
-      ratingWeight: 0.25,
-      weightDecay: 0,
-      maxWeightAbs: 5,
-      maxBiasAbs: 5,
-    };
-    const feedback = {
-      type: "comparison",
-      preferred: "a",
-      featureA: { agency: 1 },
-      featureB: { agency: 0 },
-    };
-
-    const next = updatePreferenceModelState(legacyState, feedback, { rng: constantRng(0.5) });
-
-    assert.ok(Array.isArray(next.models));
-    assert.equal(next.models.length, 1);
-    assert.equal(next.sampleCount, 4);
-    assert.equal(next.version, 2);
-  });
 });

@@ -119,30 +119,7 @@ describe("selectAndValidateAction", () => {
     assert.deepEqual(result.args, { t: "token_2" });
   });
 
-  it("handles legacy agent returning action object", async () => {
-    const action = { id: "noop", actor: "player", effects: [] };
-    const definition = makeDefinition({ actions: [action] });
-    const state = makeState();
-    const context = { playerId: 1, phase: "main", turn: 1 };
-    const agent = {
-      selectAction({ legalActions }) {
-        return legalActions[0];
-      },
-    };
-
-    const result = await selectAndValidateAction({
-      agents: [agent],
-      definition,
-      state,
-      legalActions: [action],
-      context,
-    });
-
-    assert.equal(result.action.id, "noop");
-    assert.deepEqual(result.args, {});
-  });
-
-  it("handles legacy agent returning action id string", async () => {
+  it("rejects agent returning a plain string", async () => {
     const action = { id: "noop", actor: "player", effects: [] };
     const definition = makeDefinition({ actions: [action] });
     const state = makeState();
@@ -153,16 +130,17 @@ describe("selectAndValidateAction", () => {
       },
     };
 
-    const result = await selectAndValidateAction({
-      agents: [agent],
-      definition,
-      state,
-      legalActions: [action],
-      context,
-    });
-
-    assert.equal(result.action.id, "noop");
-    assert.deepEqual(result.args, {});
+    await assert.rejects(
+      () =>
+        selectAndValidateAction({
+          agents: [agent],
+          definition,
+          state,
+          legalActions: [action],
+          context,
+        }),
+      /Agent must return/,
+    );
   });
 
   it("passes legalMoves to agent alongside legalActions", async () => {

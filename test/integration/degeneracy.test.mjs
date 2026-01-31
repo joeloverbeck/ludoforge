@@ -96,7 +96,7 @@ function createNonTrivialDefinition() {
 function createFirstActionAgent() {
   return {
     selectAction({ legalActions }) {
-      return legalActions[0]?.id;
+      return { actionId: legalActions[0]?.id, args: {} };
     },
   };
 }
@@ -104,7 +104,7 @@ function createFirstActionAgent() {
 function createLastActionAgent() {
   return {
     selectAction({ legalActions }) {
-      return legalActions[legalActions.length - 1]?.id;
+      return { actionId: legalActions[legalActions.length - 1]?.id, args: {} };
     },
   };
 }

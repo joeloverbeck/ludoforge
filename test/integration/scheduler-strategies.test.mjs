@@ -5,7 +5,7 @@ import { createSimulationEngine } from "../../src/simulation-engine/index.js";
 function createFirstActionAgent() {
   return {
     selectAction({ legalActions }) {
-      return legalActions[0]?.id;
+      return { actionId: legalActions[0]?.id, args: {} };
     },
   };
 }

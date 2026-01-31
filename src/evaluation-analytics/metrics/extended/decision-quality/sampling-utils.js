@@ -59,7 +59,7 @@ function createForcedActionAgent(actionId, fallbackAgent) {
     selectAction(input) {
       if (!used) {
         used = true;
-        return actionId;
+        return { actionId, args: {} };
       }
       return fallbackAgent.selectAction(input);
     },

@@ -103,18 +103,6 @@ describe("fitness", () => {
       );
     });
 
-    it("ignores legacy diversity options", () => {
-      const result = computePreferenceAwareFitness({ agency: 0.5 }, {
-        compositeScore: { score: 1, components: {} },
-        diversityPressure: 0.2,
-        diversityWeight: 2,
-      });
-
-      assert.equal(
-        Object.prototype.hasOwnProperty.call(result.diagnostics.blend, "diversity"),
-        false
-      );
-    });
   });
 
   describe("uncertainty-damped fitness blending", () => {

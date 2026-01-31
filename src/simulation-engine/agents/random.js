@@ -57,7 +57,7 @@ export function createRandomPolicy() {
         return { actionId: action.id, args };
       }
 
-      return legalActions[index];
+      return { actionId: legalActions[index]?.id, args: {} };
     },
   };
 }

@@ -39,15 +39,14 @@ Config keys used by the simulation engine:
 
 Agent `selectAction` receives `{ definition, state, legalActions, legalMoves, context, rng }`:
 
-- `legalActions`: plain action objects (backward compat for custom agents).
+- `legalActions`: plain action objects.
 - `legalMoves`: enriched array of `{ action, domains }` entries. Each `domains`
   is a map from param ID to an array of valid candidate values, computed via
   `resolveParamDomains`. Agents should prefer `legalMoves` when available.
 
-Agent return format:
-- **New**: `{ actionId: string, args: Record<string, any> }` — explicit action
-  choice with param arguments.
-- **Legacy**: action object or action ID string — args default to `{}`.
+Agent return format: `{ actionId: string, args: Record<string, any> }` — explicit
+action choice with param arguments. Agents must always return this shape; any other
+format throws an error.
 
 `selectAndValidateAction` returns `{ action, args }` to the loop. When args are
 non-empty, they are validated via `validateActionChoice(definition, state, actionId,
@@ -80,18 +79,12 @@ otherwise it falls back to `configs/simulation.json`.
    param domains via `resolveParamDomains` — if any param has an empty domain,
    the action is rejected. When `options.args` is provided, chosen arg values
    are validated for domain membership, count, and uniqueness.
-8. Resolve action param bindings. When explicit choice `args` are provided
-   (non-empty object), bindings are built directly from args — each key maps
-   a param name to a concrete value (token ID, player ID, or zone ID). When
-   args are absent or empty, the engine falls back to `autoBindParams`
-   (from `selectors.js`), which uses `resolveParamDomains` to compute
-   candidate domains and picks the first matching candidate for each param.
-   Bindings are passed into
-   the effect context so effects can reference params by binding name.
-   Both baseline agents (random and greedy) return `{ actionId, args }`
-   with explicit arg choices selected from param domains. Legacy agents
-   that return a plain action object or string still work — args default
-   to `{}` and the auto-resolve fallback remains active.
+8. Resolve action param bindings. Bindings are built by merging any existing
+   context bindings with the agent's explicit `args`. Each key maps a param
+   name to a concrete value (token ID, player ID, or zone ID). Bindings are
+   passed into the effect context so effects can reference params by binding
+   name. Both baseline agents (random and greedy) return `{ actionId, args }`
+   with explicit arg choices selected from param domains.
 9. Apply action costs, then action effects (`applyEffect`). Effect dispatch
    handles variable effects (`set`/`inc`/`dec`), token lifecycle effects
    (`spawn`/`move`/`destroy`/`reveal`/`hide`), spatial movement
@@ -373,9 +366,9 @@ target selectors resolve to concrete instance IDs.
   values (token IDs, player IDs, or zone IDs). Used by `isActionLegal` for domain
   emptiness checks and by `validateActionChoice` for arg validation.
 - `autoBindParams(params, state, context)`: auto-binds params by picking the first
-  candidate from each domain (via `resolveParamDomains`). Used as a fallback when
-  no explicit args are provided. Returns a bindings object mapping param IDs to
-  concrete values (token IDs, player IDs, or zone IDs).
+  candidate from each domain (via `resolveParamDomains`). Used by `actions.js` for
+  cost/bounds pre-checks during action legality evaluation. Returns a bindings
+  object mapping param IDs to concrete values (token IDs, player IDs, or zone IDs).
 
 ### Scoped Flags (`flags.js`)
 

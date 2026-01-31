@@ -160,45 +160,7 @@ describe("applyAction", () => {
     assert.ok(state.tokens.token_1, "token_1 should remain untouched");
   });
 
-  it("auto-binds params when args are empty", () => {
-    const definition = {
-      state: { variables: [] },
-      turn: {},
-      tokenTypes: [{ id: "unit", attributes: [{ id: "hp", type: { kind: "int" }, initial: 10 }] }],
-    };
-    const state = {
-      variables: {},
-      tokens: {
-        token_1: { type: "unit", attributes: { hp: 10 } },
-        token_2: { type: "unit", attributes: { hp: 10 } },
-      },
-      zones: {
-        board: {
-          scope: "shared",
-          tokens: ["token_1", "token_2"],
-        },
-      },
-    };
-    const action = {
-      id: "attack",
-      params: [
-        { id: "t", kind: "token", domain: { selector: { zone: "board", tokenType: "unit" } } },
-      ],
-      effects: [
-        { kind: "destroy", target: { kind: "token", id: "t" } },
-      ],
-    };
-    const context = { playerId: 1 };
-
-    // Empty args — should auto-bind params (picks first match)
-    const result = applyAction(definition, state, action, context, {});
-    assert.ok(!result.costAborted);
-    // autoBindParams picks the first token in the domain (token_1)
-    assert.equal(state.tokens.token_1, undefined, "token_1 should be destroyed via auto-bind");
-    assert.ok(state.tokens.token_2, "token_2 should remain");
-  });
-
-  it("auto-binds params when args are undefined", () => {
+  it("works with no args for parameterless actions", () => {
     const definition = {
       state: { variables: [] },
       turn: {},

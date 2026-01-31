@@ -71,7 +71,7 @@ describe("state-transition", () => {
       const definition = await loadFixture("no-legal-actions-pass.json");
       const agent = {
         id: 2,
-        selectAction: () => "advance",
+        selectAction: () => ({ actionId: "advance", args: {} }),
       };
       const result = await runSimulation({ definition, agents: [agent] });
 

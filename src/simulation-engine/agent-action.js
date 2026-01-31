@@ -77,19 +77,11 @@ export async function selectAndValidateAction({ agents, definition, state, legal
     rng,
   });
 
-  let action;
-  let args;
-
-  if (selection != null && typeof selection === "object" && "actionId" in selection) {
-    action = definition.actions.find((candidate) => candidate.id === selection.actionId);
-    args = selection.args ?? {};
-  } else {
-    action =
-      typeof selection === "string"
-        ? definition.actions.find((candidate) => candidate.id === selection)
-        : selection;
-    args = {};
+  if (selection == null || typeof selection !== "object" || !("actionId" in selection)) {
+    throw new Error("Agent must return { actionId, args }.");
   }
+  const action = definition.actions.find((candidate) => candidate.id === selection.actionId);
+  const args = selection.args ?? {};
 
   if (!action) {
     throw new Error("Agent selected an unknown action.");

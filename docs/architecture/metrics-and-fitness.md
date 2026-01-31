@@ -270,8 +270,8 @@ aggregates per-model predictions:
 - `score = pMean`.
 
 When the ensemble is empty, returns `score = 0.5`, `uncertainty = 1`.
-Legacy single-model states (with `weights`/`bias` but no `models` array)
-are transparently wrapped as a single-element ensemble.
+The preference model state must contain a `models` array; states without
+one are treated as having an empty ensemble.
 
 Preference learning is comparison-first (comparisons are the primary training signal).
 

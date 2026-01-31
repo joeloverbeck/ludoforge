@@ -216,14 +216,5 @@ describe("scoring", () => {
       assert.equal(result.components.preference, 0.5);
     });
 
-    it("ignores legacy diversity argument and omits diversity component", () => {
-      const result = combineFitnessScores(0.5, 1, 0.2, {
-        allowPreference: false,
-        diversityWeight: 2,
-      });
-
-      assert.equal(result.score, 0.5);
-      assert.equal(Object.prototype.hasOwnProperty.call(result.components, "diversity"), false);
-    });
   });
 });

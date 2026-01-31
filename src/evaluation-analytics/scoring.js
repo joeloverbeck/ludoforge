@@ -145,11 +145,7 @@ function computeCompositeScore(featureVector, options = {}) {
   };
 }
 
-function combineFitnessScores(compositeScore, preferenceScore, optionsOrLegacy, maybeOptions = {}) {
-  const options =
-    optionsOrLegacy && typeof optionsOrLegacy === "object"
-      ? optionsOrLegacy
-      : maybeOptions ?? {};
+function combineFitnessScores(compositeScore, preferenceScore, options = {}) {
   const base = safeNumber(compositeScore);
   const { contribution: preferenceContribution, cap } = computePreferenceContribution(
     preferenceScore,

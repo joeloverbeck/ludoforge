@@ -80,7 +80,7 @@ function createSeatBiasDefinition() {
 const baselineAgent = createFirstActionAgent();
 const strongAgent = {
   selectAction({ legalActions }) {
-    return legalActions[legalActions.length - 1]?.id;
+    return { actionId: legalActions[legalActions.length - 1]?.id, args: {} };
   },
 };
 

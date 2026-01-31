@@ -319,7 +319,7 @@ describe("validateActionChoice with args", () => {
     assert.equal(result.reason, "invalid-arg-type");
   });
 
-  it("still works without args for parameterless actions (backwards compat)", () => {
+  it("works without args for parameterless actions", () => {
     const state = createInitialState(paramDefinition);
     const result = validateActionChoice(
       paramDefinition, state, "no-params", { playerId: 1 }
@@ -330,7 +330,7 @@ describe("validateActionChoice with args", () => {
   it("still works without args option for parameterized actions (no arg validation)", () => {
     const state = createInitialState(paramDefinition);
     spawnUnit(state);
-    // No args passed — skips arg validation (backwards compat with callers)
+    // No args passed — skips arg validation
     const result = validateActionChoice(
       paramDefinition, state, "attack", { playerId: 1 }
     );

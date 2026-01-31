@@ -130,7 +130,7 @@ function createAlternatingAgent() {
     selectAction({ legalActions }) {
       const index = callCount % legalActions.length;
       callCount += 1;
-      return legalActions[index]?.id;
+      return { actionId: legalActions[index]?.id, args: {} };
     },
   };
 }

@@ -117,7 +117,9 @@ State shape (`src/tui/state/app-reducer.js`):
 │       │   └── <ZoneDisplay> src/tui/components/zone-display.jsx
 │       │       └── <TokenBadge> src/tui/components/token-badge.jsx
 │       ├── <StatePanel>     src/tui/components/state-panel.jsx
-│       ├── Action placeholder (future ticket)
+│       ├── <ActionPanel>    src/tui/components/action-panel.jsx
+│       │   ├── <ActionList>  src/tui/components/action-list.jsx
+│       │   └── <TargetList>  src/tui/components/target-list.jsx
 │       └── <EffectLog>      src/tui/components/effect-log.jsx
 │
 └── screen: "gameover"
@@ -149,10 +151,29 @@ Keyboard controls:
 2x2 flexbox layout shell for the playing screen:
 - Top row: `<TurnHeader>` (full width)
 - Middle row: `<BoardPanel>` (left) + `<StatePanel>` (right)
-- Bottom row: Action placeholder (left) + `<EffectLog>` (right)
+- Bottom row: `<ActionPanel>` (left) + `<EffectLog>` (right)
 
 Props: `gameState`, `definition`, `playerAssignments`, `effectLog`,
-`currentPlayerId`, `isSpectator`.
+`currentPlayerId`, `isSpectator`, `isHumanTurn`, `legalActions`,
+`selectedActionIndex`, `targetOptions`, `selectedTargetIndex`, `lastAIAction`,
+`onMoveCursor`, `onConfirmAction`, `onConfirmTarget`, `onCancelTarget`.
+
+### ActionPanel (`action-panel.jsx`)
+
+Wrapper component that selects between human and AI display:
+- **Human turn**: Renders `<ActionList>` (or `<TargetList>` when picking params).
+- **AI turn**: Shows a passive display of the last AI action.
+
+### ActionList (`action-list.jsx`)
+
+Cursor-selectable list of legal actions. Uses `formatAction()` for display labels.
+Keyboard: `j`/`k`/arrows to navigate, `Enter` to confirm.
+
+### TargetList (`target-list.jsx`)
+
+Param candidate picker. Shows candidates for a single param (token, player, or zone).
+Keyboard: `j`/`k`/arrows to navigate, `Enter` to select, `Escape` to go back to
+the action list.
 
 ### BoardPanel (`board-panel.jsx`)
 
@@ -225,6 +246,9 @@ src/tui/
 │   ├── zone-display.jsx        Single zone (global/per-player/spatial/empty)
 │   ├── token-badge.jsx         Color-coded token display
 │   ├── state-panel.jsx         Variable tables
+│   ├── action-panel.jsx        Action selection wrapper (human/AI)
+│   ├── action-list.jsx         Cursor-selectable legal action list
+│   ├── target-list.jsx         Param candidate picker
 │   └── effect-log.jsx          Scrollable effect log (PgUp/PgDn)
 ├── hooks/
 │   └── use-scroll.js           Scroll offset arithmetic (pure functions)
@@ -270,6 +294,6 @@ CLI launch
 
 ## Future Work
 
-Remaining placeholders in `<GameScreen>`:
-- **Action panel** — action selection with cursor navigation
+- **Game loop hook** (`use-game-loop.js`) — orchestrates `runSimulation` + human agent + `onStep`
 - **Watch mode loop** — automated AI step execution with speed/pause controls
+- **Game over screen** — outcome display with replay option

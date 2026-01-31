@@ -102,14 +102,7 @@ function updatePreferenceModelState(state, feedback, options = {}) {
     maxBiasAbs,
   };
   const rng = resolveRng(options);
-  const legacyModel = state && !Array.isArray(state.models)
-    ? {
-        weights: cloneFeatureVector(state.weights),
-        bias: Number.isFinite(state.bias) ? state.bias : 0,
-        sampleCount: baseSampleCount,
-      }
-    : null;
-  const baseModels = Array.isArray(state.models) ? state.models : legacyModel ? [legacyModel] : [];
+  const baseModels = Array.isArray(state.models) ? state.models : [];
   const ensembleSize = resolveEnsembleSize(state?.ensemble?.size, baseModels.length);
 
   const nextHistory = clampHistory([...(state.history ?? []), feedback], maxHistory);

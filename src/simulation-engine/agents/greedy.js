@@ -84,9 +84,9 @@ export function createGreedyPolicy(options = {}) {
       }
 
       if (typeof scoreAction !== "function") {
-        return legalActions[0];
+        return { actionId: legalActions[0]?.id, args: {} };
       }
-      let bestAction = legalActions[0];
+      let bestActionId = legalActions[0]?.id;
       let bestScore = Number.NEGATIVE_INFINITY;
       for (const action of legalActions) {
         const score = scoreAction({ ...input, action });
@@ -95,10 +95,10 @@ export function createGreedyPolicy(options = {}) {
         }
         if (score > bestScore) {
           bestScore = score;
-          bestAction = action;
+          bestActionId = action.id;
         }
       }
-      return bestAction;
+      return { actionId: bestActionId, args: {} };
     },
   };
 }

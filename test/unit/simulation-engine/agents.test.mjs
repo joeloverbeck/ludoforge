@@ -38,7 +38,7 @@ describe("agents", () => {
         rng,
       });
 
-      assert.equal(selection?.id, definition.actions[expectedIndex].id);
+      assert.equal(selection.actionId, definition.actions[expectedIndex].id);
     });
 
     it("returns { actionId, args } when legalMoves are provided", () => {
@@ -156,7 +156,7 @@ describe("agents", () => {
         context,
       });
 
-      assert.equal(selection?.id, actionA.id);
+      assert.equal(selection.actionId, actionA.id);
     });
 
     it("selects the highest scoring action", () => {
@@ -183,7 +183,7 @@ describe("agents", () => {
         context,
       });
 
-      assert.equal(selection?.id, actionB.id);
+      assert.equal(selection.actionId, actionB.id);
     });
 
     it("returns { actionId, args } when legalMoves provided without heuristic", () => {

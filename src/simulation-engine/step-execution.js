@@ -5,8 +5,6 @@
 
 import { buildVariableIndex, applyEffect, applyTriggers } from "../game-kernel/index.js";
 import { clearFlags } from "../game-kernel/flags.js";
-import { autoBindParams } from "../game-kernel/selectors.js";
-
 /**
  * Deep-clone a game state via JSON round-trip.
  * @param {object} state
@@ -22,17 +20,11 @@ export function cloneState(state) {
  * @param {object} state
  * @param {object} action
  * @param {object} context
- * @param {Record<string, string|number|Array<string|number>>} [args] - Explicit choice args; when non-empty, used as bindings instead of auto-resolving.
+ * @param {Record<string, string|number|Array<string|number>>} [args] - Explicit choice args used as bindings.
  */
 export function applyAction(definition, state, action, context, args) {
   const variableIndex = buildVariableIndex(definition);
-  const hasExplicitArgs = args != null && Object.keys(args).length > 0;
-  const bindings = hasExplicitArgs
-    ? { ...context.bindings, ...args }
-    : autoBindParams(action.params ?? [], state, {
-        ...context,
-        variableIndex,
-      });
+  const bindings = { ...(context.bindings ?? {}), ...(args ?? {}) };
   const effectContext = { state, ...context, variableIndex, bindings, definition };
   const appliedEffects = [];
   const skippedEffects = [];

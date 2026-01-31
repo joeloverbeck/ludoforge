@@ -63,14 +63,14 @@ describe("simultaneous scheduler", () => {
         id: 1,
         selectAction({ state }) {
           selectionLog.push({ playerId: 1, counter: state.variables.global.counter });
-          return state.variables.global.counter === 0 ? "choose_zero" : "choose_one";
+          return { actionId: state.variables.global.counter === 0 ? "choose_zero" : "choose_one", args: {} };
         },
       },
       {
         id: 2,
         selectAction({ state }) {
           selectionLog.push({ playerId: 2, counter: state.variables.global.counter });
-          return state.variables.global.counter === 0 ? "choose_zero" : "choose_one";
+          return { actionId: state.variables.global.counter === 0 ? "choose_zero" : "choose_one", args: {} };
         },
       },
     ];
@@ -94,13 +94,13 @@ describe("simultaneous scheduler", () => {
       {
         id: 1,
         selectAction({ legalActions }) {
-          return legalActions[0]?.id;
+          return { actionId: legalActions[0]?.id, args: {} };
         },
       },
       {
         id: 2,
         selectAction({ legalActions }) {
-          return legalActions[0]?.id;
+          return { actionId: legalActions[0]?.id, args: {} };
         },
       },
     ];
@@ -119,13 +119,13 @@ describe("simultaneous scheduler", () => {
       {
         id: 1,
         selectAction({ legalActions }) {
-          return legalActions[0]?.id;
+          return { actionId: legalActions[0]?.id, args: {} };
         },
       },
       {
         id: 2,
         selectAction({ legalActions }) {
-          return legalActions[0]?.id;
+          return { actionId: legalActions[0]?.id, args: {} };
         },
       },
     ];
