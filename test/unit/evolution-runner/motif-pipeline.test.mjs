@@ -111,7 +111,7 @@ describe("motif-pipeline", () => {
       }
     });
 
-    it("throws ENOENT when generationDir does not exist (caller must create it)", async () => {
+    it("creates generationDir when it does not exist", async () => {
       const definition = await loadMinimalDefinition();
       const baseDir = await mkdtemp(join(tmpdir(), "motif-pipeline-nodir-"));
       const genDir = join(baseDir, "gen-0"); // deliberately not created
@@ -122,27 +122,24 @@ describe("motif-pipeline", () => {
         makePlacement(definition, "c", 6, [1]),
       ];
 
-      await assert.rejects(
-        () =>
-          runMotifMiningPipeline({
-            mapElitesResult: { placements },
-            motifMiningConfig: {
-              enabled: true,
-              eliteSelection: { perNicheTopK: 2, globalTopK: 5 },
-              minSupport: 1,
-              maxMotifLength: 5,
-              ngramSizes: [2],
-              seed: 42,
-            },
-            simulationConfig: {},
-            generationDir: genDir,
-            seed: 42,
-          }),
-        (err) => {
-          assert.equal(err.code, "ENOENT");
-          return true;
+      const result = await runMotifMiningPipeline({
+        mapElitesResult: { placements },
+        motifMiningConfig: {
+          enabled: true,
+          eliteSelection: { perNicheTopK: 2, globalTopK: 5 },
+          minSupport: 1,
+          maxMotifLength: 5,
+          ngramSizes: [2],
+          seed: 42,
         },
-      );
+        simulationConfig: {},
+        generationDir: genDir,
+        seed: 42,
+      });
+
+      assert.notEqual(result, null);
+      const { statSync } = await import("node:fs");
+      assert.ok(statSync(genDir).isDirectory());
     });
 
     it("returns correct output structure when motifs are found", async () => {

@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises";
 import { runGenerationLoop } from "../evolutionary-engine/engine.js";
 import { defaultMutationOperators } from "../evolutionary-engine/mutation.js";
 import { createSeededRng } from "../simulation-engine/rng.js";
@@ -185,7 +184,6 @@ export async function runEvolutionRunner(options) {
     }
 
     const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
-    await mkdir(genDir, { recursive: true });
     const miningResult = await runMotifMiningPipeline({
       mapElitesResult: loopResult.mapElites,
       motifMiningConfig,

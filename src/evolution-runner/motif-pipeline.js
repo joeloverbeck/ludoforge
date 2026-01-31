@@ -3,6 +3,7 @@
  * @module evolution-runner/motif-pipeline
  */
 
+import { mkdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { selectElitesForMining } from "./elite-selector.js";
 import { extractEliteTrajectories } from "./elite-resimulator.js";
@@ -66,6 +67,7 @@ export async function runMotifMiningPipeline(options) {
     effectSequence: motifEffects[index] ?? [],
   }));
 
+  await mkdir(generationDir, { recursive: true });
   const filePath = resolve(generationDir, "motifs.jsonl");
   await writeMotifJsonl(filePath, motifRecords);
 

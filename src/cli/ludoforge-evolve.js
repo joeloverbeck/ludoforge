@@ -13,43 +13,21 @@ import { loadSeedPopulation } from "../evolution-runner/seed-loader.js";
 import { loadResumeState } from "../evolution-runner/resume-loader.js";
 import { runEvolutionRunner } from "../evolution-runner/runner.js";
 import { validateRunnerConfig } from "../evolution-runner/config.js";
-import { createEvaluator } from "../evaluation-analytics/create-evaluator.js";
 import { CLIError } from "./cli-error.js";
 import { parseArgs } from "./parse-args.js";
 import { loadConfig } from "./load-config.js";
 import { createUsage } from "./usage.js";
 import { validateDescriptorKeys } from "./validate-descriptor-keys.js";
-import { createConsoleIO } from "./console-io.js";
-import { createFeedbackProvider } from "../human-interface/create-feedback-provider.js";
 import { createLogger } from "./create-logger.js";
 import { createProgressReporter } from "./create-progress-reporter.js";
-
-async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunner) {
-  let consoleIO;
-  try {
-    if (config.humanFeedback?.enabled) {
-      consoleIO = createConsoleIO();
-      const provider = createFeedbackProvider({
-        io: consoleIO.io,
-        config: config.humanFeedback,
-        initialModelState: runnerOptions.preferenceModelSnapshots?.[0],
-        seed: config.seed,
-      });
-      runnerOptions.feedback = provider.feedbackProvider;
-      runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;
-    }
-    return await runEvolutionRunner(runnerOptions);
-  } finally {
-    if (consoleIO) {
-      consoleIO.close();
-    }
-  }
-}
+import { resolveRunId } from "./resolve-run-id.js";
+import { executeAndReport } from "./execute-and-report.js";
 
 function resolveDeps(overrides = {}) {
   return {
     readFile,
     validateRunnerConfig,
+    assertValidRunId,
     listRuns,
     createRunId,
     writeRunMetadata,
@@ -58,13 +36,6 @@ function resolveDeps(overrides = {}) {
     runEvolutionRunner,
     ...overrides,
   };
-}
-
-function formatRunList(runs) {
-  if (runs.length === 0) {
-    return "No runs found in this directory.";
-  }
-  return `Available runs: ${runs.join(", ")}`;
 }
 
 function resolveLoggerOptions(parsed) {
@@ -110,130 +81,36 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
   }
 
   const baseDir = parsed.out ? resolve(parsed.out) : process.cwd();
+  const { runId } = await resolveRunId({ parsed, baseDir, deps });
 
-  const existingRuns = await deps.listRuns(baseDir);
-  let runId = parsed.runId;
+  const shared = { baseDir, runId, config, descriptorKeys, logger, reporter, deps };
 
   if (parsed.resume) {
-    if (!runId) {
-      throw new CLIError(
-        "--resume requires --run-id <id> to identify which run to continue.",
-        { showUsage: true },
-      );
-    }
-    try {
-      assertValidRunId(runId);
-    } catch {
-      throw new CLIError(
-        `Invalid run ID format: '${runId}'.`,
-        { hint: "Run IDs must be UUIDs, e.g. 123e4567-e89b-42d3-a456-426614174000" },
-      );
-    }
-    if (!existingRuns.includes(runId)) {
-      throw new CLIError(
-        `Run ID '${runId}' does not exist in ${baseDir}.`,
-        { hint: formatRunList(existingRuns) },
-      );
-    }
-
     const resumeState = await deps.loadResumeState({ baseDir, runId, config });
     if (parsed.dryRun) {
-      return {
-        runId,
-        baseDir,
-        dryRun: true,
-        resumed: true,
-      };
+      return { runId, baseDir, dryRun: true, resumed: true };
     }
-
-    const evaluation = createEvaluator({ descriptorKeys });
-
-    const runnerOptions = {
-      baseDir,
-      runId,
-      config,
+    return executeAndReport({
+      ...shared,
       population: resumeState.population,
       startGeneration: resumeState.generation + 1,
       preferenceModelSnapshots: [resumeState.preferenceModel],
-      evaluation,
-      logger,
-    };
-
-    const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
-
-    reporter.onRunComplete({
-      runId,
-      generationsCompleted: result.generations.length,
-      halted: !!result.haltedReason,
-    });
-
-    return {
-      runId,
-      baseDir,
-      dryRun: false,
+      writeMetadata: false,
       resumed: true,
-      result,
-    };
-  }
-
-  if (runId) {
-    try {
-      assertValidRunId(runId);
-    } catch {
-      throw new CLIError(
-        `Invalid run ID format: '${runId}'.`,
-        { hint: "Run IDs must be UUIDs, e.g. 123e4567-e89b-42d3-a456-426614174000" },
-      );
-    }
-    if (existingRuns.includes(runId)) {
-      throw new CLIError(
-        `Run ID '${runId}' already exists in ${baseDir}.`,
-        { hint: "Use --resume --run-id <id> to continue an existing run, or omit --run-id to auto-generate a new one." },
-      );
-    }
-  } else {
-    runId = deps.createRunId();
+    });
   }
 
   if (parsed.seeds) {
     const population = await deps.loadSeedPopulation(parsed.seeds);
     if (parsed.dryRun) {
-      return {
-        runId,
-        baseDir,
-        dryRun: true,
-        resumed: false,
-        populationSize: population.length,
-      };
+      return { runId, baseDir, dryRun: true, resumed: false, populationSize: population.length };
     }
-
-    const evaluation = createEvaluator({ descriptorKeys });
-    await deps.writeRunMetadata(baseDir, runId, { config });
-
-    const runnerOptions = {
-      baseDir,
-      runId,
-      config,
+    return executeAndReport({
+      ...shared,
       population,
-      evaluation,
-      logger,
-    };
-
-    const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
-
-    reporter.onRunComplete({
-      runId,
-      generationsCompleted: result.generations.length,
-      halted: !!result.haltedReason,
-    });
-
-    return {
-      runId,
-      baseDir,
-      dryRun: false,
+      writeMetadata: true,
       resumed: false,
-      result,
-    };
+    });
   }
 
   if (!config.seeding) {
@@ -257,32 +134,11 @@ export async function runLudoforgeEvolve({ argv = process.argv, deps: overrides 
     };
   }
 
-  const evaluation = createEvaluator({ descriptorKeys });
-  await deps.writeRunMetadata(baseDir, runId, { config });
-
-  const runnerOptions = {
-    baseDir,
-    runId,
-    config,
-    evaluation,
-    logger,
-  };
-
-  const result = await executeRunnerWithFeedback(runnerOptions, config, deps.runEvolutionRunner);
-
-  reporter.onRunComplete({
-    runId,
-    generationsCompleted: result.generations.length,
-    halted: !!result.haltedReason,
-  });
-
-  return {
-    runId,
-    baseDir,
-    dryRun: false,
+  return executeAndReport({
+    ...shared,
+    writeMetadata: true,
     resumed: false,
-    result,
-  };
+  });
 }
 
 async function main() {
