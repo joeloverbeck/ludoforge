@@ -1,5 +1,5 @@
 import { applyEffect, buildVariableIndex, evaluateExpr } from "./effects.js";
-import { resolveActionTargets } from "./selectors.js";
+import { resolveActionTargets, resolveParamDomains } from "./selectors.js";
 
 const DEFAULT_BOUNDS_MODE = "reject";
 
@@ -80,14 +80,15 @@ export function isActionLegal(definition, state, action, context = {}) {
       return false;
     }
   }
-  const targets = action.params ?? action.targets ?? [];
-  if (targets.length > 0) {
-    const bindings = resolveActionTargets(definition, state, action, {
+  const params = action.params ?? action.targets ?? [];
+  if (params.length > 0) {
+    const domains = resolveParamDomains(params, state, {
       ...context,
       variableIndex,
     });
-    for (const target of targets) {
-      if (bindings[target.id] == null) {
+    for (const param of params) {
+      const domain = domains[param.id];
+      if (!Array.isArray(domain) || domain.length === 0) {
         return false;
       }
     }
@@ -133,6 +134,17 @@ function checkActionBounds(definition, state, action, context, boundsMode) {
   return { ok: true, clamped };
 }
 
+/**
+ * Validate an action choice, optionally with explicit args for parameterized actions.
+ *
+ * @param {object} definition - Game definition
+ * @param {object} state - Current game state
+ * @param {string} actionId - The chosen action id
+ * @param {object} [context] - Action context (playerId, phase, etc.)
+ * @param {object} [options] - Options: bounds mode, args for parameterized validation
+ * @param {Record<string, string|number|Array<string|number>>} [options.args] - Chosen arg values keyed by param id
+ * @returns {{ ok: boolean, reason?: string, clamped?: boolean }}
+ */
 export function validateActionChoice(definition, state, actionId, context = {}, options = {}) {
   const action = definition.actions.find((candidate) => candidate.id === actionId);
   if (!action) {
@@ -141,6 +153,56 @@ export function validateActionChoice(definition, state, actionId, context = {}, 
 
   if (!isActionLegal(definition, state, action, context)) {
     return { ok: false, reason: "illegal-action" };
+  }
+
+  const params = action.params ?? [];
+  const args = options.args;
+
+  if (params.length > 0 && args != null) {
+    const variableIndex = buildVariableIndex(definition);
+    const domains = resolveParamDomains(params, state, {
+      ...context,
+      variableIndex,
+    });
+
+    for (const param of params) {
+      const domain = domains[param.id];
+      const argValue = args[param.id];
+
+      if (argValue == null) {
+        return { ok: false, reason: "missing-arg", paramId: param.id };
+      }
+
+      const count = param.count ?? 1;
+      const unique = param.unique ?? (count > 1);
+
+      if (count > 1) {
+        if (!Array.isArray(argValue)) {
+          return { ok: false, reason: "invalid-arg-type", paramId: param.id };
+        }
+        if (argValue.length !== count) {
+          return { ok: false, reason: "wrong-arg-count", paramId: param.id };
+        }
+        for (const v of argValue) {
+          if (!domain.includes(v)) {
+            return { ok: false, reason: "arg-not-in-domain", paramId: param.id, value: v };
+          }
+        }
+        if (unique) {
+          const seen = new Set();
+          for (const v of argValue) {
+            if (seen.has(v)) {
+              return { ok: false, reason: "duplicate-arg", paramId: param.id, value: v };
+            }
+            seen.add(v);
+          }
+        }
+      } else {
+        if (!domain.includes(argValue)) {
+          return { ok: false, reason: "arg-not-in-domain", paramId: param.id, value: argValue };
+        }
+      }
+    }
   }
 
   const boundsMode = options.bounds ?? DEFAULT_BOUNDS_MODE;

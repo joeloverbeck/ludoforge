@@ -12,6 +12,8 @@ export interface ActionValidationResult {
   ok: boolean;
   reason?: string;
   clamped?: boolean;
+  paramId?: string;
+  value?: string | number;
 }
 
 export function isActionLegal(
@@ -32,5 +34,8 @@ export function validateActionChoice(
   state: GameState,
   actionId: string,
   context?: ActionContext,
-  options?: { bounds?: BoundsMode }
+  options?: {
+    bounds?: BoundsMode;
+    args?: Record<string, string | number | Array<string | number>>;
+  }
 ): ActionValidationResult;
