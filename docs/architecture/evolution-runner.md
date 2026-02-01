@@ -281,6 +281,19 @@ and `motifMining` within it are both required (set `enabled: false` to disable).
 | `maxMotifLength` | integer | Maximum n-gram length to mine |
 | `ngramSizes` | integer[] | Which n-gram sizes to enumerate |
 | `seed` | integer | RNG seed for deterministic re-simulation and mining |
+| `timeoutMs` | integer | Maximum wall-clock time for motif mining (default 120,000 ms). When exceeded, the pipeline is aborted via `AbortController` and the generation continues without motifs. |
+
+### Timeout & Abort
+
+The generation body creates an `AbortController` before launching the motif pipeline.
+A `setTimeout` fires after `timeoutMs` and calls `controller.abort()`. The signal is
+threaded through `runMotifMiningPipeline` → `mineMotifs` → `collectNgrams`, where it
+is checked alongside the `maxStackSize` and `maxPaths` limits in the DFS hot loop.
+Because `mineMotifs` yields to the event loop every 5,000 iterations via `setImmediate`,
+the timeout callback can actually fire even during heavy graph traversal — unlike the
+previous `withTimeout` wrapper which could never resolve while a synchronous function
+blocked the event loop. On abort, the generation logs a warning and proceeds with
+`miningResult = null`.
 
 ### Pipeline Flow
 
@@ -297,7 +310,7 @@ Orchestrated by `runMotifMiningPipeline()` from `src/evolution-runner/motif-pipe
    creates a `Map<canonicalLabel, AppliedEffect[]>` from trajectory steps, mapping
    each canonical edge label to the actual applied effects that produced it.
 4. **LTS construction**: `buildLts(trajectories)` from `src/evaluation-analytics/lts-builder.js`.
-5. **Motif mining**: `mineMotifs(lts, config)` from `src/evaluation-analytics/motif-miner.js`.
+5. **Motif mining**: `await mineMotifs(lts, config, { signal })` from `src/evaluation-analytics/motif-miner.js`.
 6. **Effect conversion**: `convertMotifsToEffects()` from `src/evaluation-analytics/motif-effect-converter.js`
    looks up each motif path label in the effect map, converts applied effects to
    DSL-compatible effects via `toDslEffect()` (strips runtime fields like `source`,

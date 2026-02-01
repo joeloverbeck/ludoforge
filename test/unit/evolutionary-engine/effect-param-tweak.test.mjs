@@ -64,4 +64,54 @@ describe("effectParamTweakMutation", () => {
   it("has the correct operator name", () => {
     assert.equal(effectParamTweakMutation.name, "effect-param-tweak");
   });
+
+  it("set value stays within variable [min, max] after mutation", () => {
+    const definition = cloneDefinition(baseDefinition);
+    // score has min:0, max:10
+    definition.actions[0].effects = [
+      { kind: "set", target: { kind: "var", id: "score" }, value: 10 },
+    ];
+    const genome = { definition };
+    // direction = -1 (nextInt(2)===0 → direction=-1)
+    const rng = { nextInt: () => 0 };
+
+    const mutated = effectParamTweakMutation.mutate(genome, rng);
+    const newValue = mutated.definition.actions[0].effects[0].value;
+
+    assert.ok(newValue >= 0, `value ${newValue} should be >= 0`);
+    assert.ok(newValue <= 10, `value ${newValue} should be <= 10`);
+  });
+
+  it("inc amount does not exceed variable range after mutation", () => {
+    const definition = cloneDefinition(baseDefinition);
+    // score has min:0, max:10, range=10
+    definition.actions[0].effects = [
+      { kind: "inc", target: { kind: "var", id: "score" }, amount: 10 },
+    ];
+    const genome = { definition };
+    // nextInt(1)→0 for target selection, nextInt(2)→1 for direction
+    const rng = { nextInt: (n) => (n <= 1 ? 0 : 1) };
+
+    const mutated = effectParamTweakMutation.mutate(genome, rng);
+    const newAmount = mutated.definition.actions[0].effects[0].amount;
+
+    assert.ok(newAmount >= 0, `amount ${newAmount} should be >= 0`);
+    assert.ok(newAmount <= 10, `amount ${newAmount} should be <= range 10`);
+  });
+
+  it("falls back to tweakNonNegative for unknown variables", () => {
+    const definition = cloneDefinition(baseDefinition);
+    definition.actions[0].effects = [
+      { kind: "set", target: { kind: "var", id: "nonexistent" }, value: 5 },
+    ];
+    const genome = { definition };
+    // nextInt(1)→0 for target selection, nextInt(2)→1 for direction
+    const rng = { nextInt: (n) => (n <= 1 ? 0 : 1) };
+
+    const mutated = effectParamTweakMutation.mutate(genome, rng);
+    const newValue = mutated.definition.actions[0].effects[0].value;
+
+    assert.equal(typeof newValue, "number");
+    assert.ok(newValue >= 0, "fallback should produce non-negative value");
+  });
 });

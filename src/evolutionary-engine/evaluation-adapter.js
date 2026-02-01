@@ -1,5 +1,6 @@
 import { validateGenomeDefinition } from "./serialization.js";
 import { repairGenome } from "./repair.js";
+import { REPAIR_EXPECTED_RULES } from "../dsl/semantic.js";
 
 function collectRepairNames(operators) {
   return operators.map((operator) => operator?.name ?? "unnamed-repair");
@@ -72,6 +73,20 @@ export async function evaluateGenome(genome, options, context) {
     ...(repairDiagnostics ? { repair: repairDiagnostics } : {}),
   };
 
+  if (repairDiagnostics) {
+    const repairLeaks = validation.issues.filter(
+      (i) => i.severity === "warning" && REPAIR_EXPECTED_RULES.has(i.rule),
+    );
+    if (repairLeaks.length > 0) {
+      return {
+        fitness: null,
+        descriptors: null,
+        diagnostics: { ...diagnostics, repairLeaks },
+        ...(repairDiagnostics ? { genome: candidate } : {}),
+      };
+    }
+  }
+
   if (!validation.valid) {
     return {
       fitness: null,
@@ -94,7 +109,14 @@ export async function evaluateGenome(genome, options, context) {
     };
   }
 
-  const evaluation = await options.evaluator(candidate, context);
+  const semanticWarningCount = validation.issues.filter((i) => i.severity === "warning").length;
+  const semanticInfoCount = validation.issues.filter((i) => i.severity === "info").length;
+
+  const evaluation = await options.evaluator(candidate, {
+    ...context,
+    semanticWarningCount,
+    semanticInfoCount,
+  });
   if (!evaluation || evaluation.fitness === undefined || evaluation.descriptors == null) {
     return {
       fitness: null,

@@ -150,6 +150,7 @@ describe("engine", () => {
 
     it("reason is one of the allowed categories", async () => {
       const allowed = new Set([
+        "repair-leak",
         "repair-failure",
         "validation-failure",
         "safety-failure",

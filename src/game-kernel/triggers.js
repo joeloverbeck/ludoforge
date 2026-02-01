@@ -90,7 +90,7 @@ export function applyTriggers(definition, state, event, context = {}) {
           phase: context.phase,
           variableIndex,
           impact: context.impact,
-        });
+        }, { boundsMode: "clamp" });
         if (!result.ok) {
           return { ok: false, reason: result.reason };
         }

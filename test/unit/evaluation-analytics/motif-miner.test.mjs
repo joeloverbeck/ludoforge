@@ -28,17 +28,17 @@ const defaultConfig = {
 };
 
 describe("mineMotifs", () => {
-  it("determinism — same LTS + config produces identical output across runs", () => {
+  it("determinism — same LTS + config produces identical output across runs", async () => {
     const lts = linearLts(["a", "b", "c", "a", "b"]);
     const config = { ngramSizes: [2, 3], minSupport: 1, maxMotifLength: 5 };
 
-    const result1 = mineMotifs(lts, config);
-    const result2 = mineMotifs(lts, config);
+    const result1 = await mineMotifs(lts, config);
+    const result2 = await mineMotifs(lts, config);
 
     assert.deepEqual(result1, result2);
   });
 
-  it("minSupport filtering — motifs below threshold are excluded", () => {
+  it("minSupport filtering — motifs below threshold are excluded", async () => {
     // a → b appears twice, b → c appears once
     const lts = {
       nodes: ["n0", "n1", "n2", "n3", "n4"],
@@ -51,7 +51,7 @@ describe("mineMotifs", () => {
     };
     const config = { ngramSizes: [2], minSupport: 2, maxMotifLength: 5 };
 
-    const result = mineMotifs(lts, config);
+    const result = await mineMotifs(lts, config);
 
     // "a → b" appears twice (n0→n1→n2 and n2→n3→n4)
     assert.ok(result.some((m) => m.signature === "a → b" && m.support >= 2));
@@ -59,22 +59,22 @@ describe("mineMotifs", () => {
     assert.ok(!result.some((m) => m.signature === "b → a" && m.support < 2));
   });
 
-  it("maxMotifLength filtering — n-gram sizes exceeding max are skipped", () => {
+  it("maxMotifLength filtering — n-gram sizes exceeding max are skipped", async () => {
     const lts = linearLts(["a", "b", "c", "d"]);
     const config = { ngramSizes: [2, 4], minSupport: 1, maxMotifLength: 3 };
 
-    const result = mineMotifs(lts, config);
+    const result = await mineMotifs(lts, config);
 
     // size-4 ngrams should be excluded since maxMotifLength is 3
     assert.ok(!result.some((m) => m.ngramSize === 4));
     assert.ok(result.some((m) => m.ngramSize === 2));
   });
 
-  it("ngramSizes controls which sizes are mined", () => {
+  it("ngramSizes controls which sizes are mined", async () => {
     const lts = linearLts(["a", "b", "c"]);
     const config = { ngramSizes: [3], minSupport: 1, maxMotifLength: 5 };
 
-    const result = mineMotifs(lts, config);
+    const result = await mineMotifs(lts, config);
 
     // Only size-3 motifs should be present
     for (const motif of result) {
@@ -83,7 +83,7 @@ describe("mineMotifs", () => {
     assert.ok(result.length > 0);
   });
 
-  it("sort order — support descending, then signature ascending", () => {
+  it("sort order — support descending, then signature ascending", async () => {
     // Build an LTS where "a → b" appears 3 times, "c → d" appears 2 times,
     // "a → c" appears 2 times (tie-break by signature)
     const lts = {
@@ -112,7 +112,7 @@ describe("mineMotifs", () => {
     lts2.edges.sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || a.label.localeCompare(b.label));
 
     const config = { ngramSizes: [2], minSupport: 1, maxMotifLength: 5 };
-    const result = mineMotifs(lts2, config);
+    const result = await mineMotifs(lts2, config);
 
     // Verify sort: descending support, then ascending signature
     for (let i = 1; i < result.length; i += 1) {
@@ -128,20 +128,20 @@ describe("mineMotifs", () => {
     }
   });
 
-  it("empty LTS produces empty motifs", () => {
+  it("empty LTS produces empty motifs", async () => {
     const lts = { nodes: [], edges: [] };
-    const result = mineMotifs(lts, defaultConfig);
+    const result = await mineMotifs(lts, defaultConfig);
     assert.deepEqual(result, []);
   });
 
-  it("single-edge LTS produces unigram motif", () => {
+  it("single-edge LTS produces unigram motif", async () => {
     const lts = {
       nodes: ["a", "b"],
       edges: [{ from: "a", to: "b", label: "move" }],
     };
     const config = { ngramSizes: [1], minSupport: 1, maxMotifLength: 5 };
 
-    const result = mineMotifs(lts, config);
+    const result = await mineMotifs(lts, config);
 
     assert.equal(result.length, 1);
     assert.equal(result[0].signature, "move");
@@ -149,16 +149,16 @@ describe("mineMotifs", () => {
     assert.equal(result[0].support, 1);
   });
 
-  it("does not mutate input LTS", () => {
+  it("does not mutate input LTS", async () => {
     const lts = linearLts(["a", "b", "c"]);
     const original = JSON.parse(JSON.stringify(lts));
 
-    mineMotifs(lts, defaultConfig);
+    await mineMotifs(lts, defaultConfig);
 
     assert.deepEqual(lts, original);
   });
 
-  it("multi-path LTS produces correct n-grams with accurate support counts", () => {
+  it("multi-path LTS produces correct n-grams with accurate support counts", async () => {
     // Two separate paths share the same bigram "x → y"
     const lts = {
       nodes: ["a", "b", "c", "d", "e"],
@@ -171,11 +171,120 @@ describe("mineMotifs", () => {
     };
     const config = { ngramSizes: [2], minSupport: 1, maxMotifLength: 5 };
 
-    const result = mineMotifs(lts, config);
+    const result = await mineMotifs(lts, config);
 
     const xyMotif = result.find((m) => m.signature === "x → y");
     assert.ok(xyMotif, "Expected motif 'x → y' to exist");
     assert.equal(xyMotif.support, 2);
     assert.equal(xyMotif.exampleOccurrences.length, 2);
+  });
+
+  it("self-loop graph completes without hanging", async () => {
+    // A graph where every node has a self-loop — the maxPaths/maxStackSize
+    // limits prevent infinite expansion
+    const lts = {
+      nodes: ["n0", "n1"],
+      edges: [
+        { from: "n0", to: "n0", label: "pass" },
+        { from: "n0", to: "n1", label: "move" },
+        { from: "n1", to: "n1", label: "pass" },
+      ],
+    };
+    const config = { ngramSizes: [2, 3], minSupport: 1, maxMotifLength: 5 };
+
+    const start = Date.now();
+    const result = await mineMotifs(lts, config);
+    const elapsed = Date.now() - start;
+
+    assert.ok(Array.isArray(result));
+    assert.ok(elapsed < 5_000, `Self-loop graph took ${elapsed}ms, expected < 5000ms`);
+  });
+
+  it("stack size limit prevents hang on dense cyclic graph", async () => {
+    // Fully-connected graph with 20 nodes — stack would grow exponentially
+    // without maxStackSize limit
+    const nodes = [];
+    const edges = [];
+    for (let i = 0; i < 20; i++) {
+      nodes.push(`n${i}`);
+    }
+    for (let i = 0; i < 20; i++) {
+      for (let j = 0; j < 20; j++) {
+        if (i !== j) {
+          edges.push({ from: `n${i}`, to: `n${j}`, label: `e${i}_${j}` });
+        }
+      }
+    }
+    const lts = { nodes, edges };
+    const config = { ngramSizes: [3], minSupport: 1, maxMotifLength: 5 };
+
+    const start = Date.now();
+    const result = await mineMotifs(lts, config);
+    const elapsed = Date.now() - start;
+
+    assert.ok(Array.isArray(result));
+    // Should complete in reasonable time (not hang), allow generous 30s for CI
+    assert.ok(elapsed < 30_000, `Took ${elapsed}ms, expected < 30000ms`);
+  });
+
+  it("abort signal stops mining mid-execution", async () => {
+    // Build a large graph that takes time to process
+    const nodes = [];
+    const edges = [];
+    for (let i = 0; i < 50; i++) {
+      nodes.push(`n${i}`);
+    }
+    for (let i = 0; i < 50; i++) {
+      for (let j = 0; j < 50; j++) {
+        if (i !== j) {
+          edges.push({ from: `n${i}`, to: `n${j}`, label: `e${i}_${j}` });
+        }
+      }
+    }
+    const lts = { nodes, edges };
+    const config = { ngramSizes: [3], minSupport: 1, maxMotifLength: 5 };
+
+    const controller = new AbortController();
+    // Abort after 50ms
+    setTimeout(() => controller.abort(), 50);
+
+    const start = Date.now();
+    const result = await mineMotifs(lts, config, { signal: controller.signal });
+    const elapsed = Date.now() - start;
+
+    assert.ok(Array.isArray(result));
+    // Should have been aborted well before exhaustive enumeration
+    assert.ok(elapsed < 5_000, `Took ${elapsed}ms, expected abort to cut it short`);
+  });
+
+  it("yield points allow event loop to run during mining", async () => {
+    // Build a moderately large graph that requires many iterations
+    const nodes = [];
+    const edges = [];
+    for (let i = 0; i < 30; i++) {
+      nodes.push(`n${i}`);
+    }
+    for (let i = 0; i < 30; i++) {
+      for (let j = 0; j < 30; j++) {
+        if (i !== j) {
+          edges.push({ from: `n${i}`, to: `n${j}`, label: `e${i}_${j}` });
+        }
+      }
+    }
+    const lts = { nodes, edges };
+    const config = { ngramSizes: [2], minSupport: 1, maxMotifLength: 5 };
+
+    // Use a timeout to verify the event loop isn't blocked
+    let timeoutFired = false;
+    const timer = setTimeout(() => { timeoutFired = true; }, 10);
+
+    await mineMotifs(lts, config);
+    // Give the timeout a chance to fire after mining completes
+    await new Promise((r) => setImmediate(r));
+
+    clearTimeout(timer);
+    // If yield points work, the setTimeout should have had a chance to fire
+    // during mining (since it processes >5000 iterations on this graph)
+    assert.ok(timeoutFired, "Expected setTimeout to fire during mining (event loop yield)");
   });
 });

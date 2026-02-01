@@ -188,6 +188,10 @@ export function createEvaluator(options = {}) {
       ? (totalElements - usedElements) / totalElements
       : 0;
 
+    // Step 10e: Inject semantic warning/info counts from validation
+    featureVector.semantic_warning_count = context?.semanticWarningCount ?? 0;
+    featureVector.semantic_info_count = context?.semanticInfoCount ?? 0;
+
     // Step 10c: Non-finite metric policy enforcement (reject)
     if (nonFiniteKeys.length > 0 && nonFinitePolicy === "reject") {
       return {

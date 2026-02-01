@@ -2,6 +2,13 @@ import { getRandomIndex } from "./random.js";
 import { collectVariableTargets, collectZoneTargets, collectTokenTypeTargets } from "./targets.js";
 import { pickOrCreateZone, pickOrCreateTokenType, pickOrCreateVariable } from "./pick-or-create.js";
 
+function collectZonesForTokenType(definition, tokenTypeId) {
+  const zones = Array.isArray(definition?.state?.zones) ? definition.state.zones : [];
+  return zones.filter(
+    (z) => typeof z?.id === "string" && z.tokenType === tokenTypeId
+  );
+}
+
 export const EFFECT_KINDS = [
   "set", "inc", "dec", "move", "spawn", "destroy", "reveal", "hide",
   "move_spatial", "repeat", "set_flag", "conditional",
@@ -167,6 +174,18 @@ export function buildRandomEffect(definition, rng) {
       return { kind: "inc", target: { kind: "var", id: "unknown" }, amount: 1 };
     }
   }
-  const props = buildEffectProps(kind, definition, rng);
+  let props = buildEffectProps(kind, definition, rng);
+  if (
+    (kind === "move" || kind === "spawn" || kind === "queue_push") &&
+    target?.kind === "token" &&
+    typeof target.id === "string" &&
+    typeof props.toZone === "string"
+  ) {
+    const compatible = collectZonesForTokenType(definition, target.id);
+    if (compatible.length > 0) {
+      const idx = getRandomIndex(compatible.length, rng);
+      props = { ...props, toZone: compatible[Math.max(0, idx)].id };
+    }
+  }
   return { kind, target, ...props };
 }

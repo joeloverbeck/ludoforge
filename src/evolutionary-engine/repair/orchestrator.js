@@ -7,7 +7,7 @@ import { repairVariables, repairTokenTypes } from "./variable-repair.js";
 import { repairActions, repairTriggers } from "./action-repair.js";
 import { repairEffects } from "./effect-repair.js";
 import { hasZoneReferencingEffects } from "./effect-queries.js";
-import { repairTerminationOutcomes } from "./termination-repair.js";
+import { repairTerminationOutcomes, repairTerminationThresholds, repairUnreachableTerminations } from "./termination-repair.js";
 import { unusedElementPruneRepair } from "./unused-prune.js";
 
 export const dslSafetyRepair = {
@@ -49,7 +49,9 @@ export const dslSafetyRepair = {
       };
     }
 
-    const repairedDefinition = repairTerminationOutcomes(definition);
+    const afterOutcomes = repairTerminationOutcomes(definition);
+    const afterThresholds = repairTerminationThresholds(afterOutcomes);
+    const repairedDefinition = repairUnreachableTerminations(afterThresholds);
 
     const actions = normalizeArray(repairedDefinition.actions);
     if (actions.length === 0) {

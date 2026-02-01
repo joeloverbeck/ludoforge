@@ -5,6 +5,7 @@ export function createSemanticValidators({
   validateVariableRef,
   joinPath,
   zoneById,
+  variableById,
   pushIssue,
 }) {
   function validateSelector(selector, path) {
@@ -70,6 +71,22 @@ export function createSemanticValidators({
       validateVariableRef(effect.variable, joinPath(path, "variable"));
     }
 
+    if (
+      (effect.kind === "spawn" || effect.kind === "move" || effect.kind === "queue_push") &&
+      typeof effect.toZone === "string" &&
+      effect.target?.kind === "token" &&
+      typeof effect.target.id === "string"
+    ) {
+      const zone = zoneById?.get(effect.toZone);
+      if (zone && typeof zone.tokenType === "string" && zone.tokenType !== effect.target.id) {
+        pushIssue?.(
+          joinPath(path, "toZone"),
+          `${effect.kind} targets token type "${effect.target.id}" but zone "${effect.toZone}" expects token type "${zone.tokenType}"`,
+          "zone-token-type-mismatch"
+        );
+      }
+    }
+
     if (effect.kind === "move" && typeof effect.toPlayer === "string" && typeof effect.toZone === "string") {
       const zone = zoneById?.get(effect.toZone);
       if (zone && zone.scope !== "per_player") {
@@ -78,6 +95,32 @@ export function createSemanticValidators({
           `move.toPlayer requires a per_player zone, but zone "${effect.toZone}" has scope "${zone.scope}"`,
           "move-to-player-scope"
         );
+      }
+    }
+
+    if (variableById && effect.target?.kind === "var" && typeof effect.target.id === "string") {
+      const variable = variableById.get(effect.target.id);
+      if (variable?.type?.kind === "int" && typeof variable.type.min === "number" && typeof variable.type.max === "number") {
+        const { min, max } = variable.type;
+        if (effect.kind === "set" && typeof effect.value === "number") {
+          if (effect.value < min || effect.value > max) {
+            pushIssue?.(
+              joinPath(path, "value"),
+              `set value ${effect.value} is outside variable "${effect.target.id}" bounds [${min}, ${max}]`,
+              "effect-value-out-of-bounds"
+            );
+          }
+        }
+        if ((effect.kind === "inc" || effect.kind === "dec") && typeof effect.amount === "number") {
+          const range = max - min;
+          if (effect.amount > range) {
+            pushIssue?.(
+              joinPath(path, "amount"),
+              `${effect.kind} amount ${effect.amount} exceeds variable "${effect.target.id}" range ${range} ([${min}, ${max}])`,
+              "effect-amount-excessive"
+            );
+          }
+        }
       }
     }
   }

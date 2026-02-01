@@ -31,6 +31,11 @@ then repeats.
 2. Evaluate each genome
    - `evaluateGenome` can optionally repair genomes before validation (defaults to no repair).
    - Validation runs on the repaired definition, and the repaired genome is the one evaluated.
+   - After validation, a **repair-leak check** filters for warnings in
+     `REPAIR_EXPECTED_RULES` that survived repair. If any are found, the genome
+     is rejected as `"repair-leak"` (catches repair pipeline bugs). Semantic
+     warning and info counts are then passed to the evaluator via context for
+     feature vector injection (see [metrics-and-fitness.md](metrics-and-fitness.md) § Step 10e).
    - In the mutation pipeline, `mutateAndRepairGenome` returns a structured outcome:
      `"ok"` (valid mutant), `"noOp"` (mutation had no effect), or `"repairFailed"`
      (repair returned `null`, genome is `null`). The evolution runner retries

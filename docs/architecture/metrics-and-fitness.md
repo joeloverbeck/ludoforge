@@ -278,7 +278,8 @@ Implemented in `src/evaluation-analytics/feature-vector.js`:
   `turn_taking_rate`, `interaction_rate`, `structural_complexity`,
   `advantage_reversal_rate`, `policy_sensitivity`, `skipped_effect_rate`,
   `skipped_trigger_rate`, `cost_abort_rate`, `pass_step_rate`,
-  `no_legal_actions_termination_rate`, `unused_element_ratio`.
+  `no_legal_actions_termination_rate`, `unused_element_ratio`,
+  `semantic_warning_count`, `semantic_info_count`.
 - Degeneracy flags are appended as `degeneracy.<flag>` binary features.
 - Any additional metrics are appended in lexicographic order.
 - Ordering is for deterministic assembly/serialization only; weight lookups use feature ids.
@@ -397,6 +398,7 @@ passes it to the runner as `options.evaluation`.
 10. **Assemble feature vector** — `assembleFeatureVector(allMetrics, degeneracyReport)` returns `{ vector, nonFiniteKeys }`.
 10b. **Inject structural complexity** — computes `structural_complexity = tokenTypeCount + zoneCount + triggerCount + distinctEffectKinds` from the game definition and injects it into the feature vector. This provides a structural diversity axis for MAP-Elites that is independent of behavioral simulation metrics.
 10d. **Compute unused element ratio** — uses `collectUsedIds(definition)` from `src/dsl/semantic/used-id-collector.js` to walk all actions, triggers, termination conditions, and scoring expressions, collecting referenced zone, token type, and variable IDs. The ratio is `unusedCount / totalCount` across all three element types. Injected into the feature vector as `unused_element_ratio` (weight 0 in `configs/fitness.json` — monitoring only).
+10e. **Inject semantic warning/info counts** — reads `semanticWarningCount` and `semanticInfoCount` from the evaluator context (passed by the evaluation adapter after post-repair validation) and injects them into the feature vector as `semantic_warning_count` (weight `-0.15` in `configs/fitness.json`) and `semantic_info_count` (weight `0`). This applies evolutionary pressure against genomes carrying unrepaired semantic warnings. Defaults to 0 when the context is absent.
 10c. **Non-finite metric policy enforcement (reject)** — if `nonFiniteKeys` is non-empty and `nonFinitePolicy` is `"reject"`, return early with `{ fitness: null, descriptors: null }` and diagnostics including `nonFiniteMetrics` and `nonFinitePolicy: "reject"`.
 11. **Compute fitness** — `computePreferenceAwareFitness(vector, { ...fitnessOptions, preferenceModelState, degeneracyReport })`.
 11b. **Non-finite metric policy enforcement (penalize)** — if `nonFinitePolicy` is `"penalize"` and `nonFiniteKeys` is non-empty, multiply the fitness score by `computeNonFinitePenaltyMultiplier(count, perKeyPenalty, maxPenalty)`. Diagnostics include `nonFiniteMetrics` and `nonFinitePenaltyMultiplier` when applicable.
@@ -481,12 +483,19 @@ trajectory steps (each element is a `TrajectoryStep[]` from a simulation result)
 
 Implemented in `src/evaluation-analytics/motif-miner.js`.
 
-`mineMotifs(lts, config)` discovers recurring edge-label n-gram patterns from an LTS:
+`await mineMotifs(lts, config, { signal })` discovers recurring edge-label n-gram
+patterns from an LTS. The function is async to yield to the event loop during
+heavy graph traversal.
 
 - **Input**: `{ nodes, edges }` from `buildLts`, plus config
-  `{ ngramSizes, minSupport, maxMotifLength }`.
+  `{ ngramSizes, minSupport, maxMotifLength }`, plus optional
+  `{ signal }` (`AbortSignal`) for external cancellation.
 - **Process**: for each n-gram size, enumerates all contiguous paths of that length
-  in the LTS graph. Patterns with fewer than `minSupport` occurrences are discarded.
+  in the LTS graph via DFS. Patterns with fewer than `minSupport` occurrences are
+  discarded. The DFS is bounded by `maxPaths` (50,000 completed paths) and
+  `maxStackSize` (100,000 stack entries) to prevent runaway expansion on dense or
+  cyclic graphs. Every 5,000 iterations the function yields via `setImmediate` so
+  the Node.js event loop remains responsive (enabling timeout-based cancellation).
 - **Output**: array of `{ signature, ngramSize, support, exampleOccurrences }` sorted
   by descending support then lexicographic signature. Each `exampleOccurrence` contains
   `{ fromNode, path }`.

@@ -39,7 +39,7 @@ export function applyAction(definition, state, action, context, args) {
     }
   }
   for (const effect of action.effects ?? []) {
-    const result = applyEffect(state, effect, effectContext);
+    const result = applyEffect(state, effect, effectContext, { boundsMode: "clamp" });
     if (!result.ok) {
       skippedEffects.push({ effect, reason: result.reason ?? "unknown", source: "effect" });
       continue;

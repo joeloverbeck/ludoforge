@@ -193,15 +193,17 @@ export async function runGenerationLoop(options) {
     const candidate = result.genome ?? genome;
     if (result.fitness == null || result.descriptors == null) {
       const diag = result.diagnostics;
-      const reason = diag?.repair?.failed
-        ? "repair-failure"
-        : diag?.validation && !diag.validation.valid
-          ? "validation-failure"
-          : Array.isArray(diag?.safety) && diag.safety.length > 0
-            ? "safety-failure"
-            : diag?.evaluation?.error
-              ? "evaluation-error"
-              : "evaluation-null";
+      const reason = Array.isArray(diag?.repairLeaks) && diag.repairLeaks.length > 0
+        ? "repair-leak"
+        : diag?.repair?.failed
+          ? "repair-failure"
+          : diag?.validation && !diag.validation.valid
+            ? "validation-failure"
+            : Array.isArray(diag?.safety) && diag.safety.length > 0
+              ? "safety-failure"
+              : diag?.evaluation?.error
+                ? "evaluation-error"
+                : "evaluation-null";
       rejected.push({ genome: candidate, reason, diagnostics: diag });
       continue;
     }
@@ -220,11 +222,16 @@ export async function runGenerationLoop(options) {
     );
   }
 
+  let phaseStart = Date.now();
   const mapElites = placePopulationInMapElites(evaluated, options.mapElites);
   const eliteGenomes = Array.from(mapElites.elites.values()).map(
     (member) => member.genome
   );
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:map-elites-placement complete");
+  }
 
+  phaseStart = Date.now();
   const eliteIds = new Set(eliteGenomes.map((g) => g.id));
   const backfillCandidates = evaluated
     .filter((entry) => !eliteIds.has(entry.genome.id))
@@ -240,12 +247,19 @@ export async function runGenerationLoop(options) {
     eliteGenomes.length >= targetSize
       ? eliteGenomes
       : [...eliteGenomes, ...backfillCandidates.slice(0, targetSize - eliteGenomes.length)];
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:backfill complete");
+  }
 
+  phaseStart = Date.now();
   const shortlist = selectShortlist(mapElites.placements, options.mapElites, {
     size: options.shortlistSize ?? 0,
     rng: options.rng,
     useNovelty: options.useNovelty ?? false,
   });
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:shortlist-selection complete");
+  }
 
   return {
     evaluated,

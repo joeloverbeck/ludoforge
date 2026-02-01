@@ -11,8 +11,44 @@ const MAX_REPEAT_DEPTH = 2;
 const VALID_FLAG_DURATIONS = ["action", "phase", "turn"];
 
 /**
- * @typedef {{ variableIds: Set<string>, tokenTypeIds: Set<string>, tokenAttributeIds: Map<string, Set<string>>, zoneIds: Set<string> }} IdContext
+ * @typedef {{ variableIds: Set<string>, tokenTypeIds: Set<string>, tokenAttributeIds: Map<string, Set<string>>, zoneIds: Set<string>, variableById?: Map<string, object>, zoneById?: Map<string, object> }} IdContext
  */
+
+/**
+ * Build a map of variable id → variable definition.
+ * @param {object} definition
+ * @returns {Map<string, object>}
+ */
+function buildVariableById(definition) {
+  const variables = Array.isArray(definition?.state?.variables)
+    ? definition.state.variables
+    : [];
+  return new Map(
+    variables
+      .filter((v) => typeof v?.id === "string")
+      .map((v) => [v.id, v])
+  );
+}
+
+/**
+ * @param {object} definition
+ * @returns {IdContext}
+ */
+/**
+ * Build a map of zone id → zone definition.
+ * @param {object} definition
+ * @returns {Map<string, object>}
+ */
+function buildZoneById(definition) {
+  const zones = Array.isArray(definition?.state?.zones)
+    ? definition.state.zones
+    : [];
+  return new Map(
+    zones
+      .filter((z) => typeof z?.id === "string")
+      .map((z) => [z.id, z])
+  );
+}
 
 /**
  * @param {object} definition
@@ -24,6 +60,8 @@ function buildIdContext(definition) {
     tokenTypeIds: collectTokenTypeIds(definition),
     tokenAttributeIds: collectTokenAttributeIds(definition),
     zoneIds: collectZoneIds(definition),
+    variableById: buildVariableById(definition),
+    zoneById: buildZoneById(definition),
   };
 }
 
@@ -102,6 +140,29 @@ export function repairEffect(effect, definition, depth, idContext) {
     }
   }
 
+  if (
+    (nextEffect.kind === "spawn" || nextEffect.kind === "move" || nextEffect.kind === "queue_push") &&
+    typeof nextEffect.toZone === "string" &&
+    nextEffect.target?.kind === "token" &&
+    typeof nextEffect.target.id === "string"
+  ) {
+    const ctx = idContext ?? buildIdContext(definition);
+    const zone = ctx.zoneById?.get(nextEffect.toZone);
+    if (zone && typeof zone.tokenType === "string" && zone.tokenType !== nextEffect.target.id) {
+      const compatibleZone = [...(ctx.zoneById?.values() ?? [])].find(
+        (z) => z.tokenType === nextEffect.target.id
+      );
+      if (compatibleZone) {
+        nextEffect = { ...nextEffect, toZone: compatibleZone.id };
+      } else {
+        nextEffect = {
+          ...nextEffect,
+          target: { ...nextEffect.target, id: zone.tokenType },
+        };
+      }
+    }
+  }
+
   if (effect.kind === "queue_pop" && effect.fromZone) {
     if (!zoneIds.has(effect.fromZone)) {
       const validZones = [...zoneIds];
@@ -160,6 +221,27 @@ export function repairEffect(effect, definition, depth, idContext) {
   if (effect.kind === "set_flag") {
     if (effect.duration && !VALID_FLAG_DURATIONS.includes(effect.duration)) {
       return { ...nextEffect, duration: "action" };
+    }
+  }
+
+  const varId = nextEffect.target?.kind === "var" ? nextEffect.target.id : null;
+  if (varId) {
+    const ctx = idContext ?? buildIdContext(definition);
+    const variable = ctx.variableById?.get(varId);
+    if (variable?.type?.kind === "int" && typeof variable.type.min === "number" && typeof variable.type.max === "number") {
+      const { min, max } = variable.type;
+      if (nextEffect.kind === "set" && typeof nextEffect.value === "number") {
+        const clamped = clampNumber(nextEffect.value, min, max);
+        if (clamped !== nextEffect.value) {
+          nextEffect = { ...nextEffect, value: clamped };
+        }
+      } else if ((nextEffect.kind === "inc" || nextEffect.kind === "dec") && typeof nextEffect.amount === "number") {
+        const range = max - min;
+        const clamped = clampNumber(nextEffect.amount, 0, range);
+        if (clamped !== nextEffect.amount) {
+          nextEffect = { ...nextEffect, amount: clamped };
+        }
+      }
     }
   }
 

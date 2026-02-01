@@ -103,6 +103,7 @@ export async function executeGenerationBody({
     logger: logger ?? undefined,
   });
 
+  let phaseStart = Date.now();
   recordGenerationTelemetry({
     pendingOperatorNames,
     loopResult,
@@ -110,7 +111,11 @@ export async function executeGenerationBody({
     telemetry,
     mutationSelector,
   });
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:telemetry-recording complete");
+  }
 
+  phaseStart = Date.now();
   const extinctionResult = await checkPopulationExtinction({
     generation,
     loopResult,
@@ -122,33 +127,46 @@ export async function executeGenerationBody({
     seed,
     logger,
   });
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:extinction-check complete");
+  }
   if (extinctionResult) {
     return { __halt: true, haltedReason: extinctionResult.haltedReason };
   }
 
+  phaseStart = Date.now();
   const genDir = resolveRunPath(
     resolveRunDir(baseDir, runId),
     formatGenerationDirName(DEFAULT_RUNNER_LAYOUT.artifacts.generationDirPattern, generation),
   );
   const motifTimeoutMs = motifMiningConfig.timeoutMs ?? 120_000;
-  const rawMiningResult = await withTimeout(
-    runMotifMiningPipeline({
+  const motifAbort = new AbortController();
+  const motifTimer = setTimeout(() => motifAbort.abort(), motifTimeoutMs);
+  let miningResult;
+  try {
+    miningResult = await runMotifMiningPipeline({
       mapElitesResult: loopResult.mapElites,
       motifMiningConfig,
       simulationConfig: evaluation.simulationConfig ?? {},
       generationDir: genDir,
       seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
-    }),
-    motifTimeoutMs,
-    "motif-mining",
-  );
-
-  let miningResult = rawMiningResult;
-  if (rawMiningResult && rawMiningResult.__timedOut) {
-    if (logger) {
-      logger.warn({ generation, timeoutMs: motifTimeoutMs }, "motif mining timed out — skipping");
+      signal: motifAbort.signal,
+    });
+  } catch (err) {
+    if (err.name === "AbortError" || motifAbort.signal.aborted) {
+      miningResult = null;
+      if (logger) {
+        logger.warn({ generation, timeoutMs: motifTimeoutMs }, "motif mining timed out — skipping");
+      }
+    } else {
+      throw err;
     }
-    miningResult = null;
+  } finally {
+    clearTimeout(motifTimer);
+  }
+
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:motif-mining complete");
   }
 
   // Immutable copy: replace the motif-inject operator without mutating the original array
@@ -159,6 +177,7 @@ export async function executeGenerationBody({
     );
   }
 
+  phaseStart = Date.now();
   const evolutionResult = applyEvolution(loopResult.nextGeneration, {
     rng: rng ?? undefined,
     mutationRate,
@@ -172,6 +191,10 @@ export async function executeGenerationBody({
     ...(offspringPerParent !== undefined ? { offspringPerParent } : {}),
   });
 
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:evolution-application complete");
+  }
+
   let evolvedPopulation = evolutionResult.population;
   let newPendingOperatorNames = evolutionResult.operatorNames;
 
@@ -181,6 +204,7 @@ export async function executeGenerationBody({
     newPendingOperatorNames = newPendingOperatorNames.slice(0, maxPopSize);
   }
 
+  phaseStart = Date.now();
   const minPopulationSize = runnerConfig.minPopulationSize;
   if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
     const replenished = replenishPopulation(evolvedPopulation, {
@@ -204,9 +228,13 @@ export async function executeGenerationBody({
   }
 
   assertPopulation(evolvedPopulation);
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:replenishment complete");
+  }
 
   const determinism = assembleDeterminism(options.determinism, rng, seed);
 
+  phaseStart = Date.now();
   // --- Preference controller integration ---
   const plConfig = config.preferenceLearning ?? {};
   const freezeConfig = plConfig.controller?.freeze ?? { enabled: false, minTotalSamples: 0, freezeAfterStableGens: 1, stableUncertaintyThreshold: 0.3, requireNoNewMetricIds: false };
@@ -243,6 +271,11 @@ export async function executeGenerationBody({
     : { nextState: { mode: "learning", stableGenCount: 0 }, froze: false, unfroze: false, reasonCodes: [] };
   const nextControllerState = controllerResult.nextState;
 
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:preference-controller complete");
+  }
+
+  phaseStart = Date.now();
   const feedbackPlan = decideFeedbackPlan({
     controllerState: nextControllerState,
     calibration: calibrationConfig,
@@ -252,6 +285,11 @@ export async function executeGenerationBody({
     baseMaxPerGen,
   });
 
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:feedback-planning complete");
+  }
+
+  phaseStart = Date.now();
   const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
     generation,
     runId,
@@ -266,6 +304,11 @@ export async function executeGenerationBody({
     telemetry,
   });
 
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:generation-context complete");
+  }
+
+  phaseStart = Date.now();
   const preferenceHealthArtifact = buildPreferenceHealth({
     meanUncertainty: controllerInputs.meanUncertainty,
     oodRate: 0,
@@ -282,7 +325,11 @@ export async function executeGenerationBody({
   const tasteVectorArtifact = distillTasteVector(snapshot ?? { models: [] });
 
   const debugLog = buildDebugLog({ generation, evolvedPopulation, loopResult });
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:preference-health-and-taste complete");
+  }
 
+  phaseStart = Date.now();
   const artifacts = await writeGenerationArtifacts({
     baseDir,
     runId,
@@ -307,12 +354,21 @@ export async function executeGenerationBody({
     debugLog,
   });
 
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:artifact-writing complete");
+  }
+
+  phaseStart = Date.now();
   if (runnerConfig.maxRetainedGenerations != null) {
     await pruneOldGenerations({
       baseDir,
       runId,
       maxRetained: runnerConfig.maxRetainedGenerations,
     });
+  }
+
+  if (logger) {
+    logger.info({ durationMs: Date.now() - phaseStart }, "phase:generation-cleanup complete");
   }
 
   const feedbackCount = Array.isArray(feedback) ? feedback.length : 0;

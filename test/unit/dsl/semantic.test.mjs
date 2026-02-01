@@ -27,7 +27,8 @@ describe("semantic", () => {
     it("returns valid true for valid definitions", () => {
       const result = validateSemanticDefinition(cloneDefinition(baseDefinition));
       assert.equal(result.valid, true);
-      assert.deepEqual(result.issues, []);
+      const errors = result.issues.filter((i) => i.severity === "error");
+      assert.deepEqual(errors, []);
     });
 
     it("returns valid true for the minimal example", () => {
@@ -90,9 +91,10 @@ describe("semantic", () => {
   });
 
   describe("collectSemanticIssues", () => {
-    it("returns an empty list for valid definitions", () => {
+    it("returns no errors for valid definitions", () => {
       const issues = collectSemanticIssues(cloneDefinition(baseDefinition));
-      assert.deepEqual(issues, []);
+      const errors = issues.filter((i) => i.severity === "error");
+      assert.deepEqual(errors, []);
     });
 
     describe("termination rules", () => {
@@ -488,7 +490,11 @@ describe("semantic", () => {
         const issues = collectSemanticIssues(candidate);
 
         const conditionalIssues = issues.filter(
-          (i) => i.rule !== "free-lunch" && i.rule !== "unused-token-type"
+          (i) =>
+            i.rule !== "free-lunch" &&
+            i.rule !== "unused-token-type" &&
+            i.rule !== "unused-action-param" &&
+            i.rule !== "termination-variable-unmodified"
         );
         assert.deepEqual(conditionalIssues, []);
       });

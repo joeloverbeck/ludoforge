@@ -20,11 +20,12 @@ import { resolve } from "node:path";
  *   simulationConfig?: object,
  *   generationDir: string,
  *   seed?: number,
+ *   signal?: AbortSignal | null,
  * }} options
  * @returns {Promise<{ motifEffects: object[][], motifRecords: object[] } | null>}
  */
 export async function runMotifMiningPipeline(options) {
-  const { mapElitesResult, motifMiningConfig, simulationConfig = {}, generationDir, seed = 0 } = options;
+  const { mapElitesResult, motifMiningConfig, simulationConfig = {}, generationDir, seed = 0, signal = null } = options;
 
   if (motifMiningConfig.enabled !== true) {
     return null;
@@ -50,11 +51,11 @@ export async function runMotifMiningPipeline(options) {
   const effectMap = buildEffectMap(trajectories);
   const lts = buildLts(trajectories);
 
-  const motifs = mineMotifs(lts, {
+  const motifs = await mineMotifs(lts, {
     ngramSizes: motifMiningConfig.ngramSizes,
     minSupport: motifMiningConfig.minSupport,
     maxMotifLength: motifMiningConfig.maxMotifLength,
-  });
+  }, { signal });
 
   const motifEffects = convertMotifsToEffects(motifs, effectMap);
 

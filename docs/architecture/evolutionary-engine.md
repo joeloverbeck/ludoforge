@@ -15,19 +15,29 @@ Steps per genome:
    adapter's rejection path applies only when the *adapter itself* runs repair and
    the result is `null`.
 2. Validate DSL definition (`validateGameDefinition` + `validateSemanticDefinition`).
-3. Run safety gates if provided.
-4. `await options.evaluator(genome, context)` with the repaired genome if repair ran.
-   The evaluator is async — it returns a Promise. An optional `context` object
-   (currently `{ logger }`) is threaded from the generation loop through the
-   adapter to the evaluator. The default evaluator is produced by
-   `createEvaluator()` from `src/evaluation-analytics/create-evaluator.js`,
+3. **Repair-leak detection** (only when repair operators were configured): filter
+   post-repair validation issues for warnings in `REPAIR_EXPECTED_RULES` (imported
+   from `src/dsl/semantic.js`). If any survive, reject the genome with
+   `diagnostics.repairLeaks` — this catches repair pipeline bugs where a warning
+   the repair pipeline is expected to fix persists after repair.
+4. Run safety gates if provided.
+5. **Compute semantic warning/info counts** from surviving validation issues and
+   pass them to the evaluator via the context object (`semanticWarningCount`,
+   `semanticInfoCount`). The built-in evaluator injects these into the feature
+   vector (see `docs/architecture/metrics-and-fitness.md` § Step 10e).
+6. `await options.evaluator(genome, context)` with the repaired genome if repair ran.
+   The evaluator is async — it returns a Promise. The `context` object includes
+   `{ logger, semanticWarningCount, semanticInfoCount }` threaded from the
+   generation loop through the adapter to the evaluator. The default evaluator is
+   produced by `createEvaluator()` from `src/evaluation-analytics/create-evaluator.js`,
    which runs the full 13-step built-in evaluation pipeline (see
    `docs/architecture/metrics-and-fitness.md`).
-5. Reject if evaluator output is missing `fitness` or `descriptors`. When the
+7. Reject if evaluator output is missing `fitness` or `descriptors`. When the
    evaluator returns invalid output, diagnostics include the returned `fitness`
    value and whether `descriptors` was present, aiding debugging.
 
-Diagnostics include validation results, safety failures, and evaluator-specific payloads.
+Diagnostics include validation results, safety failures, repair-leak details, and
+evaluator-specific payloads.
 
 ## MAP-Elites Placement
 
@@ -102,10 +112,11 @@ Implemented in `src/evolutionary-engine/engine.js`.
 
 ### Rejection Categorization
 
-The generation loop categorizes every rejected genome into one of five reasons:
+The generation loop categorizes every rejected genome into one of six reasons:
 
 | Reason | Trigger |
 |--------|---------|
+| `repair-leak` | A repair-expected warning survived post-repair (repair pipeline bug) |
 | `repair-failure` | Repair operator returned `null` |
 | `validation-failure` | DSL schema or semantic validation failed |
 | `safety-failure` | One or more safety gates failed |

@@ -33,7 +33,9 @@
     "degeneracy.high-pass-rate": 0,
     "degeneracy.high-no-legal-actions-termination": 0,
     "degeneracy.non-finite-metrics": 0,
-    "unused_element_ratio": 0
+    "unused_element_ratio": 0,
+    "semantic_warning_count": -0.15,
+    "semantic_info_count": 0
   },
   "weightNormalization": true,
   "preferenceWeight": 1,

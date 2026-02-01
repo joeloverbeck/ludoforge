@@ -6,21 +6,58 @@ import { evaluateExpr } from "./semantic/expr-evaluator.js";
 import { createRefValidator } from "./semantic/ref-validator.js";
 import { createSemanticValidators } from "./semantic/semantic-validators.js";
 import { validateZoneTokenTypes } from "./semantic/zone-validator.js";
-import { validateTerminationBlock, validateTerminationExpressions } from "./semantic/termination-validator.js";
+import { validateTerminationBlock, validateTerminationExpressions, validateTerminationThresholds } from "./semantic/termination-validator.js";
 import { validateNoLegalActionsPolicy } from "./semantic/no-legal-actions-validator.js";
 import { validateScheduler } from "./semantic/scheduler-validator.js";
 import { validateActions } from "./semantic/action-validator.js";
 import { validateTriggers } from "./semantic/trigger-validator.js";
 import { reportUnusedResources } from "./semantic/unused-detector.js";
+import { detectDuplicateActions } from "./semantic/duplicate-action-detector.js";
+import { detectCancellingEffects } from "./semantic/cancelling-effect-detector.js";
+import { detectUnusedParams } from "./semantic/unused-param-detector.js";
+import { detectOverlappingTerminations } from "./semantic/termination-overlap-detector.js";
+import { detectUnreachableTerminations } from "./semantic/termination-reachability.js";
 
 const warningRules = new Set([
   "action-precondition-unsatisfiable",
   "unused-variable",
   "unused-token-type",
   "unused-zone",
+  "effect-value-out-of-bounds",
+  "effect-amount-excessive",
+  "termination-threshold-out-of-bounds",
+  "termination-immediately-true",
+  "zone-token-type-mismatch",
+  "termination-overlap",
+  "termination-variable-unmodified",
+  "unused-action-param",
 ]);
 
-const infoRules = new Set(["dominant-action", "free-lunch"]);
+const infoRules = new Set([
+  "dominant-action",
+  "free-lunch",
+  "duplicate-action",
+  "cancelling-effects",
+  "redundant-set-effect",
+]);
+
+export const REPAIR_EXPECTED_RULES = new Set([
+  "unused-variable",
+  "unused-token-type",
+  "unused-zone",
+  "effect-value-out-of-bounds",
+  "effect-amount-excessive",
+  "termination-threshold-out-of-bounds",
+  "termination-variable-unmodified",
+  "zone-token-type-mismatch",
+  "unused-action-param",
+]);
+
+export const UNREPAIRED_WARNING_RULES = new Set([
+  "termination-immediately-true",
+  "termination-overlap",
+  "action-precondition-unsatisfiable",
+]);
 
 function classifySeverity({ path, rule }) {
   if (rule === "ref-unknown" && path.startsWith("/termination/conditions/")) {
@@ -115,6 +152,7 @@ export function collectSemanticIssues(definition) {
     validateVariableRef,
     joinPath,
     zoneById,
+    variableById,
     pushIssue,
   });
 
@@ -127,12 +165,23 @@ export function collectSemanticIssues(definition) {
     pushIssue,
   });
 
+  const actions = normalizeArray(definition.actions);
+  detectDuplicateActions(actions, pushIssue);
+  detectCancellingEffects(actions, pushIssue);
+  detectUnusedParams(actions, pushIssue);
+
   validateTriggers(normalizeArray(definition.triggers), "/triggers", { validateExpr, validateEffect });
   validateTriggers(normalizeArray(definition.turn?.stepEffects), "/turn/stepEffects", { validateExpr, validateEffect });
 
   validateScheduler(definition, { variableIds, tokenTypeIds, zoneIds, pushIssue });
 
   validateTerminationExpressions(terminationConditions, definition, validateExpr);
+
+  validateTerminationThresholds(terminationConditions, variableById, pushIssue);
+
+  detectOverlappingTerminations(terminationConditions, variableById, pushIssue);
+
+  detectUnreachableTerminations(terminationConditions, definition, pushIssue);
 
   reportUnusedResources({
     variableIds,

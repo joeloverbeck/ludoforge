@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { evaluateGenome } from "../../../src/evolutionary-engine/evaluation-adapter.js";
 import { dslSafetyRepair } from "../../../src/evolutionary-engine/repair.js";
-import { baseDefinition, missingTerminationDefinition } from "../dsl/fixtures.mjs";
+import { baseDefinition, exampleDefinition, missingTerminationDefinition } from "../dsl/fixtures.mjs";
 
 describe("evaluation-adapter", () => {
   describe("evaluateGenome", () => {
@@ -73,7 +73,8 @@ describe("evaluation-adapter", () => {
 
     describe("repair operators", () => {
       it("applies repair operators before validation and evaluation", async () => {
-        const definition = structuredClone(baseDefinition);
+        // Use exampleDefinition which has no pre-existing repair-expected warnings
+        const definition = structuredClone(exampleDefinition);
         definition.state.variables[0].initial = 999;
         let observedInitial = null;
 
@@ -89,11 +90,11 @@ describe("evaluation-adapter", () => {
         );
 
         assert.equal(result.fitness, 1);
-        assert.equal(observedInitial, 10);
+        assert.equal(observedInitial, 5);
         assert.ok(result.diagnostics.repair);
         assert.equal(result.diagnostics.repair.failed, false);
         assert.deepEqual(result.diagnostics.repair.applied, ["dsl-safety"]);
-        assert.equal(result.genome.definition.state.variables[0].initial, 10);
+        assert.equal(result.genome.definition.state.variables[0].initial, 5);
       });
 
       it("rejects genomes when repair fails", async () => {
