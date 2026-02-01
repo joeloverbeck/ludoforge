@@ -104,6 +104,53 @@ describe("resume-loader", () => {
       );
     });
 
+    it("skips version check when requireConfigMatch is false", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      await createRunFixture({ baseDir, runId, config });
+
+      // Should succeed despite version mismatch because requireConfigMatch is false
+      const resumeState = await loadResumeState({
+        baseDir,
+        runId,
+        config: createRunnerConfig("v2"),
+        resumeConfig: { requireConfigMatch: false, requireDescriptorMatch: true },
+      });
+
+      assert.equal(resumeState.runId, runId);
+      assert.equal(resumeState.generation, 2);
+    });
+
+    it("skips descriptor check when requireDescriptorMatch is false", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      await createRunFixture({ baseDir, runId, config });
+
+      const differentDescriptors = {
+        ...createRunnerConfig("v1"),
+        mapElites: {
+          descriptors: [
+            { id: "different", min: 0, max: 50, bins: 3 },
+          ],
+        },
+      };
+
+      // Should succeed despite descriptor mismatch because requireDescriptorMatch is false
+      const resumeState = await loadResumeState({
+        baseDir,
+        runId,
+        config: differentDescriptors,
+        resumeConfig: { requireConfigMatch: false, requireDescriptorMatch: false },
+      });
+
+      assert.equal(resumeState.runId, runId);
+      assert.equal(resumeState.generation, 2);
+    });
+
     it("rejects missing preference-model snapshot", async () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
       const runId = createRunId();

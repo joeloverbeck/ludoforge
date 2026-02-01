@@ -19,6 +19,7 @@ import { buildGenerationContext } from "./generation-context.js";
 import { runMotifMiningPipeline } from "./motif-pipeline.js";
 import { createMotifInjectMutation } from "../evolutionary-engine/mutation/operators/motif-inject.js";
 import { resolveRunDir, resolveRunPath } from "./run-layout.js";
+import { DEFAULT_RUNNER_LAYOUT, formatGenerationDirName } from "./runner-defaults.js";
 
 /**
  * @param {object} params
@@ -116,7 +117,10 @@ export async function executeGenerationBody({
     return { __halt: true, haltedReason: extinctionResult.haltedReason };
   }
 
-  const genDir = resolveRunPath(resolveRunDir(baseDir, runId), `generation-${generation}`);
+  const genDir = resolveRunPath(
+    resolveRunDir(baseDir, runId),
+    formatGenerationDirName(DEFAULT_RUNNER_LAYOUT.artifacts.generationDirPattern, generation),
+  );
   const motifTimeoutMs = motifMiningConfig.timeoutMs ?? 120_000;
   const rawMiningResult = await withTimeout(
     runMotifMiningPipeline({

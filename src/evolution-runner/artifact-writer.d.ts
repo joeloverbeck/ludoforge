@@ -3,6 +3,7 @@ import type {
   PreferenceModelSnapshotRecord,
 } from "../data-persistence/types.js";
 import type { PreferenceMetrics } from "../evaluation-analytics/types.js";
+import type { ArtifactsLayout } from "./runner-defaults.js";
 
 export interface GenerationArtifactDeterminism {
   seed?: number;
@@ -30,6 +31,7 @@ export interface GenerationArtifactInput {
   operatorStats?: Record<string, unknown>;
   health?: Record<string, unknown>;
   preferenceMetrics?: PreferenceMetrics;
+  artifacts?: ArtifactsLayout;
 }
 
 export interface GenerationArtifactPaths {

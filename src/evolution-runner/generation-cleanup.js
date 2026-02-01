@@ -1,7 +1,7 @@
 import { readdir, rm } from "node:fs/promises";
 import { resolveRunDir, resolveRunPath } from "./run-layout.js";
 
-const GENERATION_PREFIX = "generation-";
+// Pattern coupled to generationDirPattern in configs/evolution-runner.json
 const GENERATION_PATTERN = /^generation-(\d+)$/;
 
 function parseGenerationNumber(name) {

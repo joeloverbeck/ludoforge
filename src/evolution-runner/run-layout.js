@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { resolve, relative, sep } from "node:path";
+import { DEFAULT_RUNNER_LAYOUT } from "./runner-defaults.js";
 
 const RUN_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -32,8 +33,8 @@ export function assertValidRunId(runId) {
   }
 }
 
-export function resolveRunsRoot(baseDir = process.cwd()) {
-  return resolve(baseDir, "runs");
+export function resolveRunsRoot(baseDir = process.cwd(), runsRoot = DEFAULT_RUNNER_LAYOUT.runsRoot) {
+  return resolve(baseDir, runsRoot);
 }
 
 export function resolveRunDir(baseDir, runId) {
@@ -52,13 +53,13 @@ export function resolveRunPath(runDir, ...segments) {
   return target;
 }
 
-export async function writeRunMetadata(baseDir, runId, metadata = {}) {
+export async function writeRunMetadata(baseDir, runId, metadata = {}, { runMetadataFilename = DEFAULT_RUNNER_LAYOUT.artifacts.runMetadata } = {}) {
   if (metadata === null || typeof metadata !== "object") {
     throw new Error("Run metadata must be an object");
   }
 
   const runDir = resolveRunDir(baseDir, runId);
-  const filePath = resolveRunPath(runDir, "run.json");
+  const filePath = resolveRunPath(runDir, runMetadataFilename);
   const payload = {
     ...metadata,
     runId,
@@ -71,11 +72,11 @@ export async function writeRunMetadata(baseDir, runId, metadata = {}) {
   return filePath;
 }
 
-export async function listRuns(baseDir = process.cwd()) {
-  const runsRoot = resolveRunsRoot(baseDir);
+export async function listRuns(baseDir = process.cwd(), runsRoot) {
+  const resolvedRoot = resolveRunsRoot(baseDir, runsRoot);
   let entries;
   try {
-    entries = await readdir(runsRoot, { withFileTypes: true });
+    entries = await readdir(resolvedRoot, { withFileTypes: true });
   } catch (error) {
     if (error && error.code === "ENOENT") {
       return [];

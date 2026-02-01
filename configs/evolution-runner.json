@@ -17,59 +17,5 @@
   "resume": {
     "requireConfigMatch": true,
     "requireDescriptorMatch": true
-  },
-  "preferenceLearning": {
-    "enabled": true,
-    "mode": "comparison",
-    "budget": {
-      "baseMaxPerGen": 5,
-      "adaptive": {
-        "enabled": true,
-        "lowUncertaintyThreshold": 0.1,
-        "highUncertaintyThreshold": 0.35,
-        "scaleDownFactor": 0.5,
-        "scaleUpFactor": 1.5,
-        "onNewMetricIds": "scaleUp"
-      }
-    },
-    "activeLearning": {
-      "maxPairsPerGen": 5,
-      "cadenceGens": 1,
-      "uncertaintyThreshold": 0.15,
-      "diversityQuota": 1,
-      "candidatePool": {
-        "source": "shortlist",
-        "focus": {
-          "strategy": "none"
-        },
-        "maxCandidates": 20
-      }
-    },
-    "controller": {
-      "freeze": {
-        "enabled": true,
-        "minTotalSamples": 50,
-        "freezeAfterStableGens": 5,
-        "stableUncertaintyThreshold": 0.1,
-        "requireNoNewMetricIds": true
-      },
-      "calibration": {
-        "enabled": true,
-        "everyGens": 10,
-        "samples": 2,
-        "strategy": "activeLearning"
-      },
-      "drift": {
-        "enabled": true,
-        "unfreezeUncertaintyThreshold": 0.3,
-        "minCalibrationAccuracy": 0.7,
-        "ood": {
-          "enabled": true,
-          "featureDistance": "cosine",
-          "maxTrainDistanceP95": 2.0,
-          "maxOodRate": 0.2
-        }
-      }
-    }
   }
 }

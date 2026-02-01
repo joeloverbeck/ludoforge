@@ -1,6 +1,7 @@
 import type { GameDefinition } from "../dsl/types.js";
 import type { PreferenceModelSnapshotRecord } from "../data-persistence/types.js";
 import type { EvolutionRunnerConfig, MapElitesDescriptorConfig } from "./config.js";
+import type { ArtifactsLayout, ResumeDefaults } from "./runner-defaults.js";
 
 export interface ResumeGenome {
   id: string;
@@ -18,6 +19,8 @@ export interface ResumeLoaderOptions {
   baseDir?: string;
   runId: string;
   config: EvolutionRunnerConfig;
+  artifacts?: ArtifactsLayout;
+  resumeConfig?: ResumeDefaults;
 }
 
 export interface ResumeState {

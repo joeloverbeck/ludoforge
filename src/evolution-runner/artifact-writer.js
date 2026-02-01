@@ -3,6 +3,7 @@ import { stringifyJsonl } from "../data-persistence/jsonl.js";
 import { writeFeedbackJsonl } from "../data-persistence/feedback-store.js";
 import { writePreferenceModelSnapshotJsonl } from "../data-persistence/preference-model-store.js";
 import { assertValidRunId, resolveRunDir, resolveRunPath } from "./run-layout.js";
+import { DEFAULT_RUNNER_LAYOUT, formatGenerationDirName } from "./runner-defaults.js";
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -73,6 +74,7 @@ export async function writeGenerationArtifacts({
   health,
   preferenceMetrics,
   debugLog,
+  artifacts = DEFAULT_RUNNER_LAYOUT.artifacts,
 }) {
   assertValidRunId(runId);
   assertGenerationNumber(generation);
@@ -84,15 +86,15 @@ export async function writeGenerationArtifacts({
   );
 
   const runDir = resolveRunDir(baseDir, runId);
-  const generationName = `generation-${generation}`;
+  const generationName = formatGenerationDirName(artifacts.generationDirPattern, generation);
   const generationDir = resolveRunPath(runDir, generationName);
 
   await mkdir(generationDir, { recursive: true });
 
-  const populationPath = resolveRunPath(generationDir, "population.jsonl");
+  const populationPath = resolveRunPath(generationDir, artifacts.population);
   await writeJsonl(populationPath, normalizedPopulation);
 
-  const preferenceModelPath = resolveRunPath(generationDir, "preference-model.jsonl");
+  const preferenceModelPath = resolveRunPath(generationDir, artifacts.preferenceModel);
   await writePreferenceModelSnapshotJsonl(preferenceModelPath, preferenceModelSnapshots);
 
   const paths = {
@@ -103,33 +105,33 @@ export async function writeGenerationArtifacts({
 
   if (evaluated !== undefined) {
     assertArray(evaluated, "Evaluated entries");
-    const evaluatedPath = resolveRunPath(generationDir, "evaluated.jsonl");
+    const evaluatedPath = resolveRunPath(generationDir, artifacts.evaluated);
     await writeJsonl(evaluatedPath, evaluated);
     paths.evaluatedPath = evaluatedPath;
   }
 
   if (rejected !== undefined) {
     assertArray(rejected, "Rejected entries");
-    const rejectedPath = resolveRunPath(generationDir, "rejected.jsonl");
+    const rejectedPath = resolveRunPath(generationDir, artifacts.rejected);
     await writeJsonl(rejectedPath, rejected);
     paths.rejectedPath = rejectedPath;
   }
 
   if (mapElites !== undefined) {
-    const mapElitesPath = resolveRunPath(generationDir, "map-elites.json");
+    const mapElitesPath = resolveRunPath(generationDir, artifacts.mapElites);
     await writeJson(mapElitesPath, mapElites);
     paths.mapElitesPath = mapElitesPath;
   }
 
   if (Array.isArray(shortlist) && shortlist.length > 0) {
-    const shortlistPath = resolveRunPath(generationDir, "shortlist.json");
+    const shortlistPath = resolveRunPath(generationDir, artifacts.shortlist);
     await writeJson(shortlistPath, shortlist);
     paths.shortlistPath = shortlistPath;
   }
 
   if (feedback !== undefined) {
     assertArray(feedback, "Feedback entries");
-    const feedbackPath = resolveRunPath(generationDir, "feedback.jsonl");
+    const feedbackPath = resolveRunPath(generationDir, artifacts.feedback);
     await writeFeedbackJsonl(feedbackPath, feedback);
     paths.feedbackPath = feedbackPath;
   }
@@ -138,7 +140,7 @@ export async function writeGenerationArtifacts({
     if (!isPlainObject(determinism)) {
       throw new Error("Determinism metadata must be an object");
     }
-    const determinismPath = resolveRunPath(generationDir, "determinism.json");
+    const determinismPath = resolveRunPath(generationDir, artifacts.determinism);
     await writeJson(determinismPath, {
       runId,
       generation,

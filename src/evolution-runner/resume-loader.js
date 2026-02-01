@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { readPreferenceModelSnapshotJsonl } from "../data-persistence/preference-model-store.js";
 import { assertValidRunId, resolveRunDir, resolveRunPath } from "./run-layout.js";
+import { DEFAULT_RUNNER_LAYOUT } from "./runner-defaults.js";
 
 const GENERATION_DIR_PATTERN = /^generation-(\d+)$/;
 
@@ -24,7 +25,7 @@ function normalizeDescriptorSet(descriptors) {
   return normalized;
 }
 
-function assertConfigCompatibility(runConfig, expectedConfig) {
+function assertConfigCompatibility(runConfig, expectedConfig, resumeConfig = DEFAULT_RUNNER_LAYOUT.resume) {
   if (!runConfig || typeof runConfig !== "object") {
     throw new Error("Run metadata is missing config snapshot");
   }
@@ -32,21 +33,26 @@ function assertConfigCompatibility(runConfig, expectedConfig) {
     throw new Error("Resume config is required");
   }
 
-  if (runConfig.version !== expectedConfig.version) {
+  const requireConfigMatch = resumeConfig?.requireConfigMatch ?? true;
+  const requireDescriptorMatch = resumeConfig?.requireDescriptorMatch ?? true;
+
+  if (requireConfigMatch && runConfig.version !== expectedConfig.version) {
     throw new Error(
       `Run config version '${runConfig.version}' does not match '${expectedConfig.version}'`,
     );
   }
 
-  const runDescriptors = normalizeDescriptorSet(runConfig.mapElites?.descriptors);
-  const expectedDescriptors = normalizeDescriptorSet(expectedConfig.mapElites?.descriptors);
+  if (requireDescriptorMatch) {
+    const runDescriptors = normalizeDescriptorSet(runConfig.mapElites?.descriptors);
+    const expectedDescriptors = normalizeDescriptorSet(expectedConfig.mapElites?.descriptors);
 
-  if (!runDescriptors || !expectedDescriptors) {
-    throw new Error("Run config descriptor snapshot is invalid or missing");
-  }
+    if (!runDescriptors || !expectedDescriptors) {
+      throw new Error("Run config descriptor snapshot is invalid or missing");
+    }
 
-  if (JSON.stringify(runDescriptors) !== JSON.stringify(expectedDescriptors)) {
-    throw new Error("Run config MAP-Elites descriptors do not match");
+    if (JSON.stringify(runDescriptors) !== JSON.stringify(expectedDescriptors)) {
+      throw new Error("Run config MAP-Elites descriptors do not match");
+    }
   }
 }
 
@@ -92,8 +98,8 @@ function normalizePopulationEntry(entry, filePath, line) {
   return { id, definition };
 }
 
-async function loadRunMetadata(runDir, runId) {
-  const metadataPath = resolveRunPath(runDir, "run.json");
+async function loadRunMetadata(runDir, runId, artifacts = DEFAULT_RUNNER_LAYOUT.artifacts) {
+  const metadataPath = resolveRunPath(runDir, artifacts.runMetadata);
   let contents;
   try {
     contents = await readFile(metadataPath, "utf8");
@@ -151,8 +157,8 @@ async function findLatestGeneration(runDir, runId) {
   };
 }
 
-async function loadPopulation(runDir, generationName) {
-  const populationPath = resolveRunPath(runDir, generationName, "population.jsonl");
+async function loadPopulation(runDir, generationName, artifacts = DEFAULT_RUNNER_LAYOUT.artifacts) {
+  const populationPath = resolveRunPath(runDir, generationName, artifacts.population);
   let contents;
   try {
     contents = await readFile(populationPath, "utf8");
@@ -171,8 +177,8 @@ async function loadPopulation(runDir, generationName) {
   return records.map(({ value, line }) => normalizePopulationEntry(value, populationPath, line));
 }
 
-async function loadPreferenceModel(runDir, generationName) {
-  const modelPath = resolveRunPath(runDir, generationName, "preference-model.jsonl");
+async function loadPreferenceModel(runDir, generationName, artifacts = DEFAULT_RUNNER_LAYOUT.artifacts) {
+  const modelPath = resolveRunPath(runDir, generationName, artifacts.preferenceModel);
   let snapshots;
   try {
     snapshots = await readPreferenceModelSnapshotJsonl(modelPath);
@@ -190,7 +196,13 @@ async function loadPreferenceModel(runDir, generationName) {
   return snapshots[snapshots.length - 1];
 }
 
-export async function loadResumeState({ baseDir = process.cwd(), runId, config }) {
+export async function loadResumeState({
+  baseDir = process.cwd(),
+  runId,
+  config,
+  artifacts = DEFAULT_RUNNER_LAYOUT.artifacts,
+  resumeConfig = DEFAULT_RUNNER_LAYOUT.resume,
+}) {
   assertValidRunId(runId);
 
   const runDir = resolveRunDir(baseDir, runId);
@@ -207,13 +219,13 @@ export async function loadResumeState({ baseDir = process.cwd(), runId, config }
     throw new Error(`Run path is not a directory for '${runId}'.`);
   }
 
-  const metadata = await loadRunMetadata(runDir, runId);
-  assertConfigCompatibility(metadata.config, config);
+  const metadata = await loadRunMetadata(runDir, runId, artifacts);
+  assertConfigCompatibility(metadata.config, config, resumeConfig);
 
   const { generation, generationDir, generationName } = await findLatestGeneration(runDir, runId);
 
-  const population = await loadPopulation(runDir, generationName);
-  const preferenceModel = await loadPreferenceModel(runDir, generationName);
+  const population = await loadPopulation(runDir, generationName, artifacts);
+  const preferenceModel = await loadPreferenceModel(runDir, generationName, artifacts);
 
   return {
     runId,
