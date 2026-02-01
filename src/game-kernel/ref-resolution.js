@@ -125,6 +125,24 @@ export function resolveRefValue(ref, context) {
   if (ref.kind === "flag_query") {
     return resolveFlagQuery(ref, context);
   }
+  if (ref.kind === "meta") {
+    const meta = context.meta;
+    if (!meta) {
+      return undefined;
+    }
+    if (ref.id === "legalActionCount") {
+      return meta.legalActionCount;
+    }
+    if (ref.id === "hasLegalActions") {
+      if (typeof meta.hasLegalActions === "boolean") {
+        return meta.hasLegalActions;
+      }
+      if (typeof meta.legalActionCount === "number") {
+        return meta.legalActionCount > 0;
+      }
+      return undefined;
+    }
+  }
   return undefined;
 }
 
