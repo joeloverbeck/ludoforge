@@ -57,7 +57,8 @@ per-generation cap on human feedback prompts — based on ensemble uncertainty:
 - When ensemble mean uncertainty is high (>= `highUncertaintyThreshold`, default
   `0.35`), or when new metric IDs are detected that the model has not yet
   learned, the budget is increased by 50% to gather more informative samples.
-- The minimum budget is always 1.
+- The minimum budget is **0** — true zero-feedback generations are allowed when
+  the preference controller is in frozen state.
 
 This interacts with the active learning pair selection: the adaptive budget
 determines _how many_ pairs to request, while BALD acquisition determines
@@ -66,6 +67,25 @@ still reserves slots for underrepresented niches within the adapted budget.
 
 See [evolution-runner.md](evolution-runner.md) § Adaptive Sampling Budget for
 implementation details and config keys.
+
+### Candidate Pool Resolution
+
+Implemented in `src/evolution-runner/candidate-pool.js`.
+
+The candidate pool determines which genomes are available for active learning
+pair selection. Configured via `preferenceLearning.activeLearning.candidatePool`:
+
+- `source="shortlist"`: uses the runner shortlist (falls back to elites if empty).
+- `source="elites"`: uses all MAP-Elites elite genomes.
+- `source="evaluated"`: uses all evaluated genomes.
+- `source="mixed"`: uses elites plus a seeded random sample of non-elite evaluated genomes.
+
+After source resolution, an optional `focus.strategy` narrows the pool:
+
+- `"none"`: use the full pool.
+- `"topQuantile"`: filter to the top Q% by fitness.
+
+Finally, the pool is truncated to `maxCandidates` via seeded random sampling.
 
 ### Comparison Assembly
 
@@ -152,8 +172,8 @@ probabilistic while still deterministic for identical inputs.
 ## CLI Integration
 
 The CLI entrypoint (`src/cli/ludoforge-evolve.js`) wires human feedback into the
-evolution runner when `config.humanFeedback.enabled` is `true`. The wiring uses
-two factory modules:
+evolution runner when `config.preferenceLearning.enabled` is `true`. The wiring
+uses two factory modules:
 
 - `src/cli/console-io.js` — creates a Node.js readline-based `HumanIO` adapter
   (`{ readLine, writeLine }`) for interactive terminal prompting, with a `close()`
@@ -162,7 +182,7 @@ two factory modules:
   (which also writes to stderr) rather than being lost on a separate stream.
 - `src/human-interface/create-feedback-provider.js` — creates
   `{ feedbackProvider, snapshotProvider }` from an `HumanIO` instance and the
-  `humanFeedback` config block.
+  `preferenceLearning` config block.
 
 The feedback provider is an async function accepting a `GenerationContext` and
 returning `FeedbackRecord[]`. Internally it:
@@ -186,10 +206,81 @@ Feedback is only wired when `process.stdin.isTTY` is truthy, so non-interactive
 environments (CI, piped input, background processes) skip the feedback loop
 instead of blocking indefinitely on readline.
 
-The `humanFeedback` block is required in the runner config schema
-(`schemas/evolution-runner/runner-config.schema.json`) with `enabled` and `mode`
-as required fields. Setting `enabled: false` disables the feedback loop without
+The `preferenceLearning` block is required in the runner config schema
+(`schemas/evolution-runner/runner-config.schema.json`) with `enabled` as a
+required field. Setting `enabled: false` disables the feedback loop without
 removing the config block.
+
+## Preference Controller (Freeze/Unfreeze)
+
+Implemented in `src/evolution-runner/preference-controller.js`.
+
+The preference controller manages a freeze/unfreeze lifecycle that allows
+long stretches of zero-feedback generations once the preference model stabilizes.
+
+### Controller State
+
+Persisted as `preference-controller.json` per generation:
+
+- `mode`: `"learning"` or `"frozen"`.
+- `stableGenCount`: consecutive generations where mean ensemble uncertainty
+  remained below `stableUncertaintyThreshold`.
+
+### Freeze Conditions
+
+Freeze triggers when all conditions are met:
+
+- `freeze.enabled` is `true`.
+- Total preference samples >= `freeze.minTotalSamples`.
+- `stableGenCount` >= `freeze.freezeAfterStableGens`.
+- If `freeze.requireNoNewMetricIds` is `true`, no new metric IDs detected.
+
+### Frozen Behavior
+
+- Non-calibration generations produce `budget=0` (no human prompts).
+- Calibration generations (every `calibration.everyGens` generations) produce
+  up to `calibration.samples` prompts to detect drift.
+- The preference model is unchanged during frozen non-calibration generations.
+
+### Unfreeze Triggers
+
+Any enabled drift trigger fires an unfreeze:
+
+- Mean uncertainty >= `drift.unfreezeUncertaintyThreshold`.
+- OOD rate > `drift.ood.maxOodRate` (when OOD detection is enabled).
+- Calibration accuracy < `drift.minCalibrationAccuracy`.
+
+### Feedback Plan
+
+`decideFeedbackPlan()` from `src/evolution-runner/feedback-plan.js` combines
+controller state, calibration schedule, and adaptive budget into a per-generation
+decision: `{ shouldPrompt, budget, reasonCodes }`.
+
+## Per-Generation Diagnostic Artifacts
+
+### Preference Health
+
+Persisted as `preference-health.json` every generation (even without feedback):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `meanUncertainty` | number | Average ensemble uncertainty |
+| `oodRate` | number | Out-of-distribution rate |
+| `controllerMode` | string | `"learning"` or `"frozen"` |
+| `stableGenCount` | number | Consecutive stable generations |
+| `plannedBudget` | number | Feedback samples scheduled |
+| `didPrompt` | boolean | Whether feedback was collected |
+| `metricIdDeltaDetected` | boolean | New metric IDs detected |
+
+### Taste Vector
+
+Persisted as `taste-vector.json` every generation:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `features` | object | Per-feature `{ meanWeight, stddevWeight }` across ensemble |
+| `topPositive` | array | Top K features with highest positive mean weight |
+| `topNegative` | array | Top K features with highest negative mean weight |
 
 ## Override Policy
 

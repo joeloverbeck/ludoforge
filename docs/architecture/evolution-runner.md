@@ -48,6 +48,9 @@ Per `specs/evolution-runner.md`, the runner writes artifacts under a run-scoped 
   - `operator-stats.json` (per-operator telemetry snapshot)
   - `health.json` (population health metrics snapshot)
   - `preference-metrics.json` (preference model accuracy/calibration diagnostic, when comparison feedback exists)
+  - `preference-controller.json` (freeze/unfreeze controller state)
+  - `preference-health.json` (diagnostic snapshot: uncertainty, OOD rate, budget, controller mode)
+  - `taste-vector.json` (ensemble weight summary: per-feature mean/stddev, top positive/negative)
   - `debug-log.json` (per-generation debug summary: evaluated/rejected counts, rejection reasons, fitness summaries)
 
 ## Run Isolation Rules
@@ -380,10 +383,9 @@ Seeding mode is configured via the `seeding` block in the runner config
 
 ## Human Feedback Integration
 
-The runner config schema requires a top-level `humanFeedback` block with at
-minimum `enabled` (boolean) and `mode` (`"comparison"` or `"rating"`). When
-`humanFeedback.enabled` is `true`, the CLI wires an interactive feedback loop
-into the generation cycle:
+The runner config schema requires a top-level `preferenceLearning` block with at
+minimum `enabled` (boolean). When `preferenceLearning.enabled` is `true`, the CLI
+wires an interactive feedback loop into the generation cycle:
 
 1. `createConsoleIO()` (from `src/cli/console-io.js`) opens a readline-based
    `HumanIO` adapter for terminal prompting. Both readline output and
@@ -394,7 +396,8 @@ into the generation cycle:
 3. These are passed as `feedback` and `preferenceModelSnapshots` to
    `runEvolutionRunner()`.
 
-The feedback provider is async — the runner awaits it each generation.
+The feedback provider is async — the runner awaits it each generation, gated
+by the feedback plan (see § Preference Controller below).
 
 Feedback is only wired when `process.stdin.isTTY` is truthy, so
 non-interactive environments (CI, piped input, background processes) skip
@@ -415,8 +418,7 @@ previousMetricIds, candidates, lowUncertaintyThreshold,
 highUncertaintyThreshold, enabled })` dynamically adjusts the per-generation
 human feedback sample count based on ensemble uncertainty and metric changes:
 
-- **Disabled** (`enabled !== true`): returns `baseMaxSamples` (normalized to
-  at least 1).
+- **Disabled** (`enabled !== true`): returns `baseMaxSamples`.
 - **New metric IDs detected**: if `metricIds` contains IDs not present in
   `previousMetricIds`, returns `ceil(baseMaxSamples * 1.5)` (50% increase) to
   gather more preference data for the new feature dimensions.
@@ -426,15 +428,46 @@ human feedback sample count based on ensemble uncertainty and metric changes:
   default `0.1`): returns `floor(baseMaxSamples * 0.5)` (50% reduction).
 - **Otherwise**: returns the base budget unchanged.
 
-The minimum budget is always 1 (`Math.max(1, ...)`).
+The minimum budget is **0** — true zero-feedback generations are supported when
+the preference controller is in frozen state.
 
 Mean uncertainty is computed by calling `computePreferenceScore()` on each
 candidate's feature vector and averaging the `uncertainty` values.
 
-Config keys (in `humanFeedback.adaptiveBudget`):
+Config keys (in `preferenceLearning.budget.adaptive`):
 - `enabled` (boolean): whether adaptive budgeting is active.
 - `lowUncertaintyThreshold` (number): threshold below which the budget is halved.
 - `highUncertaintyThreshold` (number): threshold above which the budget is increased.
+
+### Preference Controller
+
+Implemented in `src/evolution-runner/preference-controller.js`.
+
+Each generation, the runner advances the preference controller state through
+`advanceController()`, which manages freeze/unfreeze transitions:
+
+- **Learning mode**: adaptive budget determines feedback volume; stableGenCount
+  tracks consecutive low-uncertainty generations toward a freeze.
+- **Frozen mode**: `decideFeedbackPlan()` returns `budget=0` except during
+  calibration generations (every `calibration.everyGens` generations).
+- **Unfreeze**: triggered by uncertainty spike, OOD rate spike, or calibration
+  accuracy drop.
+
+Controller state is persisted as `preference-controller.json` each generation.
+
+See [human-feedback.md](human-feedback.md) § Preference Controller for the
+full freeze/unfreeze lifecycle.
+
+### Per-Generation Artifacts
+
+The following artifacts are written every generation (even without feedback):
+
+| Artifact | File | Description |
+|----------|------|-------------|
+| Controller state | `preference-controller.json` | `mode` and `stableGenCount` |
+| Preference health | `preference-health.json` | Diagnostic snapshot: uncertainty, OOD rate, budget, controller mode |
+| Taste vector | `taste-vector.json` | Ensemble weight summary: per-feature mean/stddev, top positive/negative |
+| Preference metrics | `preference-metrics.json` | Model accuracy/calibration (only when comparison feedback exists) |
 
 ## Current Implementation Status
 
@@ -447,7 +480,7 @@ Config keys (in `humanFeedback.adaptiveBudget`):
   the config are known metric names (see
   `docs/architecture/evolutionary-engine.md` § Descriptor ID Validation).
   Unknown IDs produce a `CLIError` listing the invalid names and available metrics.
-- When `humanFeedback.enabled` is `true` **and** `process.stdin.isTTY` is
+- When `preferenceLearning.enabled` is `true` **and** `process.stdin.isTTY` is
   truthy, the CLI creates console I/O and a feedback provider, wiring them
   into the runner options at each call site (resume, `--seeds`,
   config-seeding). A `try/finally` block ensures the readline interface is
