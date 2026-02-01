@@ -56,6 +56,9 @@ export async function runEvolutionRunner(options) {
   let consecutiveHighRejections = 0;
   let mutationOperators = initialMutationOperators;
   let controllerState = createInitialControllerState();
+  let totalSamples = 0;
+  let previousMetricIds = null;
+  let lastCalibrationGen = null;
 
   const results = [];
   let pendingOperatorNames = null;
@@ -91,6 +94,9 @@ export async function runEvolutionRunner(options) {
           feedbackProvider,
           feedbackEnabled,
           controllerState,
+          totalSamples,
+          previousMetricIds,
+          lastCalibrationGen,
           runId,
           baseDir,
           seed,
@@ -114,6 +120,13 @@ export async function runEvolutionRunner(options) {
       pendingOperatorNames = genResult.pendingOperatorNames;
       mutationOperators = genResult.mutationOperators;
       controllerState = genResult.nextControllerState ?? controllerState;
+      totalSamples += genResult.feedbackCount ?? 0;
+      if (Array.isArray(genResult.metricIds) && genResult.metricIds.length > 0) {
+        previousMetricIds = genResult.metricIds;
+      }
+      if (genResult.didCalibrate) {
+        lastCalibrationGen = generation;
+      }
 
       results.push({
         generation,

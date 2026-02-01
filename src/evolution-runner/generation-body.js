@@ -24,6 +24,7 @@ import { advanceController } from "./preference-controller.js";
 import { decideFeedbackPlan } from "./feedback-plan.js";
 import { buildPreferenceHealth } from "./preference-health.js";
 import { distillTasteVector } from "../evaluation-analytics/taste-vector.js";
+import { computeControllerInputs } from "./controller-inputs.js";
 
 /**
  * @param {object} params
@@ -77,6 +78,9 @@ export async function executeGenerationBody({
   feedbackProvider,
   feedbackEnabled,
   controllerState,
+  totalSamples,
+  previousMetricIds,
+  lastCalibrationGen,
   runId,
   baseDir,
   seed,
@@ -210,14 +214,31 @@ export async function executeGenerationBody({
   const calibrationConfig = plConfig.controller?.calibration ?? { enabled: false, everyGens: 1, samples: 0 };
   const baseMaxPerGen = plConfig.budget?.baseMaxPerGen ?? 5;
 
+  // Extract the latest preference model state from snapshots for uncertainty computation.
+  // We call snapshotProvider once here and reuse the result to avoid duplicate calls.
+  const generationContextForSnapshot = { generation, runId, baseDir, loopResult, population: evolvedPopulation };
+  const preSnapshots = snapshotProvider
+    ? snapshotProvider(generationContextForSnapshot)
+    : null;
+  const preferenceModelStateForController = Array.isArray(preSnapshots) && preSnapshots.length > 0
+    ? preSnapshots[preSnapshots.length - 1]
+    : null;
+
+  const controllerInputs = computeControllerInputs({
+    evaluated: loopResult.evaluated,
+    preferenceModelState: preferenceModelStateForController,
+    totalSamples: totalSamples ?? 0,
+    previousMetricIds: previousMetricIds ?? null,
+  });
+
   const controllerResult = controllerState
     ? advanceController({
         state: controllerState,
         freeze: freezeConfig,
         drift: driftConfig,
-        totalSamples: 0,
-        meanUncertainty: 0,
-        hasNewMetricIds: false,
+        totalSamples: controllerInputs.totalSamples,
+        meanUncertainty: controllerInputs.meanUncertainty,
+        hasNewMetricIds: controllerInputs.hasNewMetricIds,
       })
     : { nextState: { mode: "learning", stableGenCount: 0 }, froze: false, unfroze: false, reasonCodes: [] };
   const nextControllerState = controllerResult.nextState;
@@ -226,7 +247,7 @@ export async function executeGenerationBody({
     controllerState: nextControllerState,
     calibration: calibrationConfig,
     generation,
-    lastCalibrationGen: null,
+    lastCalibrationGen: lastCalibrationGen ?? null,
     adaptiveBudgetResult: { budget: baseMaxPerGen, unfreezeRequired: controllerResult.unfroze },
     baseMaxPerGen,
   });
@@ -246,13 +267,13 @@ export async function executeGenerationBody({
   });
 
   const preferenceHealthArtifact = buildPreferenceHealth({
-    meanUncertainty: 0,
+    meanUncertainty: controllerInputs.meanUncertainty,
     oodRate: 0,
     controllerMode: nextControllerState.mode,
     stableGenCount: nextControllerState.stableGenCount,
     plannedBudget: feedbackPlan.budget,
     didPrompt: feedbackPlan.shouldPrompt && feedback !== undefined,
-    metricIdDeltaDetected: false,
+    metricIdDeltaDetected: controllerInputs.hasNewMetricIds,
   });
 
   const snapshot = Array.isArray(preferenceModelSnapshots) && preferenceModelSnapshots.length > 0
@@ -294,6 +315,9 @@ export async function executeGenerationBody({
     });
   }
 
+  const feedbackCount = Array.isArray(feedback) ? feedback.length : 0;
+  const didCalibrate = feedbackPlan.reasonCodes.includes("calibration_due") && feedbackCount > 0;
+
   return {
     loopResult,
     evolvedPopulation,
@@ -301,5 +325,8 @@ export async function executeGenerationBody({
     pendingOperatorNames: newPendingOperatorNames,
     mutationOperators: updatedMutationOperators,
     nextControllerState,
+    feedbackCount,
+    metricIds: controllerInputs.metricIds,
+    didCalibrate,
   };
 }

@@ -11,13 +11,21 @@ import { createFeedbackProvider } from "../human-interface/create-feedback-provi
 async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunnerFn) {
   let consoleIO;
   try {
-    if (config.preferenceLearning?.enabled && process.stdin.isTTY) {
+    const canPrompt = process.stdin.isTTY || config.preferenceLearning?.forceInteractive === true;
+    if (config.preferenceLearning?.enabled && !canPrompt) {
+      process.stderr.write(
+        "[preference-learning] Disabled: stdin is not a TTY. " +
+        "Set preferenceLearning.forceInteractive to true or run in an interactive terminal.\n",
+      );
+    }
+    if (config.preferenceLearning?.enabled && canPrompt) {
       consoleIO = createConsoleIO();
       const provider = createFeedbackProvider({
         io: consoleIO.io,
         config: config.preferenceLearning,
         initialModelState: runnerOptions.preferenceModelSnapshots?.[0],
         seed: config.seed,
+        candidatePoolConfig: config.preferenceLearning?.activeLearning?.candidatePool,
       });
       runnerOptions.feedback = provider.feedbackProvider;
       runnerOptions.preferenceModelSnapshots = provider.snapshotProvider;

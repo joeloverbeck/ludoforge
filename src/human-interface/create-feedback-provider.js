@@ -36,6 +36,7 @@ function buildActiveLearningOptions(config, generation, maxSamplesPerGen) {
     maxPairs: maxSamplesPerGen ?? config.maxSamplesPerGen ?? 5,
     uncertaintyThreshold: al?.uncertaintyThreshold,
     diversityQuota: al?.diversityQuota,
+    cadence: al?.cadenceGens ?? al?.cadence,
     iteration: generation,
   };
 }
@@ -140,8 +141,8 @@ export function createFeedbackProvider({ io, config, initialModelState, seed, ca
       return [];
     }
 
-    const adaptiveBudget = config.adaptiveBudget;
-    const baseMaxSamples = config.maxSamplesPerGen ?? 5;
+    const adaptiveBudget = config.budget?.adaptive ?? config.adaptiveBudget;
+    const baseMaxSamples = config.budget?.baseMaxPerGen ?? config.maxSamplesPerGen ?? 5;
     const { budget: maxSamplesPerGen } = computeAdaptiveBudget({
       preferenceModelState: currentModelState,
       baseMaxSamples,
