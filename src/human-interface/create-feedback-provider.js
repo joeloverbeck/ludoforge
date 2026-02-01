@@ -125,7 +125,7 @@ export function createFeedbackProvider({ io, config, initialModelState, seed } =
 
     const adaptiveBudget = config.adaptiveBudget;
     const baseMaxSamples = config.maxSamplesPerGen ?? 5;
-    const maxSamplesPerGen = computeAdaptiveBudget({
+    const { budget: maxSamplesPerGen } = computeAdaptiveBudget({
       preferenceModelState: currentModelState,
       baseMaxSamples,
       metricIds,

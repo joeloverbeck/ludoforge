@@ -138,7 +138,7 @@ describe("adaptive-human-budget", () => {
         ? highUncertaintyState
         : lowUncertaintyState;
 
-      const maxSamplesPerGen = computeAdaptiveBudget({
+      const { budget: maxSamplesPerGen } = computeAdaptiveBudget({
         preferenceModelState,
         baseMaxSamples: 4,
         metricIds,
