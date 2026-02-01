@@ -134,7 +134,9 @@ Implemented in `src/evolutionary-engine/mutation.js`.
 - `action-duplicate`: duplicates a random action and assigns a unique id.
 - `action-remove`: removes a random action when more than one exists.
 - `action-effect-magnitude`: nudges `inc`/`dec` effect amounts by +/-1.
-- `precondition-negation`: wraps an action precondition with `not`.
+- `precondition-negation`: wraps an action precondition with `not`. Targets where
+  the negation would be unsatisfiable (given variable bounds via `evaluateExpr`)
+  are filtered out before selection; an empty target pool yields a no-op.
 - `termination-threshold`: nudges numeric termination thresholds within variable bounds.
 - `termination-outcome`: swaps termination outcome types (`win`/`lose`/`draw`).
 - `phase-add`: appends a unique phase label to `turn.phases`.
@@ -364,7 +366,10 @@ crossover:
 - **Zone refs**: zone-target effects and `toZone` fields are redirected to the
   first remaining zone.
 - **Precondition refs**: action preconditions referencing missing variables are
-  removed (delete the precondition rather than the action).
+  removed (delete the precondition rather than the action). Preconditions that
+  are logically unsatisfiable given variable bounds (evaluated via
+  `evaluateExpr` with a context built by `buildExprEvalContext` from
+  `src/evolutionary-engine/repair/expr-eval-context.js`) are also removed.
 - **Trigger condition refs**: trigger conditions referencing missing variables
   (checked via `exprReferencesMissingVariable`) are stripped, making the
   trigger unconditional rather than removing it entirely.
