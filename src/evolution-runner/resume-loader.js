@@ -177,6 +177,38 @@ async function loadPopulation(runDir, generationName, artifacts = DEFAULT_RUNNER
   return records.map(({ value, line }) => normalizePopulationEntry(value, populationPath, line));
 }
 
+async function loadPreferenceController(runDir, generationName) {
+  const controllerPath = resolveRunPath(runDir, generationName, "preference-controller.json");
+  let contents;
+  try {
+    contents = await readFile(controllerPath, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return { mode: "learning", stableGenCount: 0 };
+    }
+    throw error;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON";
+    throw new Error(`preference-controller.json corrupt at ${controllerPath}: ${message}`);
+  }
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    (parsed.mode !== "learning" && parsed.mode !== "frozen") ||
+    !Number.isInteger(parsed.stableGenCount)
+  ) {
+    throw new Error(`preference-controller.json invalid structure at ${controllerPath}`);
+  }
+
+  return { mode: parsed.mode, stableGenCount: parsed.stableGenCount };
+}
+
 async function loadPreferenceModel(runDir, generationName, artifacts = DEFAULT_RUNNER_LAYOUT.artifacts) {
   const modelPath = resolveRunPath(runDir, generationName, artifacts.preferenceModel);
   let snapshots;
@@ -226,6 +258,7 @@ export async function loadResumeState({
 
   const population = await loadPopulation(runDir, generationName, artifacts);
   const preferenceModel = await loadPreferenceModel(runDir, generationName, artifacts);
+  const preferenceController = await loadPreferenceController(runDir, generationName);
 
   return {
     runId,
@@ -234,6 +267,7 @@ export async function loadResumeState({
     generationDir,
     population,
     preferenceModel,
+    preferenceController,
     runConfig: metadata.config,
   };
 }

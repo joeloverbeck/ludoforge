@@ -633,6 +633,171 @@ describe("runner", () => {
       });
     });
 
+    describe("preference controller integration", () => {
+      it("writes preference-controller.json for every generation", async () => {
+        const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-ctrl-"));
+        const definition = await loadMinimalDefinition();
+
+        const population = [
+          { id: "seed-a", definition },
+          { id: "seed-b", definition },
+        ];
+
+        const evaluation = {
+          evaluator: (genome) => ({
+            fitness: genome.id === "seed-a" ? 1 : 2,
+            descriptors: { axis: genome.id === "seed-a" ? 0 : 1 },
+          }),
+        };
+
+        const config = createBaseConfig({
+          runner: { generations: 2, shortlistSize: 0 },
+          evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
+        });
+
+        const result = await runEvolutionRunner({
+          baseDir,
+          runId: "123e4567-e89b-42d3-a456-426614174400",
+          seed: 60,
+          config,
+          population,
+          evaluation,
+        });
+
+        assert.equal(result.generations.length, 2);
+
+        for (const generation of result.generations) {
+          assert.ok(generation.artifacts.preferenceControllerPath, "preference-controller.json should be written");
+          const contents = await readFile(generation.artifacts.preferenceControllerPath, "utf8");
+          const controller = JSON.parse(contents);
+          assert.ok(controller.mode === "learning" || controller.mode === "frozen");
+          assert.ok(Number.isInteger(controller.stableGenCount));
+        }
+      });
+
+      it("writes preference-health.json for every generation", async () => {
+        const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-phealth-"));
+        const definition = await loadMinimalDefinition();
+
+        const population = [
+          { id: "seed-a", definition },
+          { id: "seed-b", definition },
+        ];
+
+        const evaluation = {
+          evaluator: (genome) => ({
+            fitness: genome.id === "seed-a" ? 1 : 2,
+            descriptors: { axis: genome.id === "seed-a" ? 0 : 1 },
+          }),
+        };
+
+        const config = createBaseConfig({
+          runner: { generations: 2, shortlistSize: 0 },
+          evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
+        });
+
+        const result = await runEvolutionRunner({
+          baseDir,
+          runId: "123e4567-e89b-42d3-a456-426614174401",
+          seed: 61,
+          config,
+          population,
+          evaluation,
+        });
+
+        for (const generation of result.generations) {
+          assert.ok(generation.artifacts.preferenceHealthPath, "preference-health.json should be written");
+          const contents = await readFile(generation.artifacts.preferenceHealthPath, "utf8");
+          const health = JSON.parse(contents);
+          assert.ok("meanUncertainty" in health);
+          assert.ok("controllerMode" in health);
+          assert.ok("plannedBudget" in health);
+          assert.ok("didPrompt" in health);
+        }
+      });
+
+      it("writes taste-vector.json for every generation", async () => {
+        const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-taste-"));
+        const definition = await loadMinimalDefinition();
+
+        const population = [
+          { id: "seed-a", definition },
+          { id: "seed-b", definition },
+        ];
+
+        const evaluation = {
+          evaluator: (genome) => ({
+            fitness: genome.id === "seed-a" ? 1 : 2,
+            descriptors: { axis: genome.id === "seed-a" ? 0 : 1 },
+          }),
+        };
+
+        const config = createBaseConfig({
+          runner: { generations: 2, shortlistSize: 0 },
+          evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
+        });
+
+        const result = await runEvolutionRunner({
+          baseDir,
+          runId: "123e4567-e89b-42d3-a456-426614174402",
+          seed: 62,
+          config,
+          population,
+          evaluation,
+        });
+
+        for (const generation of result.generations) {
+          assert.ok(generation.artifacts.tasteVectorPath, "taste-vector.json should be written");
+          const contents = await readFile(generation.artifacts.tasteVectorPath, "utf8");
+          const taste = JSON.parse(contents);
+          assert.ok("features" in taste);
+          assert.ok("topPositive" in taste);
+          assert.ok("topNegative" in taste);
+        }
+      });
+
+      it("threads controller state across generations", async () => {
+        const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-thread-"));
+        const definition = await loadMinimalDefinition();
+
+        const population = [
+          { id: "seed-a", definition },
+          { id: "seed-b", definition },
+        ];
+
+        const evaluation = {
+          evaluator: (genome) => ({
+            fitness: genome.id === "seed-a" ? 1 : 2,
+            descriptors: { axis: genome.id === "seed-a" ? 0 : 1 },
+          }),
+        };
+
+        const config = createBaseConfig({
+          runner: { generations: 3, shortlistSize: 0 },
+          evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
+        });
+
+        const result = await runEvolutionRunner({
+          baseDir,
+          runId: "123e4567-e89b-42d3-a456-426614174403",
+          seed: 63,
+          config,
+          population,
+          evaluation,
+        });
+
+        assert.equal(result.generations.length, 3);
+
+        // All generations should have controller state written
+        for (const generation of result.generations) {
+          const contents = await readFile(generation.artifacts.preferenceControllerPath, "utf8");
+          const controller = JSON.parse(contents);
+          assert.equal(controller.mode, "learning");
+          assert.ok(Number.isInteger(controller.stableGenCount));
+        }
+      });
+    });
+
     describe("generation pruning", () => {
       it("retains only the last N generation dirs when maxRetainedGenerations is set", async () => {
         const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-runner-prune-"));

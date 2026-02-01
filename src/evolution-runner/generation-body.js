@@ -20,6 +20,10 @@ import { runMotifMiningPipeline } from "./motif-pipeline.js";
 import { createMotifInjectMutation } from "../evolutionary-engine/mutation/operators/motif-inject.js";
 import { resolveRunDir, resolveRunPath } from "./run-layout.js";
 import { DEFAULT_RUNNER_LAYOUT, formatGenerationDirName } from "./runner-defaults.js";
+import { advanceController } from "./preference-controller.js";
+import { decideFeedbackPlan } from "./feedback-plan.js";
+import { buildPreferenceHealth } from "./preference-health.js";
+import { distillTasteVector } from "../evaluation-analytics/taste-vector.js";
 
 /**
  * @param {object} params
@@ -72,6 +76,7 @@ export async function executeGenerationBody({
   snapshotProvider,
   feedbackProvider,
   feedbackEnabled,
+  controllerState,
   runId,
   baseDir,
   seed,
@@ -198,6 +203,34 @@ export async function executeGenerationBody({
 
   const determinism = assembleDeterminism(options.determinism, rng, seed);
 
+  // --- Preference controller integration ---
+  const plConfig = config.preferenceLearning ?? {};
+  const freezeConfig = plConfig.controller?.freeze ?? { enabled: false, minTotalSamples: 0, freezeAfterStableGens: 1, stableUncertaintyThreshold: 0.3, requireNoNewMetricIds: false };
+  const driftConfig = plConfig.controller?.drift ?? { enabled: false, unfreezeUncertaintyThreshold: 0.8, minCalibrationAccuracy: 0.5, ood: { enabled: false, maxOodRate: 0.5 } };
+  const calibrationConfig = plConfig.controller?.calibration ?? { enabled: false, everyGens: 1, samples: 0 };
+  const baseMaxPerGen = plConfig.budget?.baseMaxPerGen ?? 5;
+
+  const controllerResult = controllerState
+    ? advanceController({
+        state: controllerState,
+        freeze: freezeConfig,
+        drift: driftConfig,
+        totalSamples: 0,
+        meanUncertainty: 0,
+        hasNewMetricIds: false,
+      })
+    : { nextState: { mode: "learning", stableGenCount: 0 }, froze: false, unfroze: false, reasonCodes: [] };
+  const nextControllerState = controllerResult.nextState;
+
+  const feedbackPlan = decideFeedbackPlan({
+    controllerState: nextControllerState,
+    calibration: calibrationConfig,
+    generation,
+    lastCalibrationGen: null,
+    adaptiveBudgetResult: { budget: baseMaxPerGen, unfreezeRequired: controllerResult.unfroze },
+    baseMaxPerGen,
+  });
+
   const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
     generation,
     runId,
@@ -206,10 +239,26 @@ export async function executeGenerationBody({
     population: evolvedPopulation,
     feedbackEnabled,
     feedbackProvider,
+    feedbackPlan,
     snapshotProvider,
     seed,
     telemetry,
   });
+
+  const preferenceHealthArtifact = buildPreferenceHealth({
+    meanUncertainty: 0,
+    oodRate: 0,
+    controllerMode: nextControllerState.mode,
+    stableGenCount: nextControllerState.stableGenCount,
+    plannedBudget: feedbackPlan.budget,
+    didPrompt: feedbackPlan.shouldPrompt && feedback !== undefined,
+    metricIdDeltaDetected: false,
+  });
+
+  const snapshot = Array.isArray(preferenceModelSnapshots) && preferenceModelSnapshots.length > 0
+    ? preferenceModelSnapshots[preferenceModelSnapshots.length - 1]
+    : null;
+  const tasteVectorArtifact = distillTasteVector(snapshot ?? { models: [] });
 
   const debugLog = buildDebugLog({ generation, evolvedPopulation, loopResult });
 
@@ -231,6 +280,9 @@ export async function executeGenerationBody({
     operatorStats: serializeTelemetry(telemetry),
     health,
     preferenceMetrics,
+    preferenceController: nextControllerState,
+    preferenceHealth: preferenceHealthArtifact,
+    tasteVector: tasteVectorArtifact,
     debugLog,
   });
 
@@ -248,5 +300,6 @@ export async function executeGenerationBody({
     artifacts,
     pendingOperatorNames: newPendingOperatorNames,
     mutationOperators: updatedMutationOperators,
+    nextControllerState,
   };
 }

@@ -260,6 +260,242 @@ describe("artifact-writer", () => {
       assert.equal(result.preferenceMetricsPath, undefined);
     });
 
+    it("writes preference-controller.json when preferenceController provided", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-pref-ctrl-"));
+      const runId = createRunId();
+
+      const preferenceController = {
+        mode: "learning",
+        stableGenCount: 0,
+        lastCalibrationGen: null,
+        lastMetricIdSetHash: "abc123",
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 2,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        preferenceController,
+      });
+
+      assert.ok(result.preferenceControllerPath);
+      const contents = await readFile(result.preferenceControllerPath, "utf8");
+      const parsed = JSON.parse(contents);
+      assert.equal(parsed.mode, "learning");
+      assert.equal(parsed.stableGenCount, 0);
+      assert.equal(parsed.lastCalibrationGen, null);
+      assert.equal(parsed.lastMetricIdSetHash, "abc123");
+    });
+
+    it("omits preference-controller.json when preferenceController is undefined", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-no-ctrl-"));
+      const runId = createRunId();
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+      });
+
+      assert.equal(result.preferenceControllerPath, undefined);
+    });
+
+    it("writes preference-health.json when preferenceHealth provided", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-pref-health-"));
+      const runId = createRunId();
+
+      const preferenceHealth = {
+        meanUncertainty: 0.15,
+        oodRate: 0.02,
+        controllerMode: "frozen",
+        stableGenCount: 5,
+        plannedBudget: 0,
+        didPrompt: false,
+        metricIdDeltaDetected: false,
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 5,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        preferenceHealth,
+      });
+
+      assert.ok(result.preferenceHealthPath);
+      const contents = await readFile(result.preferenceHealthPath, "utf8");
+      const parsed = JSON.parse(contents);
+      assert.equal(parsed.meanUncertainty, 0.15);
+      assert.equal(parsed.oodRate, 0.02);
+      assert.equal(parsed.controllerMode, "frozen");
+      assert.equal(parsed.didPrompt, false);
+      assert.equal(parsed.metricIdDeltaDetected, false);
+    });
+
+    it("omits preference-health.json when preferenceHealth is undefined", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-no-health-"));
+      const runId = createRunId();
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+      });
+
+      assert.equal(result.preferenceHealthPath, undefined);
+    });
+
+    it("writes taste-vector.json when tasteVector provided", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-taste-"));
+      const runId = createRunId();
+
+      const tasteVector = {
+        version: 1,
+        sampleCount: 42,
+        controllerMode: "learning",
+        weights: { novelty: 0.8, balance: -0.3 },
+        stddev: { novelty: 0.05, balance: 0.12 },
+        topPositive: ["novelty"],
+        topNegative: ["balance"],
+      };
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 3,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+        tasteVector,
+      });
+
+      assert.ok(result.tasteVectorPath);
+      const contents = await readFile(result.tasteVectorPath, "utf8");
+      const parsed = JSON.parse(contents);
+      assert.equal(parsed.version, 1);
+      assert.equal(parsed.sampleCount, 42);
+      assert.equal(parsed.controllerMode, "learning");
+      assert.deepEqual(parsed.weights, { novelty: 0.8, balance: -0.3 });
+      assert.deepEqual(parsed.topPositive, ["novelty"]);
+      assert.deepEqual(parsed.topNegative, ["balance"]);
+    });
+
+    it("omits taste-vector.json when tasteVector is undefined", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-no-taste-"));
+      const runId = createRunId();
+
+      const result = await writeGenerationArtifacts({
+        baseDir,
+        runId,
+        generation: 0,
+        population: [{ id: "genome-a", definition: { title: "alpha" } }],
+        preferenceModelSnapshots: [
+          {
+            id: "snapshot-1",
+            version: "v1",
+            createdAt: new Date().toISOString(),
+            trainingWindow: { size: 1 },
+            hyperparams: { lr: 0.1 },
+            metrics: { loss: 0.5 },
+            models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+            ensemble: { size: 1, method: "online-bagging" },
+          },
+        ],
+      });
+
+      assert.equal(result.tasteVectorPath, undefined);
+    });
+
+    it("rejects non-object preferenceController", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-bad-ctrl-"));
+      const runId = createRunId();
+
+      await assert.rejects(
+        () =>
+          writeGenerationArtifacts({
+            baseDir,
+            runId,
+            generation: 0,
+            population: [{ id: "genome-a", definition: { title: "alpha" } }],
+            preferenceModelSnapshots: [
+              {
+                id: "snapshot-1",
+                version: "v1",
+                createdAt: new Date().toISOString(),
+                trainingWindow: { size: 1 },
+                hyperparams: { lr: 0.1 },
+                metrics: { loss: 0.5 },
+                models: [{ weights: { novelty: 0.2 }, bias: 0, sampleCount: 1 }],
+                ensemble: { size: 1, method: "online-bagging" },
+              },
+            ],
+            preferenceController: "invalid",
+          }),
+        /preference controller must be an object/i,
+      );
+    });
+
     it("rejects invalid population entries", async () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-artifacts-"));
       const runId = createRunId();

@@ -73,6 +73,9 @@ export async function writeGenerationArtifacts({
   operatorStats,
   health,
   preferenceMetrics,
+  preferenceController,
+  preferenceHealth,
+  tasteVector,
   debugLog,
   artifacts = DEFAULT_RUNNER_LAYOUT.artifacts,
 }) {
@@ -175,6 +178,33 @@ export async function writeGenerationArtifacts({
     const preferenceMetricsPath = resolveRunPath(generationDir, "preference-metrics.json");
     await writeJson(preferenceMetricsPath, preferenceMetrics);
     paths.preferenceMetricsPath = preferenceMetricsPath;
+  }
+
+  if (preferenceController !== undefined) {
+    if (!isPlainObject(preferenceController)) {
+      throw new Error("Preference controller must be an object");
+    }
+    const preferenceControllerPath = resolveRunPath(generationDir, "preference-controller.json");
+    await writeJson(preferenceControllerPath, preferenceController);
+    paths.preferenceControllerPath = preferenceControllerPath;
+  }
+
+  if (preferenceHealth !== undefined) {
+    if (!isPlainObject(preferenceHealth)) {
+      throw new Error("Preference health must be an object");
+    }
+    const preferenceHealthPath = resolveRunPath(generationDir, "preference-health.json");
+    await writeJson(preferenceHealthPath, preferenceHealth);
+    paths.preferenceHealthPath = preferenceHealthPath;
+  }
+
+  if (tasteVector !== undefined) {
+    if (!isPlainObject(tasteVector)) {
+      throw new Error("Taste vector must be an object");
+    }
+    const tasteVectorPath = resolveRunPath(generationDir, "taste-vector.json");
+    await writeJson(tasteVectorPath, tasteVector);
+    paths.tasteVectorPath = tasteVectorPath;
   }
 
   if (debugLog !== undefined) {

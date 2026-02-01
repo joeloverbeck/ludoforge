@@ -151,6 +151,70 @@ describe("resume-loader", () => {
       assert.equal(resumeState.generation, 2);
     });
 
+    it("loads preference-controller.json when present", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      const { runDir } = await createRunFixture({ baseDir, runId, config });
+
+      // Write a frozen controller state
+      const controllerPath = resolveRunPath(runDir, "generation-2", "preference-controller.json");
+      await writeFile(
+        controllerPath,
+        JSON.stringify({ mode: "frozen", stableGenCount: 5 }),
+        "utf8",
+      );
+
+      const resumeState = await loadResumeState({ baseDir, runId, config });
+      assert.equal(resumeState.preferenceController.mode, "frozen");
+      assert.equal(resumeState.preferenceController.stableGenCount, 5);
+    });
+
+    it("returns default controller state when preference-controller.json is missing", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      await createRunFixture({ baseDir, runId, config });
+
+      const resumeState = await loadResumeState({ baseDir, runId, config });
+      assert.equal(resumeState.preferenceController.mode, "learning");
+      assert.equal(resumeState.preferenceController.stableGenCount, 0);
+    });
+
+    it("rejects corrupt preference-controller.json", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      const { runDir } = await createRunFixture({ baseDir, runId, config });
+
+      const controllerPath = resolveRunPath(runDir, "generation-2", "preference-controller.json");
+      await writeFile(controllerPath, "not-valid-json{{{", "utf8");
+
+      await assert.rejects(
+        () => loadResumeState({ baseDir, runId, config }),
+        /preference-controller\.json corrupt/i,
+      );
+    });
+
+    it("rejects preference-controller.json with invalid structure", async () => {
+      const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
+      const runId = createRunId();
+      const config = createRunnerConfig("v1");
+
+      const { runDir } = await createRunFixture({ baseDir, runId, config });
+
+      const controllerPath = resolveRunPath(runDir, "generation-2", "preference-controller.json");
+      await writeFile(controllerPath, JSON.stringify({ mode: "invalid", stableGenCount: "bad" }), "utf8");
+
+      await assert.rejects(
+        () => loadResumeState({ baseDir, runId, config }),
+        /preference-controller\.json invalid structure/i,
+      );
+    });
+
     it("rejects missing preference-model snapshot", async () => {
       const baseDir = await mkdtemp(join(tmpdir(), "ludoforge-resume-"));
       const runId = createRunId();

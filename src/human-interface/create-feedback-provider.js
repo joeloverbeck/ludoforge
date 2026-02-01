@@ -9,6 +9,7 @@ import {
   promptForRating,
 } from "./feedback.js";
 import { computeAdaptiveBudget } from "../evolution-runner/adaptive-budget.js";
+import { resolveCandidatePool } from "../evolution-runner/candidate-pool.js";
 
 function extractCandidates(evaluated) {
   if (!Array.isArray(evaluated)) {
@@ -93,13 +94,14 @@ function buildSnapshotRecord(modelState, runId, generation, seed) {
  *   config: { mode?: string, maxSamplesPerGen?: number, activeLearning?: { uncertaintyThreshold?: number, diversityQuota?: number }, adaptiveBudget?: { enabled?: boolean, lowUncertaintyThreshold?: number, highUncertaintyThreshold?: number } },
  *   initialModelState?: import("../evaluation-analytics/types.js").PreferenceModelState,
  *   seed?: number,
+ *   candidatePoolConfig?: { source: string, focus: { strategy: string, topQuantile?: number }, maxCandidates: number },
  * }} options
  * @returns {{
  *   feedbackProvider: (context: import("../evolution-runner/runner.js").GenerationContext) => Promise<import("../data-persistence/types.js").FeedbackRecord[]>,
  *   snapshotProvider: (context: import("../evolution-runner/runner.js").GenerationContext) => import("../data-persistence/types.js").PreferenceModelSnapshotRecord[],
  * }}
  */
-export function createFeedbackProvider({ io, config, initialModelState, seed } = {}) {
+export function createFeedbackProvider({ io, config, initialModelState, seed, candidatePoolConfig } = {}) {
   if (!io || typeof io.readLine !== "function" || typeof io.writeLine !== "function") {
     throw new Error("createFeedbackProvider requires a valid HumanIO (io)");
   }
@@ -113,7 +115,22 @@ export function createFeedbackProvider({ io, config, initialModelState, seed } =
 
   async function feedbackProvider(generationContext) {
     const { generation, runId, loopResult } = generationContext;
-    const candidates = extractCandidates(loopResult.evaluated);
+
+    let candidates;
+    if (candidatePoolConfig && loopResult.elites && loopResult.rng) {
+      const poolRaw = resolveCandidatePool({
+        source: candidatePoolConfig.source,
+        focus: candidatePoolConfig.focus,
+        maxCandidates: candidatePoolConfig.maxCandidates,
+        evaluated: loopResult.evaluated ?? [],
+        elites: loopResult.elites ?? [],
+        shortlist: loopResult.shortlist ?? [],
+        rng: loopResult.rng,
+      });
+      candidates = extractCandidates(poolRaw);
+    } else {
+      candidates = extractCandidates(loopResult.evaluated);
+    }
     const metricIds = collectMetricIds(candidates);
 
     if (candidates.length < 2) {

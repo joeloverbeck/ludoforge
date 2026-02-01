@@ -2,6 +2,7 @@ import { checkHighRejectionHalt } from "./termination-checks.js";
 import { validateRunnerOptions } from "./runner-options-validator.js";
 import { initializeRunner } from "./runner-initializer.js";
 import { executeGenerationBody } from "./generation-body.js";
+import { createInitialControllerState } from "./preference-controller.js";
 
 function withTimeout(promise, ms, label) {
   if (!Number.isFinite(ms) || ms <= 0) {
@@ -54,6 +55,7 @@ export async function runEvolutionRunner(options) {
   let currentPopulation = initialPopulation;
   let consecutiveHighRejections = 0;
   let mutationOperators = initialMutationOperators;
+  let controllerState = createInitialControllerState();
 
   const results = [];
   let pendingOperatorNames = null;
@@ -88,6 +90,7 @@ export async function runEvolutionRunner(options) {
           snapshotProvider,
           feedbackProvider,
           feedbackEnabled,
+          controllerState,
           runId,
           baseDir,
           seed,
@@ -110,6 +113,7 @@ export async function runEvolutionRunner(options) {
       const { loopResult, evolvedPopulation, artifacts } = genResult;
       pendingOperatorNames = genResult.pendingOperatorNames;
       mutationOperators = genResult.mutationOperators;
+      controllerState = genResult.nextControllerState ?? controllerState;
 
       results.push({
         generation,

@@ -189,6 +189,81 @@ describe("generation-context", () => {
       assert.equal(result.preferenceMetrics, undefined);
     });
 
+    it("skips feedback provider when feedbackPlan.shouldPrompt is false", async () => {
+      const feedbackProvider = mock.fn(() => [{ type: "feedback" }]);
+      const result = await buildGenerationContext({
+        generation: 0,
+        runId: "test-run",
+        baseDir: "/tmp",
+        loopResult: makeLoopResult(),
+        population: [{ id: "a", definition: {} }],
+        feedbackEnabled: true,
+        feedbackProvider,
+        feedbackPlan: { shouldPrompt: false, budget: 0, reasonCodes: ["frozen"] },
+        snapshotProvider: null,
+        seed: 42,
+        telemetry: baseTelemetry,
+      });
+      assert.equal(feedbackProvider.mock.callCount(), 0);
+      assert.equal(result.feedback, undefined);
+    });
+
+    it("skips feedback provider when feedbackPlan.budget is 0", async () => {
+      const feedbackProvider = mock.fn(() => [{ type: "feedback" }]);
+      const result = await buildGenerationContext({
+        generation: 0,
+        runId: "test-run",
+        baseDir: "/tmp",
+        loopResult: makeLoopResult(),
+        population: [{ id: "a", definition: {} }],
+        feedbackEnabled: true,
+        feedbackProvider,
+        feedbackPlan: { shouldPrompt: true, budget: 0, reasonCodes: ["learning"] },
+        snapshotProvider: null,
+        seed: 42,
+        telemetry: baseTelemetry,
+      });
+      assert.equal(feedbackProvider.mock.callCount(), 0);
+      assert.equal(result.feedback, undefined);
+    });
+
+    it("calls feedback provider when feedbackPlan allows prompting", async () => {
+      const feedbackProvider = mock.fn(() => [{ type: "feedback" }]);
+      const result = await buildGenerationContext({
+        generation: 0,
+        runId: "test-run",
+        baseDir: "/tmp",
+        loopResult: makeLoopResult(),
+        population: [{ id: "a", definition: {} }],
+        feedbackEnabled: true,
+        feedbackProvider,
+        feedbackPlan: { shouldPrompt: true, budget: 3, reasonCodes: ["learning"] },
+        snapshotProvider: null,
+        seed: 42,
+        telemetry: baseTelemetry,
+      });
+      assert.equal(feedbackProvider.mock.callCount(), 1);
+      assert.deepStrictEqual(result.feedback, [{ type: "feedback" }]);
+    });
+
+    it("preserves legacy behavior when feedbackPlan is undefined", async () => {
+      const feedbackProvider = mock.fn(() => [{ type: "legacy" }]);
+      const result = await buildGenerationContext({
+        generation: 0,
+        runId: "test-run",
+        baseDir: "/tmp",
+        loopResult: makeLoopResult(),
+        population: [{ id: "a", definition: {} }],
+        feedbackEnabled: true,
+        feedbackProvider,
+        snapshotProvider: null,
+        seed: 42,
+        telemetry: baseTelemetry,
+      });
+      assert.equal(feedbackProvider.mock.callCount(), 1);
+      assert.deepStrictEqual(result.feedback, [{ type: "legacy" }]);
+    });
+
     it("includes health metrics in result", async () => {
       const result = await buildGenerationContext({
         generation: 0,

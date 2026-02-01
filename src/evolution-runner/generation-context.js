@@ -15,6 +15,7 @@ import { assertNonEmptyArray } from "./runner-validation.js";
  * @param {Array} params.population
  * @param {boolean} params.feedbackEnabled
  * @param {Function|null} params.feedbackProvider
+ * @param {{ shouldPrompt: boolean, budget: number, reasonCodes: string[] }|undefined} [params.feedbackPlan]
  * @param {Function|null} params.snapshotProvider
  * @param {number|undefined} params.seed
  * @param {object} params.telemetry
@@ -28,6 +29,7 @@ export async function buildGenerationContext({
   population,
   feedbackEnabled,
   feedbackProvider,
+  feedbackPlan,
   snapshotProvider,
   seed,
   telemetry,
@@ -40,8 +42,9 @@ export async function buildGenerationContext({
     population,
   };
 
+  const planAllowsPrompt = feedbackPlan === undefined || (feedbackPlan.shouldPrompt && feedbackPlan.budget > 0);
   const feedback =
-    feedbackEnabled && feedbackProvider ? await feedbackProvider(generationContext) : undefined;
+    feedbackEnabled && feedbackProvider && planAllowsPrompt ? await feedbackProvider(generationContext) : undefined;
 
   const preferenceModelSnapshots = snapshotProvider
     ? snapshotProvider(generationContext)
