@@ -374,7 +374,7 @@ describe("runner", () => {
         const config = createBaseConfig({
           runner: { generations: 1, shortlistSize: 0 },
           evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
-          humanFeedback: { enabled: false },
+          preferenceLearning: { enabled: false },
         });
 
         const result = await runEvolutionRunner({
@@ -410,7 +410,7 @@ describe("runner", () => {
         const config = createBaseConfig({
           runner: { generations: 1, shortlistSize: 0 },
           evolution: { mutation: { rate: 0 }, crossover: { rate: 0 } },
-          humanFeedback: { enabled: true },
+          preferenceLearning: { enabled: true },
         });
 
         const result = await runEvolutionRunner({

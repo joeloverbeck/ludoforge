@@ -38,7 +38,7 @@ export interface EvolutionRunnerConfig {
   evaluation?: Record<string, unknown>;
   evolution?: Record<string, unknown>;
   mapElites: MapElitesConfig;
-  humanFeedback?: Record<string, unknown>;
+  preferenceLearning?: Record<string, unknown>;
 }
 
 export function validateRunnerConfig(input: unknown): ValidationResult;

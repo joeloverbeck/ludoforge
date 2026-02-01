@@ -87,7 +87,7 @@ export async function initializeRunner(options, config) {
 
   const snapshotProvider = resolveSnapshotProvider(options.preferenceModelSnapshots);
   const feedbackProvider = resolveFeedbackProvider(options.feedback);
-  const feedbackEnabled = config.humanFeedback?.enabled === true;
+  const feedbackEnabled = config.preferenceLearning?.enabled === true;
 
   const logger = options.logger ?? null;
 

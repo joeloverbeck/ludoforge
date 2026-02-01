@@ -29,7 +29,50 @@ const baseConfig = {
   mapElites: {
     descriptors: [{ id: "agency", min: 0, max: 1, bins: 4 }],
   },
-  humanFeedback: { enabled: false, mode: "comparison" },
+  preferenceLearning: {
+    enabled: false,
+    mode: "comparison",
+    budget: {
+      baseMaxPerGen: 5,
+      adaptive: { enabled: false },
+    },
+    activeLearning: {
+      maxPairsPerGen: 5,
+      cadenceGens: 1,
+      uncertaintyThreshold: 0.15,
+      diversityQuota: 1,
+      candidatePool: {
+        source: "shortlist",
+        maxCandidates: 20,
+      },
+    },
+    controller: {
+      freeze: {
+        enabled: false,
+        minTotalSamples: 50,
+        freezeAfterStableGens: 5,
+        stableUncertaintyThreshold: 0.1,
+        requireNoNewMetricIds: true,
+      },
+      calibration: {
+        enabled: false,
+        everyGens: 10,
+        samples: 2,
+        strategy: "activeLearning",
+      },
+      drift: {
+        enabled: false,
+        unfreezeUncertaintyThreshold: 0.3,
+        minCalibrationAccuracy: 0.7,
+        ood: {
+          enabled: false,
+          featureDistance: "cosine",
+          maxTrainDistanceP95: 2.0,
+          maxOodRate: 0.2,
+        },
+      },
+    },
+  },
   seeding: {
     mode: "generate",
     populationSize: 10,
@@ -37,6 +80,7 @@ const baseConfig = {
       coverage: {
         strategy: "uniform-bins",
         maxAttempts: 100,
+        specialOnly: { policy: "cap", maxFraction: 0.10 },
       },
       grammar: {},
     },
@@ -78,19 +122,22 @@ describe("schema", () => {
       assertInvalid(candidate);
     });
 
-    it("accepts adaptive human feedback budget config", () => {
+    it("accepts adaptive preference budget config", () => {
       const candidate = cloneConfig(baseConfig);
-      candidate.humanFeedback.adaptiveBudget = {
+      candidate.preferenceLearning.budget.adaptive = {
         enabled: true,
         lowUncertaintyThreshold: 0.1,
         highUncertaintyThreshold: 0.6,
+        scaleDownFactor: 0.5,
+        scaleUpFactor: 1.5,
+        onNewMetricIds: "scaleUp",
       };
       assertValid(candidate);
     });
 
     it("rejects adaptive budget thresholds outside range", () => {
       const candidate = cloneConfig(baseConfig);
-      candidate.humanFeedback.adaptiveBudget = {
+      candidate.preferenceLearning.budget.adaptive = {
         enabled: true,
         lowUncertaintyThreshold: -0.1,
         highUncertaintyThreshold: 1.2,

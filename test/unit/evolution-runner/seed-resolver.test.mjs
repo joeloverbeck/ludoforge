@@ -38,6 +38,7 @@ function makeGenerateConfig(overrides = {}) {
         coverage: {
           strategy: "random",
           maxAttempts: 200,
+          specialOnly: { policy: "cap", maxFraction: 0.10 },
         },
         grammar: {},
       },
@@ -119,6 +120,7 @@ describe("seed-resolver", () => {
             coverage: {
               strategy: "random",
               maxAttempts: 500,
+              specialOnly: { policy: "cap", maxFraction: 0.10 },
             },
             grammar: {},
           },
@@ -155,6 +157,7 @@ describe("seed-resolver", () => {
             coverage: {
               strategy: "random",
               maxAttempts: 500,
+              specialOnly: { policy: "cap", maxFraction: 0.10 },
             },
             grammar: {},
           },

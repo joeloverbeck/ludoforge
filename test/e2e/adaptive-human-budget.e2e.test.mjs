@@ -175,7 +175,7 @@ describe("adaptive-human-budget", () => {
           mutation: { rate: 0 },
           crossover: { rate: 0 },
         },
-        humanFeedback: {
+        preferenceLearning: {
           enabled: true,
         },
       },

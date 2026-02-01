@@ -97,9 +97,9 @@ describe("runner-initializer integration", () => {
     assert.equal(state.mutationSelector, customSelector);
   });
 
-  it("sets feedbackEnabled from humanFeedback config", async () => {
+  it("sets feedbackEnabled from preferenceLearning config", async () => {
     const baseDir = await mkdtemp(join(tmpdir(), "init-test-"));
-    const config = makeConfig({ humanFeedback: { enabled: true } });
+    const config = makeConfig({ preferenceLearning: { enabled: true } });
     const options = { config, evaluation: makeEvaluation(), population: makePopulation(), baseDir };
 
     const state = await initializeRunner(options, config);
@@ -107,7 +107,7 @@ describe("runner-initializer integration", () => {
     assert.equal(state.feedbackEnabled, true);
   });
 
-  it("defaults feedbackEnabled to false when humanFeedback is absent", async () => {
+  it("defaults feedbackEnabled to false when preferenceLearning is absent", async () => {
     const baseDir = await mkdtemp(join(tmpdir(), "init-test-"));
     const config = makeConfig();
     const options = { config, evaluation: makeEvaluation(), population: makePopulation(), baseDir };

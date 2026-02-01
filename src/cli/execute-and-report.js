@@ -11,11 +11,11 @@ import { createFeedbackProvider } from "../human-interface/create-feedback-provi
 async function executeRunnerWithFeedback(runnerOptions, config, runEvolutionRunnerFn) {
   let consoleIO;
   try {
-    if (config.humanFeedback?.enabled && process.stdin.isTTY) {
+    if (config.preferenceLearning?.enabled && process.stdin.isTTY) {
       consoleIO = createConsoleIO();
       const provider = createFeedbackProvider({
         io: consoleIO.io,
-        config: config.humanFeedback,
+        config: config.preferenceLearning,
         initialModelState: runnerOptions.preferenceModelSnapshots?.[0],
         seed: config.seed,
       });

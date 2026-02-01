@@ -5,7 +5,7 @@ import { executeAndReport } from "../../src/cli/execute-and-report.js";
 
 function makeConfig(overrides = {}) {
   return {
-    humanFeedback: { enabled: false },
+    preferenceLearning: { enabled: false },
     ...overrides,
   };
 }

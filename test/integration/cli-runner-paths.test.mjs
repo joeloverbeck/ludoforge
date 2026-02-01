@@ -15,7 +15,20 @@ function createRunnerConfig() {
   return {
     runner: { generations: 1, shortlistSize: 0, maxRetainedGenerations: 5 },
     mapElites: { descriptors: [{ id: "agency", min: 0, max: 1, bins: 2 }] },
-    humanFeedback: { enabled: false, mode: "comparison" },
+    preferenceLearning: {
+      enabled: false,
+      mode: "comparison",
+      budget: { baseMaxPerGen: 5, adaptive: { enabled: false } },
+      activeLearning: {
+        maxPairsPerGen: 5, cadenceGens: 1, uncertaintyThreshold: 0.15, diversityQuota: 1,
+        candidatePool: { source: "shortlist", maxCandidates: 20 },
+      },
+      controller: {
+        freeze: { enabled: false, minTotalSamples: 50, freezeAfterStableGens: 5, stableUncertaintyThreshold: 0.1, requireNoNewMetricIds: true },
+        calibration: { enabled: false, everyGens: 10, samples: 2, strategy: "activeLearning" },
+        drift: { enabled: false, unfreezeUncertaintyThreshold: 0.3, minCalibrationAccuracy: 0.7, ood: { enabled: false, featureDistance: "cosine", maxTrainDistanceP95: 2.0, maxOodRate: 0.2 } },
+      },
+    },
     seeding: { mode: "folder", populationSize: 1, folder: { path: "./seeds" } },
     evolution: { motifMining: { enabled: false, eliteSelection: { perNicheTopK: 3, globalTopK: 10 }, minSupport: 2, maxMotifLength: 5, ngramSizes: [2, 3] } },
   };

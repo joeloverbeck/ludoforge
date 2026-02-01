@@ -42,6 +42,7 @@ describe("seed-mixed integration", () => {
           coverage: {
             strategy: "random",
             maxAttempts: 500,
+            specialOnly: { policy: "cap", maxFraction: 0.10 },
           },
           grammar: {},
         },
@@ -80,6 +81,7 @@ describe("seed-mixed integration", () => {
           coverage: {
             strategy: "random",
             maxAttempts: 500,
+            specialOnly: { policy: "cap", maxFraction: 0.10 },
           },
           grammar: {},
         },
@@ -117,6 +119,7 @@ describe("seed-mixed integration", () => {
           coverage: {
             strategy: "random",
             maxAttempts: 500,
+            specialOnly: { policy: "cap", maxFraction: 0.10 },
           },
           grammar: {},
         },

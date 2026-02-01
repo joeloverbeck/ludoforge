@@ -2,12 +2,57 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { validateRunnerConfig } from "../../../src/evolution-runner/config.js";
 
+const minimalPreferenceLearning = {
+  enabled: false,
+  mode: "comparison",
+  budget: {
+    baseMaxPerGen: 5,
+    adaptive: { enabled: false },
+  },
+  activeLearning: {
+    maxPairsPerGen: 5,
+    cadenceGens: 1,
+    uncertaintyThreshold: 0.15,
+    diversityQuota: 1,
+    candidatePool: {
+      source: "shortlist",
+      maxCandidates: 20,
+    },
+  },
+  controller: {
+    freeze: {
+      enabled: false,
+      minTotalSamples: 50,
+      freezeAfterStableGens: 5,
+      stableUncertaintyThreshold: 0.1,
+      requireNoNewMetricIds: true,
+    },
+    calibration: {
+      enabled: false,
+      everyGens: 10,
+      samples: 2,
+      strategy: "activeLearning",
+    },
+    drift: {
+      enabled: false,
+      unfreezeUncertaintyThreshold: 0.3,
+      minCalibrationAccuracy: 0.7,
+      ood: {
+        enabled: false,
+        featureDistance: "cosine",
+        maxTrainDistanceP95: 2.0,
+        maxOodRate: 0.2,
+      },
+    },
+  },
+};
+
 const baseConfig = {
   runner: { generations: 3, maxRetainedGenerations: 30 },
   mapElites: {
     descriptors: [{ id: "agency", min: 0, max: 1, bins: 5 }],
   },
-  humanFeedback: { enabled: false, mode: "comparison" },
+  preferenceLearning: minimalPreferenceLearning,
   seeding: {
     mode: "generate",
     populationSize: 10,
@@ -15,6 +60,7 @@ const baseConfig = {
       coverage: {
         strategy: "uniform-bins",
         maxAttempts: 100,
+        specialOnly: { policy: "cap", maxFraction: 0.10 },
       },
       grammar: {},
     },
@@ -211,7 +257,7 @@ describe("config", () => {
         populationSize: 20,
         folder: { path: "seeds/" },
         generate: {
-          coverage: { strategy: "random", maxAttempts: 50 },
+          coverage: { strategy: "random", maxAttempts: 50, specialOnly: { policy: "cap", maxFraction: 0.10 } },
           grammar: {},
         },
         mix: { folderFraction: 0.4 },
@@ -319,7 +365,7 @@ describe("config", () => {
         populationSize: 20,
         folder: { path: "seeds/" },
         generate: {
-          coverage: { strategy: "random", maxAttempts: 50 },
+          coverage: { strategy: "random", maxAttempts: 50, specialOnly: { policy: "cap", maxFraction: 0.10 } },
           grammar: {},
         },
       };
@@ -364,6 +410,44 @@ describe("config", () => {
       );
     });
 
+    it("rejects missing coverage.specialOnly", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.seeding.generate.coverage.specialOnly;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/seeding/generate/coverage/specialOnly" &&
+            error.keyword === "required",
+        ),
+      );
+    });
+
+    it("accepts valid coverage.specialOnly with all fields", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.seeding.generate.coverage.specialOnly = {
+        policy: "cap",
+        maxFraction: 0.10,
+        maxCount: 3,
+        countTowardCoverage: false,
+      };
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("accepts coverage.specialOnly with only policy", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.seeding.generate.coverage.specialOnly = { policy: "reject" };
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
     it("validates grammar limits as positive integers", () => {
       const candidate = cloneConfig(baseConfig);
       candidate.seeding.generate.grammar = {
@@ -388,7 +472,7 @@ describe("config", () => {
         populationSize: 20,
         folder: { path: "seeds/" },
         generate: {
-          coverage: { strategy: "random", maxAttempts: 50 },
+          coverage: { strategy: "random", maxAttempts: 50, specialOnly: { policy: "cap", maxFraction: 0.10 } },
           grammar: {},
         },
         mix: { folderFraction: 1.5 },
@@ -403,6 +487,175 @@ describe("config", () => {
             error.keyword === "maximum",
         ),
       );
+    });
+  });
+
+  describe("preferenceLearning validation", () => {
+    it("rejects old humanFeedback shape", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.preferenceLearning;
+      candidate.humanFeedback = { enabled: false, mode: "comparison" };
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+    });
+
+    it("accepts the new preferenceLearning shape", () => {
+      const result = validateRunnerConfig(cloneConfig(baseConfig));
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("accepts budget.baseMaxPerGen = 0", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.budget.baseMaxPerGen = 0;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("rejects budget.baseMaxPerGen = -1", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.budget.baseMaxPerGen = -1;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/budget/baseMaxPerGen" &&
+            error.keyword === "minimum",
+        ),
+      );
+    });
+
+    it("accepts all candidatePool.source enum values", () => {
+      for (const source of ["shortlist", "elites", "evaluated", "mixed"]) {
+        const candidate = cloneConfig(baseConfig);
+        candidate.preferenceLearning.activeLearning.candidatePool.source = source;
+
+        const result = validateRunnerConfig(candidate);
+        assert.equal(result.valid, true, `source="${source}" should be valid`);
+      }
+    });
+
+    it("rejects invalid candidatePool.source", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.activeLearning.candidatePool.source = "invalid";
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/activeLearning/candidatePool/source" &&
+            error.keyword === "enum",
+        ),
+      );
+    });
+
+    it("validates controller.freeze sub-object", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.controller.freeze.freezeAfterStableGens = 0;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/controller/freeze/freezeAfterStableGens" &&
+            error.keyword === "minimum",
+        ),
+      );
+    });
+
+    it("validates controller.calibration sub-object", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.controller.calibration.strategy = "invalid";
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/controller/calibration/strategy" &&
+            error.keyword === "enum",
+        ),
+      );
+    });
+
+    it("validates controller.drift sub-object", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.controller.drift.unfreezeUncertaintyThreshold = 1.5;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/controller/drift/unfreezeUncertaintyThreshold" &&
+            error.keyword === "maximum",
+        ),
+      );
+    });
+
+    it("validates controller.drift.ood sub-object", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.controller.drift.ood.featureDistance = "manhattan";
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/controller/drift/ood/featureDistance" &&
+            error.keyword === "enum",
+        ),
+      );
+    });
+
+    it("rejects missing required preferenceLearning sub-objects", () => {
+      const candidate = cloneConfig(baseConfig);
+      delete candidate.preferenceLearning.controller;
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, false);
+      assert.ok(
+        result.errors.some(
+          (error) =>
+            error.path === "/preferenceLearning/controller" &&
+            error.keyword === "required",
+        ),
+      );
+    });
+
+    it("accepts optional adaptive budget fields", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.budget.adaptive = {
+        enabled: true,
+        lowUncertaintyThreshold: 0.1,
+        highUncertaintyThreshold: 0.35,
+        scaleDownFactor: 0.5,
+        scaleUpFactor: 1.5,
+        onNewMetricIds: "forceUnfreeze",
+      };
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("accepts candidatePool with focus config", () => {
+      const candidate = cloneConfig(baseConfig);
+      candidate.preferenceLearning.activeLearning.candidatePool.focus = {
+        strategy: "topQuantile",
+        topQuantile: 0.25,
+      };
+
+      const result = validateRunnerConfig(candidate);
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
     });
   });
 });

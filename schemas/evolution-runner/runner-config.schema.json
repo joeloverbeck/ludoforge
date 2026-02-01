@@ -4,14 +4,14 @@
   "title": "EvolutionRunnerConfig",
   "type": "object",
   "additionalProperties": false,
-  "required": ["runner", "mapElites", "seeding", "humanFeedback", "evolution"],
+  "required": ["runner", "mapElites", "seeding", "preferenceLearning", "evolution"],
   "properties": {
     "seed": { "type": "integer" },
     "runner": { "$ref": "#/$defs/RunnerLoopConfig" },
     "evaluation": { "$ref": "#/$defs/EvaluationConfig" },
     "evolution": { "$ref": "#/$defs/EvolutionConfig" },
     "mapElites": { "$ref": "#/$defs/MapElitesConfig" },
-    "humanFeedback": { "$ref": "#/$defs/HumanFeedbackConfig" },
+    "preferenceLearning": { "$ref": "#/$defs/PreferenceLearningConfig" },
     "seeding": { "$ref": "#/$defs/SeedingConfig" }
   },
   "$defs": {
@@ -126,31 +126,121 @@
         "tieBreak": { "type": "string", "enum": ["keep", "replace"] }
       }
     },
-    "HumanFeedbackConfig": {
+    "PreferenceLearningConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "mode"],
+      "required": ["enabled", "mode", "budget", "activeLearning", "controller"],
       "properties": {
         "enabled": { "type": "boolean" },
         "mode": { "type": "string", "enum": ["rating", "comparison"] },
-        "maxSamplesPerGen": { "type": "integer", "minimum": 1 },
-        "activeLearning": {
+        "budget": { "$ref": "#/$defs/PreferenceBudgetConfig" },
+        "activeLearning": { "$ref": "#/$defs/PreferenceActiveLearningConfig" },
+        "controller": { "$ref": "#/$defs/PreferenceControllerConfig" }
+      }
+    },
+    "PreferenceBudgetConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseMaxPerGen", "adaptive"],
+      "properties": {
+        "baseMaxPerGen": { "type": "integer", "minimum": 0 },
+        "adaptive": {
           "type": "object",
           "additionalProperties": false,
-          "properties": {
-            "uncertaintyThreshold": { "type": "number", "minimum": 0 },
-            "diversityQuota": { "type": "number", "minimum": 0 }
-          }
-        },
-        "adaptiveBudget": {
-          "type": "object",
-          "additionalProperties": false,
+          "required": ["enabled"],
           "properties": {
             "enabled": { "type": "boolean" },
             "lowUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
-            "highUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 }
+            "highUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+            "scaleDownFactor": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "scaleUpFactor": { "type": "number", "minimum": 1, "maximum": 2 },
+            "onNewMetricIds": { "type": "string", "enum": ["scaleUp", "forceUnfreeze"] }
           }
         }
+      }
+    },
+    "PreferenceActiveLearningConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxPairsPerGen", "cadenceGens", "uncertaintyThreshold", "diversityQuota", "candidatePool"],
+      "properties": {
+        "maxPairsPerGen": { "type": "integer", "minimum": 0 },
+        "cadenceGens": { "type": "integer", "minimum": 1 },
+        "uncertaintyThreshold": { "type": "number", "minimum": 0 },
+        "diversityQuota": { "type": "number", "minimum": 0 },
+        "candidatePool": { "$ref": "#/$defs/CandidatePoolConfig" }
+      }
+    },
+    "CandidatePoolConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "maxCandidates"],
+      "properties": {
+        "source": { "type": "string", "enum": ["shortlist", "elites", "evaluated", "mixed"] },
+        "focus": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "strategy": { "type": "string", "enum": ["none", "topQuantile", "parentsAndOffspring"] },
+            "topQuantile": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          }
+        },
+        "maxCandidates": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "PreferenceControllerConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freeze", "calibration", "drift"],
+      "properties": {
+        "freeze": { "$ref": "#/$defs/FreezeConfig" },
+        "calibration": { "$ref": "#/$defs/CalibrationConfig" },
+        "drift": { "$ref": "#/$defs/DriftConfig" }
+      }
+    },
+    "FreezeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "minTotalSamples", "freezeAfterStableGens", "stableUncertaintyThreshold", "requireNoNewMetricIds"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minTotalSamples": { "type": "integer", "minimum": 0 },
+        "freezeAfterStableGens": { "type": "integer", "minimum": 1 },
+        "stableUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requireNoNewMetricIds": { "type": "boolean" }
+      }
+    },
+    "CalibrationConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "everyGens", "samples", "strategy"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "everyGens": { "type": "integer", "minimum": 1 },
+        "samples": { "type": "integer", "minimum": 0 },
+        "strategy": { "type": "string", "enum": ["activeLearning", "randomPairs"] }
+      }
+    },
+    "DriftConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "unfreezeUncertaintyThreshold", "minCalibrationAccuracy", "ood"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "unfreezeUncertaintyThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minCalibrationAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "ood": { "$ref": "#/$defs/OodConfig" }
+      }
+    },
+    "OodConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "featureDistance", "maxTrainDistanceP95", "maxOodRate"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "featureDistance": { "type": "string", "enum": ["cosine", "l2"] },
+        "maxTrainDistanceP95": { "type": "number", "minimum": 0 },
+        "maxOodRate": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
     "SeedingConfig": {
@@ -241,7 +331,7 @@
     "SeedingCoverageConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["strategy", "maxAttempts"],
+      "required": ["strategy", "maxAttempts", "specialOnly"],
       "properties": {
         "strategy": {
           "type": "string",

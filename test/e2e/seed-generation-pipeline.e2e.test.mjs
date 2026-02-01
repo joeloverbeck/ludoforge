@@ -85,6 +85,7 @@ describe("seed-generation-pipeline e2e", () => {
               strategy: "uniform-bins",
               maxAttempts: 500,
               fallback: { strategy: "accept-any-valid" },
+              specialOnly: { policy: "cap", maxFraction: 0.10 },
             },
             grammar: {},
           },
