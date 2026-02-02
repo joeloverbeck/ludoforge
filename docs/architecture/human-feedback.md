@@ -51,6 +51,10 @@ Implemented in `src/evolution-runner/adaptive-budget.js`.
 The adaptive budget feature dynamically adjusts `maxSamplesPerGen` — the
 per-generation cap on human feedback prompts — based on ensemble uncertainty:
 
+- When the preference model is **untrained** (`sampleCount === 0`), the base
+  budget is used unchanged. An untrained model produces artificially low
+  uncertainty (zero ensemble disagreement from all-zero weights) which would
+  otherwise halve the budget before the user is ever prompted.
 - When ensemble mean uncertainty is low (<= `lowUncertaintyThreshold`, default
   `0.1`), the budget is halved (50% reduction), reducing unnecessary human
   effort when the model is confident.
@@ -59,6 +63,11 @@ per-generation cap on human feedback prompts — based on ensemble uncertainty:
   learned, the budget is increased by 50% to gather more informative samples.
 - The minimum budget is **0** — true zero-feedback generations are allowed when
   the preference controller is in frozen state.
+
+The adaptive budget is computed once in `generation-body.js` and passed through
+`feedbackPlan.budget` as `plannedBudget` in the generation context. The feedback
+provider uses this pre-computed budget directly when available, falling back to
+its own local computation for standalone usage.
 
 This interacts with the active learning pair selection: the adaptive budget
 determines _how many_ pairs to request, while BALD acquisition determines
@@ -180,6 +189,9 @@ uses two factory modules:
   handle to release the readline interface. Both readline output and `writeLine`
   default to `process.stderr` so that prompts appear alongside pino log output
   (which also writes to stderr) rather than being lost on a separate stream.
+  The readline interface forwards SIGINT to the process (readline normally
+  intercepts CTRL-C), and `readLine()` rejects on readline `close` events so
+  the process never hangs on an unresolvable stdin read.
 - `src/human-interface/create-feedback-provider.js` — creates
   `{ feedbackProvider, snapshotProvider }` from an `HumanIO` instance and the
   `preferenceLearning` config block.

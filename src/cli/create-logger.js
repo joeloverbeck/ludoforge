@@ -1,4 +1,5 @@
 import pino from "pino";
+import pinoPretty from "pino-pretty";
 
 /**
  * @param {{ level?: string, pretty?: boolean }} [options]
@@ -9,13 +10,11 @@ export function createLogger(options = {}) {
   const pretty = options.pretty ?? false;
 
   if (pretty) {
-    return pino({
-      level,
-      transport: {
-        target: "pino-pretty",
-        options: { colorize: true },
-      },
-    });
+    // Use pino-pretty as a synchronous stream (main thread) instead of
+    // transport worker thread.  This ensures flush() is reliable and log
+    // output does not race with interactive prompts written to stderr.
+    const prettyStream = pinoPretty({ colorize: true });
+    return pino({ level }, prettyStream);
   }
 
   return pino({ level });

@@ -84,6 +84,16 @@ export function computeAdaptiveBudget({
     return { budget: baseBudget, unfreezeRequired: false };
   }
 
+  // An untrained model (top-level sampleCount === 0) has no basis for uncertainty
+  // claims. All weights are zero → sigmoid(0) = 0.5 for every prediction → zero
+  // ensemble disagreement → artificially "low" uncertainty. Return base budget unchanged.
+  // We only check the top-level sampleCount (set by createPreferenceModelState / updatePreferenceModelState).
+  if (preferenceModelState != null
+      && Number.isFinite(preferenceModelState.sampleCount)
+      && preferenceModelState.sampleCount === 0) {
+    return { budget: baseBudget, unfreezeRequired: false };
+  }
+
   if (hasNewMetricIds(metricIds, previousMetricIds)) {
     const budget = Math.ceil(baseBudget * upFactor);
     const unfreezeRequired = newMetricIdsBehavior === "forceUnfreeze";

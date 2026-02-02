@@ -16,9 +16,11 @@ import { assertNonEmptyArray } from "./runner-validation.js";
  * @param {boolean} params.feedbackEnabled
  * @param {Function|null} params.feedbackProvider
  * @param {{ shouldPrompt: boolean, budget: number, reasonCodes: string[] }|undefined} [params.feedbackPlan]
+ * @param {number|undefined} [params.plannedBudget] - pre-computed adaptive budget to forward to feedbackProvider
  * @param {Function|null} params.snapshotProvider
  * @param {number|undefined} params.seed
  * @param {object} params.telemetry
+ * @param {object|null} [params.logger]
  * @returns {Promise<{ feedback: any, preferenceModelSnapshots: Array, health: object, preferenceMetrics: object|undefined }>}
  */
 export async function buildGenerationContext({
@@ -30,9 +32,11 @@ export async function buildGenerationContext({
   feedbackEnabled,
   feedbackProvider,
   feedbackPlan,
+  plannedBudget,
   snapshotProvider,
   seed,
   telemetry,
+  logger = null,
 }) {
   const generationContext = {
     generation,
@@ -40,11 +44,34 @@ export async function buildGenerationContext({
     baseDir,
     loopResult,
     population,
+    ...(Number.isFinite(plannedBudget) ? { plannedBudget } : {}),
   };
 
   const planAllowsPrompt = feedbackPlan === undefined || (feedbackPlan.shouldPrompt && feedbackPlan.budget > 0);
-  const feedback =
-    feedbackEnabled && feedbackProvider && planAllowsPrompt ? await feedbackProvider(generationContext) : undefined;
+  const willCallFeedbackProvider = !!(feedbackEnabled && feedbackProvider && planAllowsPrompt);
+
+  if (logger) {
+    logger.info(
+      { feedbackEnabled, hasFeedbackProvider: !!feedbackProvider, planAllowsPrompt, willCallFeedbackProvider },
+      "generation-context: feedback decision",
+    );
+  }
+
+  let feedback;
+  if (willCallFeedbackProvider) {
+    if (logger) {
+      logger.warn("generation-context: calling feedbackProvider (may block on stdin)");
+      logger.flush?.();
+      // Yield to let any remaining async log output settle
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    // Direct stderr write guarantees user sees something before stdin blocks
+    process.stderr.write("\n[feedback] Waiting for human input...\n");
+    feedback = await feedbackProvider(generationContext);
+    if (logger) {
+      logger.info("generation-context: feedbackProvider returned");
+    }
+  }
 
   const preferenceModelSnapshots = snapshotProvider
     ? snapshotProvider(generationContext)

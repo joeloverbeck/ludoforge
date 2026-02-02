@@ -21,11 +21,12 @@ import { resolve } from "node:path";
  *   generationDir: string,
  *   seed?: number,
  *   signal?: AbortSignal | null,
+ *   logger?: object | null,
  * }} options
  * @returns {Promise<{ motifEffects: object[][], motifRecords: object[] } | null>}
  */
 export async function runMotifMiningPipeline(options) {
-  const { mapElitesResult, motifMiningConfig, simulationConfig = {}, generationDir, seed = 0, signal = null } = options;
+  const { mapElitesResult, motifMiningConfig, simulationConfig = {}, generationDir, seed = 0, signal = null, logger = null } = options;
 
   if (motifMiningConfig.enabled !== true) {
     return null;
@@ -33,16 +34,30 @@ export async function runMotifMiningPipeline(options) {
 
   const elites = selectElitesForMining(mapElitesResult, motifMiningConfig.eliteSelection);
 
+  if (logger) {
+    logger.info({ eliteCount: elites.length }, "motif-pipeline: elites selected");
+  }
+
   if (elites.length === 0) {
     return null;
   }
 
   const simulationRuns = motifMiningConfig.simulationRuns ?? 3;
+  const trajStart = Date.now();
   const trajectories = await extractEliteTrajectories(elites, {
     simulationConfig,
     seed: motifMiningConfig.seed ?? seed,
     simulationRuns,
+    signal,
+    logger,
   });
+
+  if (logger) {
+    logger.info(
+      { trajectoryCount: trajectories.length, durationMs: Date.now() - trajStart },
+      "motif-pipeline: trajectories extracted",
+    );
+  }
 
   if (trajectories.length === 0) {
     return null;
@@ -51,11 +66,19 @@ export async function runMotifMiningPipeline(options) {
   const effectMap = buildEffectMap(trajectories);
   const lts = buildLts(trajectories);
 
+  if (logger) {
+    logger.info({ ltsNodeCount: lts.nodes?.length ?? 0, ltsEdgeCount: lts.edges?.length ?? 0 }, "motif-pipeline: LTS built");
+  }
+
   const motifs = await mineMotifs(lts, {
     ngramSizes: motifMiningConfig.ngramSizes,
     minSupport: motifMiningConfig.minSupport,
     maxMotifLength: motifMiningConfig.maxMotifLength,
   }, { signal });
+
+  if (logger) {
+    logger.info({ motifCount: motifs.length }, "motif-pipeline: motifs mined");
+  }
 
   const motifEffects = convertMotifsToEffects(motifs, effectMap);
 

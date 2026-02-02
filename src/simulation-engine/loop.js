@@ -80,6 +80,11 @@ async function runSimulationLoop(config) {
 
     if (stepsTaken > 0 && stepsTaken % YIELD_INTERVAL === 0) {
       await new Promise((resolve) => setImmediate(resolve));
+      if (config.signal?.aborted) {
+        const err = new Error("Aborted");
+        err.name = "AbortError";
+        throw err;
+      }
     }
 
     if (logger && stepsTaken > 0 && stepsTaken % 1000 === 0) {

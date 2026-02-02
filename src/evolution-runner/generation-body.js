@@ -25,6 +25,7 @@ import { decideFeedbackPlan } from "./feedback-plan.js";
 import { buildPreferenceHealth } from "./preference-health.js";
 import { distillTasteVector } from "../evaluation-analytics/taste-vector.js";
 import { computeControllerInputs } from "./controller-inputs.js";
+import { computeAdaptiveBudget } from "./adaptive-budget.js";
 
 /**
  * @param {object} params
@@ -135,6 +136,9 @@ export async function executeGenerationBody({
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:motif-mining start");
+  }
   const genDir = resolveRunPath(
     resolveRunDir(baseDir, runId),
     formatGenerationDirName(DEFAULT_RUNNER_LAYOUT.artifacts.generationDirPattern, generation),
@@ -151,6 +155,7 @@ export async function executeGenerationBody({
       generationDir: genDir,
       seed: motifMiningConfig.seed ?? (Number.isFinite(seed) ? seed : 0),
       signal: motifAbort.signal,
+      logger,
     });
   } catch (err) {
     if (err.name === "AbortError" || motifAbort.signal.aborted) {
@@ -276,12 +281,26 @@ export async function executeGenerationBody({
   }
 
   phaseStart = Date.now();
+  const adaptiveBudgetConfig = plConfig.budget?.adaptive ?? plConfig.adaptiveBudget ?? {};
+  const rawAdaptiveBudget = computeAdaptiveBudget({
+    preferenceModelState: preferenceModelStateForController,
+    baseMaxSamples: baseMaxPerGen,
+    metricIds: controllerInputs.metricIds ?? [],
+    previousMetricIds: previousMetricIds ?? null,
+    candidates: null,
+    lowUncertaintyThreshold: adaptiveBudgetConfig.lowUncertaintyThreshold,
+    highUncertaintyThreshold: adaptiveBudgetConfig.highUncertaintyThreshold,
+    enabled: adaptiveBudgetConfig.enabled === true,
+  });
+  const adaptiveBudgetResult = controllerResult.unfroze
+    ? { ...rawAdaptiveBudget, unfreezeRequired: true }
+    : rawAdaptiveBudget;
   const feedbackPlan = decideFeedbackPlan({
     controllerState: nextControllerState,
     calibration: calibrationConfig,
     generation,
     lastCalibrationGen: lastCalibrationGen ?? null,
-    adaptiveBudgetResult: { budget: baseMaxPerGen, unfreezeRequired: controllerResult.unfroze },
+    adaptiveBudgetResult,
     baseMaxPerGen,
   });
 
@@ -290,19 +309,32 @@ export async function executeGenerationBody({
   }
 
   phaseStart = Date.now();
-  const { feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
-    generation,
-    runId,
-    baseDir,
-    loopResult,
-    population: evolvedPopulation,
-    feedbackEnabled,
-    feedbackProvider,
-    feedbackPlan,
-    snapshotProvider,
-    seed,
-    telemetry,
-  });
+  let feedback, preferenceModelSnapshots, health, preferenceMetrics;
+  try {
+    ({ feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
+      generation,
+      runId,
+      baseDir,
+      loopResult,
+      population: evolvedPopulation,
+      feedbackEnabled,
+      feedbackProvider,
+      feedbackPlan,
+      plannedBudget: feedbackPlan.budget,
+      snapshotProvider,
+      seed,
+      telemetry,
+      logger,
+    }));
+  } catch (err) {
+    if (err.message === "readline closed") {
+      if (logger) {
+        logger.warn("generation-body: readline closed (user interrupted)");
+      }
+      return { __halt: true, haltedReason: { cause: "user-interrupted", generation } };
+    }
+    throw err;
+  }
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:generation-context complete");

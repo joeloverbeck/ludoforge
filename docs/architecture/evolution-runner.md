@@ -287,13 +287,16 @@ and `motifMining` within it are both required (set `enabled: false` to disable).
 
 The generation body creates an `AbortController` before launching the motif pipeline.
 A `setTimeout` fires after `timeoutMs` and calls `controller.abort()`. The signal is
-threaded through `runMotifMiningPipeline` → `mineMotifs` → `collectNgrams`, where it
-is checked alongside the `maxStackSize` and `maxPaths` limits in the DFS hot loop.
-Because `mineMotifs` yields to the event loop every 5,000 iterations via `setImmediate`,
-the timeout callback can actually fire even during heavy graph traversal — unlike the
-previous `withTimeout` wrapper which could never resolve while a synchronous function
-blocked the event loop. On abort, the generation logs a warning and proceeds with
-`miningResult = null`.
+threaded through `runMotifMiningPipeline` → `extractEliteTrajectories` (checked before
+each elite and between each simulation run) → `createSimulationEngine` config →
+`runSimulationLoop` (checked at every 500-step yield point) and also through →
+`mineMotifs` → `collectNgrams`, where it is checked alongside the `maxStackSize` and
+`maxPaths` limits in the DFS hot loop. Because `mineMotifs` yields to the event loop
+every 5,000 iterations via `setImmediate`, and the simulation loop yields every 500
+steps, the timeout callback can actually fire even during heavy graph traversal or
+CPU-bound simulation. On abort, either `extractEliteTrajectories` or the simulation
+loop throws an `AbortError` which the generation body catches, logs a warning, and
+proceeds with `miningResult = null`.
 
 ### Pipeline Flow
 
@@ -305,7 +308,9 @@ Orchestrated by `runMotifMiningPipeline()` from `src/evolution-runner/motif-pipe
 2. **Re-simulation**: `extractEliteTrajectories()` from `src/evolution-runner/elite-resimulator.js`
    re-simulates each elite genome using `createSimulationEngine()` with
    `createSeededRng(seed + eliteIndex)` for deterministic results. Each elite
-   produces 3 simulation runs, yielding trajectory step arrays.
+   runs simulations individually (not via `runBatch`) so the abort signal can be
+   checked between runs. Accepts optional `signal` and `logger` parameters for
+   abort support and diagnostic logging.
 3. **Effect map**: `buildEffectMap()` from `src/evaluation-analytics/motif-effect-converter.js`
    creates a `Map<canonicalLabel, AppliedEffect[]>` from trajectory steps, mapping
    each canonical edge label to the actual applied effects that produced it.
@@ -403,14 +408,30 @@ wires an interactive feedback loop into the generation cycle:
 1. `createConsoleIO()` (from `src/cli/console-io.js`) opens a readline-based
    `HumanIO` adapter for terminal prompting. Both readline output and
    `writeLine` default to `process.stderr` so prompts appear alongside pino
-   log output in the same stream.
+   log output in the same stream. The readline interface forwards SIGINT
+   (CTRL-C) to `process.kill()` instead of swallowing it, and `readLine()`
+   rejects the pending promise on readline `close` events (CTRL-C / CTRL-D)
+   so the process never hangs on an unresolvable stdin read.
 2. `createFeedbackProvider()` (from `src/human-interface/create-feedback-provider.js`)
    returns an async `feedbackProvider` and a `snapshotProvider`.
 3. These are passed as `feedback` and `preferenceModelSnapshots` to
    `runEvolutionRunner()`.
 
 The feedback provider is async — the runner awaits it each generation, gated
-by the feedback plan (see § Preference Controller below).
+by the feedback plan (see § Preference Controller below). The CLI logger
+uses pino-pretty as a synchronous in-process stream (not a worker thread
+transport), so `flush()` is reliable and log output does not race with
+interactive prompts. Before calling the feedback provider,
+`buildGenerationContext()` flushes the logger, yields briefly (200 ms safety
+margin), and writes `[feedback] Waiting for human input...` directly to
+`process.stderr` to guarantee the user sees a visible indicator before stdin
+blocks.
+
+If the readline interface is closed during the feedback provider call (e.g.,
+CTRL-C or CTRL-D), `buildGenerationContext()` rejects with
+`"readline closed"`. The generation body catches this and returns
+`{ __halt: true, haltedReason: { cause: "user-interrupted", generation } }`
+so the runner exits cleanly instead of leaving an unhandled promise rejection.
 
 Feedback is only wired when `process.stdin.isTTY` is truthy, so
 non-interactive environments (CI, piped input, background processes) skip
@@ -432,6 +453,11 @@ highUncertaintyThreshold, enabled })` dynamically adjusts the per-generation
 human feedback sample count based on ensemble uncertainty and metric changes:
 
 - **Disabled** (`enabled !== true`): returns `baseMaxSamples`.
+- **Untrained model** (`preferenceModelState.sampleCount === 0`): returns
+  `baseMaxSamples` unchanged. An untrained model has all-zero weights, producing
+  `sigmoid(0) = 0.5` for every prediction. In a single-model ensemble this
+  yields zero disagreement — artificially "low" uncertainty that would
+  incorrectly halve the budget before the user has ever been prompted.
 - **New metric IDs detected**: if `metricIds` contains IDs not present in
   `previousMetricIds`, returns `ceil(baseMaxSamples * 1.5)` (50% increase) to
   gather more preference data for the new feature dimensions.
@@ -446,6 +472,17 @@ the preference controller is in frozen state.
 
 Mean uncertainty is computed by calling `computePreferenceScore()` on each
 candidate's feature vector and averaging the `uncertainty` values.
+
+### Single Source of Truth for Budget
+
+The adaptive budget is computed once in `generation-body.js` (using the
+preference model snapshot already extracted for the controller) and passed to
+`decideFeedbackPlan()` as `adaptiveBudgetResult`. The resulting
+`feedbackPlan.budget` is threaded into the generation context as
+`plannedBudget`, which `create-feedback-provider.js` uses directly when
+available — avoiding a second, potentially inconsistent computation inside the
+feedback provider. The provider retains its local `computeAdaptiveBudget()`
+call as a fallback for standalone usage outside the generation pipeline.
 
 Config keys (in `preferenceLearning.budget.adaptive`):
 - `enabled` (boolean): whether adaptive budgeting is active.

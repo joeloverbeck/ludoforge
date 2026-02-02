@@ -141,18 +141,25 @@ export function createFeedbackProvider({ io, config, initialModelState, seed, ca
       return [];
     }
 
-    const adaptiveBudget = config.budget?.adaptive ?? config.adaptiveBudget;
-    const baseMaxSamples = config.budget?.baseMaxPerGen ?? config.maxSamplesPerGen ?? 5;
-    const { budget: maxSamplesPerGen } = computeAdaptiveBudget({
-      preferenceModelState: currentModelState,
-      baseMaxSamples,
-      metricIds,
-      previousMetricIds,
-      candidates,
-      lowUncertaintyThreshold: adaptiveBudget?.lowUncertaintyThreshold,
-      highUncertaintyThreshold: adaptiveBudget?.highUncertaintyThreshold,
-      enabled: adaptiveBudget?.enabled === true,
-    });
+    // Use pre-computed budget from generation-body when available (single source of truth).
+    // Fall back to local computation for standalone usage without the generation pipeline.
+    let maxSamplesPerGen;
+    if (Number.isFinite(generationContext.plannedBudget)) {
+      maxSamplesPerGen = generationContext.plannedBudget;
+    } else {
+      const adaptiveBudget = config.budget?.adaptive ?? config.adaptiveBudget;
+      const baseMaxSamples = config.budget?.baseMaxPerGen ?? config.maxSamplesPerGen ?? 5;
+      ({ budget: maxSamplesPerGen } = computeAdaptiveBudget({
+        preferenceModelState: currentModelState,
+        baseMaxSamples,
+        metricIds,
+        previousMetricIds,
+        candidates,
+        lowUncertaintyThreshold: adaptiveBudget?.lowUncertaintyThreshold,
+        highUncertaintyThreshold: adaptiveBudget?.highUncertaintyThreshold,
+        enabled: adaptiveBudget?.enabled === true,
+      }));
+    }
     const alOptions = buildActiveLearningOptions(config, generation, maxSamplesPerGen);
     const pairs = selectActiveLearningPairs(
       candidates,

@@ -181,7 +181,11 @@ number, or `50_000` when `maxSteps` is unset. This prevents a misconfigured
 
 Every 500 steps, the loop yields to the Node event loop via
 `await new Promise(resolve => setImmediate(resolve))`. This ensures SIGINT
-(CTRL+C) handlers can fire even during CPU-bound simulation loops.
+(CTRL+C) handlers can fire even during CPU-bound simulation loops. If
+`config.signal` (an `AbortSignal`) is provided, the loop checks
+`signal.aborted` at each yield point and throws an `AbortError` when aborted.
+This enables external timeout enforcement — the motif mining pipeline uses this
+to abort re-simulations of elite genomes that exceed the configured timeout.
 
 ## Determinism
 
