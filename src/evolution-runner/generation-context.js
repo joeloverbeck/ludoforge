@@ -38,6 +38,14 @@ export async function buildGenerationContext({
   telemetry,
   logger = null,
 }) {
+  if (logger) {
+    logger.info(
+      { generation, feedbackEnabled, hasFeedbackProvider: !!feedbackProvider },
+      "generation-context: entered",
+    );
+    logger.flush?.();
+  }
+
   const generationContext = {
     generation,
     runId,
@@ -62,8 +70,9 @@ export async function buildGenerationContext({
     if (logger) {
       logger.warn("generation-context: calling feedbackProvider (may block on stdin)");
       logger.flush?.();
-      // Yield to let any remaining async log output settle
-      await new Promise((r) => setTimeout(r, 200));
+      // Yield twice to let pino-pretty's transform stream drain fully
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
     }
     // Direct stderr write guarantees user sees something before stdin blocks
     process.stderr.write("\n[feedback] Waiting for human input...\n");

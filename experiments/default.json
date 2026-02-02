@@ -83,7 +83,7 @@
     }
   },
   "preferenceLearning": {
-    "enabled": true,
+    "enabled": false,
     "mode": "comparison",
     "budget": {
       "baseMaxPerGen": 5,

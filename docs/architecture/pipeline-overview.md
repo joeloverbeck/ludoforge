@@ -146,6 +146,52 @@ then repeats.
     - Config: `configs/evolution-runner.json` (runs root, artifact layout, resume rules).
     - Operator telemetry is persisted per generation as `operator-stats.json`.
 
+## DSL Semantic Validation
+
+Implemented in `src/dsl/semantic.js` with individual checks in `src/dsl/semantic/`.
+
+`collectSemanticIssues(definition)` runs a battery of checks on a game definition
+after JSON Schema validation passes. Issues are classified as `error`, `warning`,
+or `info` based on rule severity. The semantic layer catches logical problems that
+schema validation cannot express.
+
+### Validators
+
+| Module | Check |
+|--------|-------|
+| `bounds-validator.js` | Variable and attribute initial values within type bounds |
+| `zone-validator.js` | Zone token type references exist |
+| `termination-validator.js` | Termination block structure, expression validity, threshold bounds |
+| `no-legal-actions-validator.js` | `noLegalActions` policy configuration consistency |
+| `ref-validator.js` | All variable, token type, zone, and attribute references resolve |
+| `semantic-validators.js` | Selector, effect, and expression validation |
+| `action-validator.js` | Action structure and precondition satisfiability |
+| `trigger-validator.js` | Trigger structure and expression validity |
+| `scheduler-validator.js` | Scheduler configuration consistency |
+
+### Detectors (warnings / info)
+
+| Module | Rule | Severity |
+|--------|------|----------|
+| `unused-detector.js` | Unused variables, token types, zones | warning |
+| `duplicate-action-detector.js` | Actions with identical effect structure | info |
+| `cancelling-effect-detector.js` | Effect pairs that cancel each other (e.g., inc + dec) | info |
+| `unused-param-detector.js` | Action params not referenced by any effect | warning |
+| `termination-overlap-detector.js` | Overlapping termination conditions with different outcomes | warning |
+| `termination-reachability.js` | Termination conditions on variables never modified by actions | warning |
+
+### Termination Overlap Detection
+
+`detectOverlappingTerminations()` checks whether two termination conditions on the
+same variable can both be true simultaneously, producing conflicting outcomes.
+
+For bounded integer variables (finite `min`/`max` with range <= 10,000), the check
+enumerates satisfying values via set intersection. For unbounded or very large ranges,
+it falls back to an algebraic O(1) interval overlap check (`algebraicOverlap`) that
+computes lower/upper bounds for each comparison operator and tests whether the
+intervals intersect. This prevents infinite loops that previously occurred when
+variables lacked explicit integer bounds.
+
 ## Determinism Controls
 
 - Simulation RNG uses a seeded LCG for repeatable runs.

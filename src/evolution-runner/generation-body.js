@@ -105,6 +105,10 @@ export async function executeGenerationBody({
   });
 
   let phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:telemetry-recording start");
+    logger.flush?.();
+  }
   recordGenerationTelemetry({
     pendingOperatorNames,
     loopResult,
@@ -114,9 +118,14 @@ export async function executeGenerationBody({
   });
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:telemetry-recording complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:extinction-check start");
+    logger.flush?.();
+  }
   const extinctionResult = await checkPopulationExtinction({
     generation,
     loopResult,
@@ -130,6 +139,7 @@ export async function executeGenerationBody({
   });
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:extinction-check complete");
+    logger.flush?.();
   }
   if (extinctionResult) {
     return { __halt: true, haltedReason: extinctionResult.haltedReason };
@@ -172,9 +182,14 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:motif-mining complete");
+    logger.flush?.();
   }
 
   // Immutable copy: replace the motif-inject operator without mutating the original array
+  if (logger) {
+    logger.info({ generation }, "phase:operator-update start");
+    logger.flush?.();
+  }
   let updatedMutationOperators = mutationOperators;
   if (miningResult && miningResult.motifEffects.length > 0 && motifInjectIndex >= 0) {
     updatedMutationOperators = mutationOperators.map((op, i) =>
@@ -183,6 +198,10 @@ export async function executeGenerationBody({
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:evolution-application start");
+    logger.flush?.();
+  }
   const evolutionResult = applyEvolution(loopResult.nextGeneration, {
     rng: rng ?? undefined,
     mutationRate,
@@ -194,10 +213,12 @@ export async function executeGenerationBody({
     telemetry,
     ...(maxMutationRetries !== undefined ? { maxMutationRetries } : {}),
     ...(offspringPerParent !== undefined ? { offspringPerParent } : {}),
+    logger: logger ?? undefined,
   });
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:evolution-application complete");
+    logger.flush?.();
   }
 
   let evolvedPopulation = evolutionResult.population;
@@ -210,6 +231,10 @@ export async function executeGenerationBody({
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:replenishment start");
+    logger.flush?.();
+  }
   const minPopulationSize = runnerConfig.minPopulationSize;
   if (Number.isInteger(minPopulationSize) && minPopulationSize > 0 && rng) {
     const replenished = replenishPopulation(evolvedPopulation, {
@@ -235,11 +260,16 @@ export async function executeGenerationBody({
   assertPopulation(evolvedPopulation);
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:replenishment complete");
+    logger.flush?.();
   }
 
   const determinism = assembleDeterminism(options.determinism, rng, seed);
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:preference-controller start");
+    logger.flush?.();
+  }
   // --- Preference controller integration ---
   const plConfig = config.preferenceLearning ?? {};
   const freezeConfig = plConfig.controller?.freeze ?? { enabled: false, minTotalSamples: 0, freezeAfterStableGens: 1, stableUncertaintyThreshold: 0.3, requireNoNewMetricIds: false };
@@ -278,9 +308,14 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:preference-controller complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:feedback-planning start");
+    logger.flush?.();
+  }
   const adaptiveBudgetConfig = plConfig.budget?.adaptive ?? plConfig.adaptiveBudget ?? {};
   const rawAdaptiveBudget = computeAdaptiveBudget({
     preferenceModelState: preferenceModelStateForController,
@@ -306,9 +341,14 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:feedback-planning complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:generation-context start");
+    logger.flush?.();
+  }
   let feedback, preferenceModelSnapshots, health, preferenceMetrics;
   try {
     ({ feedback, preferenceModelSnapshots, health, preferenceMetrics } = await buildGenerationContext({
@@ -338,9 +378,14 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:generation-context complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:preference-health-and-taste start");
+    logger.flush?.();
+  }
   const preferenceHealthArtifact = buildPreferenceHealth({
     meanUncertainty: controllerInputs.meanUncertainty,
     oodRate: 0,
@@ -359,9 +404,14 @@ export async function executeGenerationBody({
   const debugLog = buildDebugLog({ generation, evolvedPopulation, loopResult });
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:preference-health-and-taste complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:artifact-writing start");
+    logger.flush?.();
+  }
   const artifacts = await writeGenerationArtifacts({
     baseDir,
     runId,
@@ -388,9 +438,14 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:artifact-writing complete");
+    logger.flush?.();
   }
 
   phaseStart = Date.now();
+  if (logger) {
+    logger.info({ generation }, "phase:generation-cleanup start");
+    logger.flush?.();
+  }
   if (runnerConfig.maxRetainedGenerations != null) {
     await pruneOldGenerations({
       baseDir,
@@ -401,6 +456,7 @@ export async function executeGenerationBody({
 
   if (logger) {
     logger.info({ durationMs: Date.now() - phaseStart }, "phase:generation-cleanup complete");
+    logger.flush?.();
   }
 
   const feedbackCount = Array.isArray(feedback) ? feedback.length : 0;

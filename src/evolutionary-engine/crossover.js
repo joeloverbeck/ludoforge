@@ -61,10 +61,14 @@ export const subtreeSwapCrossover = {
     }
 
     const target = targets[targetIndex];
+    process.stderr.write(`[crossover] clone start target=${target.name}\n`);
     const definition = structuredClone(definitionA);
+    process.stderr.write(`[crossover] clone done, applying\n`);
     target.apply(definition, definitionB);
+    process.stderr.write(`[crossover] apply done, validating\n`);
 
     const validation = validateGenomeDefinition(definition);
+    process.stderr.write(`[crossover] validation done valid=${validation.valid}\n`);
     if (!validation.valid) {
       return null;
     }
@@ -93,5 +97,8 @@ export function crossoverGenome(parentA, parentB, options = {}) {
   if (!operator) {
     return structuredClone(parentA);
   }
-  return operator.crossover(parentA, parentB, rng);
+  process.stderr.write(`[crossover] calling operator=${operator.name} parentA=${parentA?.id ?? "?"} parentB=${parentB?.id ?? "?"}\n`);
+  const result = operator.crossover(parentA, parentB, rng);
+  process.stderr.write(`[crossover] operator=${operator.name} returned ${result ? "genome" : "null"}\n`);
+  return result;
 }

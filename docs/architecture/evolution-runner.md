@@ -519,6 +519,67 @@ The following artifacts are written every generation (even without feedback):
 | Taste vector | `taste-vector.json` | Ensemble weight summary: per-feature mean/stddev, top positive/negative |
 | Preference metrics | `preference-metrics.json` | Model accuracy/calibration (only when comparison feedback exists) |
 
+## Phase Logging
+
+The generation body emits structured `phase:<name> start` and `phase:<name> complete`
+log messages (via the pino logger) around every major phase of the generation loop.
+Each "start" message is followed by `logger.flush?.()` to ensure unbuffered output
+before potentially long-running or blocking operations. This provides fine-grained
+observability for diagnosing hangs and performance bottlenecks.
+
+Phases logged:
+`telemetry-recording`, `extinction-check`, `motif-mining`, `operator-update`,
+`evolution-application`, `replenishment`, `preference-controller`,
+`feedback-planning`, `generation-context`, `preference-health-and-taste`,
+`artifact-writing`, `generation-cleanup`.
+
+The evolution applicator (`applyEvolution`) also accepts an optional `logger`
+parameter and logs per-parent progress at info/debug level when provided.
+
+## Module Map
+
+The `src/evolution-runner/` module has grown beyond the core files. Supporting
+modules provide focused responsibilities:
+
+| Module | Purpose |
+|--------|---------|
+| `generation-body.js` | Per-generation orchestration (the 12-phase loop) |
+| `generation-context.js` | Builds the generation context (feedback, snapshots, health) |
+| `generation-cleanup.js` | Prunes old generation directories |
+| `evolution-applicator.js` | Mutation/crossover retry loop with per-parent logging |
+| `evolution-rates.js` | Mutation and crossover rate resolution |
+| `population-replenisher.js` | Random genome injection below `minPopulationSize` |
+| `population-utils.js` | Population cap and utility helpers |
+| `motif-pipeline.js` | Motif mining pipeline orchestrator |
+| `elite-selector.js` | Elite selection from MAP-Elites grid |
+| `elite-resimulator.js` | Deterministic re-simulation of elites |
+| `seed-resolver.js` | Seeding mode dispatch |
+| `folder-seeder.js` | Folder-based seed loading |
+| `health-metrics.js` | Population health metric computation |
+| `adaptive-budget.js` | Adaptive feedback sampling budget |
+| `preference-controller.js` | Freeze/unfreeze state machine |
+| `preference-health.js` | Preference health diagnostic artifact builder |
+| `feedback-plan.js` | Per-generation feedback decision |
+| `candidate-pool.js` | Candidate pool resolution for active learning |
+| `controller-inputs.js` | Computes controller inputs (uncertainty, OOD) |
+| `operator-setup.js` | Mutation/crossover operator initialization |
+| `operator-outcomes.js` | Outcome classification helpers |
+| `operator-telemetry.js` | Telemetry types and serialization |
+| `operator-telemetry-recorder.js` | Per-generation telemetry recording |
+| `termination-checks.js` | Population extinction detection |
+| `determinism-assembly.js` | Determinism artifact assembly |
+| `serialization-utils.js` | MAP-Elites and population serialization |
+| `runner-initializer.js` | Runner startup and option wiring |
+| `runner-options-validator.js` | Runner option validation |
+| `runner-validation.js` | Population assertion helpers |
+| `runner-defaults.js` | Default layout and directory naming |
+| `run-layout.js` | Run directory path resolution |
+| `artifact-writer.js` | Per-generation artifact writing |
+| `config.js` | Runner config loading |
+| `runner.js` | Top-level runner entry point |
+| `resume-loader.js` | Resume state loading |
+| `seed-loader.js` | Seed population loading |
+
 ## Current Implementation Status
 
 - The evolution runner is implemented in `src/evolution-runner/` with unit coverage.
@@ -536,4 +597,7 @@ The following artifacts are written every generation (even without feedback):
   config-seeding). A `try/finally` block ensures the readline interface is
   closed on exit. Non-interactive environments silently skip the feedback
   loop.
+- The pino logger uses `pino-pretty` in synchronous mode (`sync: true`), not a
+  worker thread transport. This ensures `flush()` is reliable and log output does
+  not race with interactive feedback prompts on stderr.
 - Data persistence modules support run-scoped records via required `runId` fields for metrics and trajectory logs; feedback can optionally include `runId`.

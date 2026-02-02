@@ -295,6 +295,25 @@ These helpers are used by `buildRefForKind`, `buildEffectProps`, and directly by
 operators that need specific element types (e.g., `termination-add` needs an int
 variable, `turn-order-effect-insert` needs a per-player int variable).
 
+### Mutation Infrastructure Modules
+
+The mutation subsystem is organized into focused helper modules under
+`src/evolutionary-engine/mutation/`:
+
+| Module | Purpose |
+|--------|---------|
+| `orchestrator.js` | `mutateGenome` / `mutateAndRepairGenome` — top-level mutation + repair pipeline |
+| `effect-helpers.js` | Random effect construction, `buildRefForKind`, `buildEffectProps` |
+| `pick-or-create.js` | `pickOrCreateZone`, `pickOrCreateTokenType`, `pickOrCreateVariable` |
+| `random.js` | Shared random selection helpers (pick from array, weighted choice) |
+| `ref-updaters.js` | Reference rewriting when elements are removed (variables, zones, token types) |
+| `semantic-naming.js` | Human-readable ID generation for created elements |
+| `targets.js` | Target resolution for effect kinds (variable, token, zone) |
+| `traversal.js` | Definition traversal helpers for collecting refs and effects |
+| `value-tweaks.js` | Numeric value nudging within bounds |
+| `weighted-selection.js` | Weighted random selection from operator pools |
+| `operators/` | Directory containing 37 individual operator modules (one per operator) |
+
 ### Effect Helpers
 
 Implemented in `src/evolutionary-engine/mutation/effect-helpers.js`:

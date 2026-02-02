@@ -4,7 +4,7 @@ import { cloneGenome, clonePopulation, selectMateIndex } from "./population-util
 import { shouldApply } from "./evolution-rates.js";
 import { recordAttempt, recordNoOp, recordRepairFailed } from "./operator-telemetry.js";
 
-function produceOffspring(parent, parentIndex, parents, options, maxRetries) {
+function produceOffspring(parent, parentIndex, parents, options, maxRetries, logger) {
   let child = cloneGenome(parent);
   let operatorName = null;
   let slotOutcome = null;
@@ -13,6 +13,9 @@ function produceOffspring(parent, parentIndex, parents, options, maxRetries) {
     const mateIndex = selectMateIndex(parents.length, parentIndex, options.rng);
     const mate = mateIndex >= 0 ? parents[mateIndex] : null;
     if (mate) {
+      if (logger) {
+        logger.debug({ parentIndex, mateIndex }, "evolution: crossover start");
+      }
       const crossed = crossoverGenome(parent, mate, {
         operators: options.crossoverOperators,
         rng: options.rng,
@@ -26,6 +29,9 @@ function produceOffspring(parent, parentIndex, parents, options, maxRetries) {
   if (options.mutationRate > 0 && shouldApply(options.mutationRate, options.rng)) {
     let resolved = false;
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      if (logger) {
+        logger.debug({ parentIndex, attempt }, "evolution: mutation attempt start");
+      }
       const mutated = mutateAndRepairGenome(child, {
         operators: options.mutationOperators,
         rng: options.rng,
@@ -72,6 +78,7 @@ export function applyEvolution(population, options) {
   const next = [];
   const operatorNames = [];
   const outcomes = [];
+  const logger = options.logger ?? null;
   const maxRetries = Number.isInteger(options.maxMutationRetries) && options.maxMutationRetries >= 0
     ? options.maxMutationRetries
     : 3;
@@ -79,14 +86,30 @@ export function applyEvolution(population, options) {
     ? options.offspringPerParent
     : 1;
 
+  if (logger) {
+    logger.info(
+      { parentCount: parents.length, offspringPerParent, maxRetries },
+      "evolution: starting parent loop",
+    );
+    logger.flush?.();
+  }
+
   parents.forEach((parent, parentIndex) => {
     for (let offspring = 0; offspring < offspringPerParent; offspring += 1) {
-      const result = produceOffspring(parent, parentIndex, parents, options, maxRetries);
+      if (logger) {
+        logger.debug({ parentIndex, offspring, genomeId: parent.id }, "evolution: producing offspring");
+      }
+      const result = produceOffspring(parent, parentIndex, parents, options, maxRetries, logger);
       next.push(result.child);
       operatorNames.push(result.operatorName);
       outcomes.push(result.slotOutcome);
     }
   });
+
+  if (logger) {
+    logger.info({ offspringCount: next.length }, "evolution: parent loop complete");
+    logger.flush?.();
+  }
 
   return { population: next, operatorNames, outcomes };
 }

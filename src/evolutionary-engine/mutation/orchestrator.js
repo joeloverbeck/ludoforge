@@ -109,7 +109,10 @@ export function mutateGenome(genome, options = {}) {
       `Operator "${operatorName}" selected by weighted selector but not found in operators list`,
     );
   }
-  return { genome: operator.mutate(genome, rng), operatorName };
+  process.stderr.write(`[mutation] operator=${operatorName} genomeId=${genome?.id ?? "?"}\n`);
+  const mutatedGenome = operator.mutate(genome, rng);
+  process.stderr.write(`[mutation] operator=${operatorName} done\n`);
+  return { genome: mutatedGenome, operatorName };
 }
 
 export function mutateAndRepairGenome(genome, options = {}) {
@@ -121,12 +124,16 @@ export function mutateAndRepairGenome(genome, options = {}) {
   const operatorName = mutationResult.operatorName ?? null;
   const mutatedGenome = mutationResult.genome ?? originalGenome;
 
+  process.stderr.write(`[mutation] noOp-check operator=${operatorName}\n`);
   const isNoOp = JSON.stringify(mutatedGenome) === JSON.stringify(originalGenome);
+  process.stderr.write(`[mutation] noOp-check done isNoOp=${isNoOp}\n`);
   if (isNoOp) {
     return { genome: mutatedGenome, operatorName, outcome: "noOp" };
   }
 
+  process.stderr.write(`[mutation] repair start operator=${operatorName}\n`);
   const repaired = repairGenome(mutatedGenome, { operators: repairOperators, rng });
+  process.stderr.write(`[mutation] repair done result=${repaired ? "ok" : "null"}\n`);
   if (!repaired) {
     return { genome: null, operatorName, outcome: "repairFailed" };
   }

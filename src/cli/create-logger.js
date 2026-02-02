@@ -13,7 +13,7 @@ export function createLogger(options = {}) {
     // Use pino-pretty as a synchronous stream (main thread) instead of
     // transport worker thread.  This ensures flush() is reliable and log
     // output does not race with interactive prompts written to stderr.
-    const prettyStream = pinoPretty({ colorize: true });
+    const prettyStream = pinoPretty({ colorize: true, sync: true });
     return pino({ level }, prettyStream);
   }
 

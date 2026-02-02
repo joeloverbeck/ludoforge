@@ -13,7 +13,9 @@ export function serializeGenome(definition) {
 }
 
 export function validateGenomeDefinition(definition) {
+  process.stderr.write("[validate] schema start\n");
   const schemaResult = validateGameDefinition(definition);
+  process.stderr.write(`[validate] schema done valid=${schemaResult.valid}\n`);
   if (!schemaResult.valid) {
     return {
       valid: false,
@@ -22,7 +24,9 @@ export function validateGenomeDefinition(definition) {
     };
   }
 
+  process.stderr.write("[validate] semantic start\n");
   const semanticResult = validateSemanticDefinition(definition);
+  process.stderr.write(`[validate] semantic done valid=${semanticResult.valid}\n`);
   return {
     valid: semanticResult.valid,
     errors: [],

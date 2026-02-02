@@ -13,7 +13,9 @@ export function createConsoleIO({ input, output } = {}) {
   // Forward SIGINT from readline to process (readline intercepts it by default)
   rl.on("SIGINT", () => {
     rl.close();
-    process.kill(process.pid, "SIGINT");
+    // Let the close event propagate and reject pending promises
+    // before re-raising SIGINT for the process-level handler
+    setImmediate(() => process.kill(process.pid, "SIGINT"));
   });
 
   /** @type {import("../human-interface/prompt.js").HumanIO} */

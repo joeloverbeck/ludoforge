@@ -63,10 +63,15 @@ export function detectOverlappingTerminations(conditions, variableById, pushIssu
 
 /**
  * Check if two comparison ranges can both be satisfied by the same integer in [min, max].
+ * Falls back to algebraic check when bounds are non-finite or range is too large.
  */
 function rangesOverlap(opA, thA, opB, thB, min, max) {
   const setA = expandRange(opA, thA, min, max);
   const setB = expandRange(opB, thB, min, max);
+
+  if (setA === null || setB === null) {
+    return algebraicOverlap(opA, thA, opB, thB);
+  }
 
   for (const v of setA) {
     if (setB.has(v)) {
@@ -77,10 +82,54 @@ function rangesOverlap(opA, thA, opB, thB, min, max) {
 }
 
 /**
+ * Algebraic overlap check for unbounded or very large ranges.
+ * Determines if there exists any integer satisfying both comparisons simultaneously.
+ */
+function algebraicOverlap(opA, thA, opB, thB) {
+  const loA = lowerBound(opA, thA);
+  const hiA = upperBound(opA, thA);
+  const loB = lowerBound(opB, thB);
+  const hiB = upperBound(opB, thB);
+  const lo = Math.max(loA, loB);
+  const hi = Math.min(hiA, hiB);
+  return lo <= hi;
+}
+
+function lowerBound(op, th) {
+  switch (op) {
+    case ">=": return th;
+    case ">": return th + 1;
+    case "==": return th;
+    case "!=": return -Infinity;
+    case "<=": return -Infinity;
+    case "<": return -Infinity;
+    default: return -Infinity;
+  }
+}
+
+function upperBound(op, th) {
+  switch (op) {
+    case "<=": return th;
+    case "<": return th - 1;
+    case "==": return th;
+    case "!=": return Infinity;
+    case ">=": return Infinity;
+    case ">": return Infinity;
+    default: return Infinity;
+  }
+}
+
+/**
  * Expand a comparison to the set of integer values it satisfies within [min, max].
  * For large ranges this is bounded by the variable bounds.
+ * If bounds are non-finite or the range exceeds MAX_RANGE, fall back to algebraic overlap.
  */
+const MAX_RANGE = 10_000;
+
 function expandRange(op, threshold, min, max) {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || (max - min) > MAX_RANGE) {
+    return null;
+  }
   const result = new Set();
   for (let v = min; v <= max; v++) {
     if (satisfies(op, v, threshold)) {
