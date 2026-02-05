@@ -619,14 +619,16 @@ describe("mutation", () => {
   describe("repairGenome", () => {
     it("clamps int initial and restores enum defaults", () => {
       const definition = makeEnumDefinition();
-      definition.state.variables[0].initial = 999;
+      // Use a value below min so clamping does not create an unfixable
+      // immediately-true termination (score >= 10 with initial=10 at max=10).
+      definition.state.variables[0].initial = -5;
       definition.state.tokenTypes[0].attributes[1].initial = "green";
       const genome = { definition };
 
       const repaired = repairGenome(genome);
 
       assert.ok(repaired);
-      assert.equal(repaired.definition.state.variables[0].initial, 10);
+      assert.equal(repaired.definition.state.variables[0].initial, 0);
       assert.equal(repaired.definition.state.tokenTypes[0].attributes[1].initial, "red");
     });
   });

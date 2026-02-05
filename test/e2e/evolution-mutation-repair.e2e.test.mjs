@@ -45,7 +45,9 @@ describe("evolution-mutation-repair", () => {
     assert.ok(validateGenomeDefinition(crossoverChild.definition).valid);
 
     const invalidChild = structuredClone(crossoverChild);
-    invalidChild.definition.state.variables[0].initial = 99;
+    // Use a value below min so clamping does not create an unfixable
+    // immediately-true termination (energy >= 2 with initial=2 at max=2).
+    invalidChild.definition.state.variables[0].initial = -5;
 
     const mutated = mutateAndRepairGenome(invalidChild, {
       operators: [actionDuplicateMutation],
@@ -59,7 +61,7 @@ describe("evolution-mutation-repair", () => {
     assert.ok(validateGenomeDefinition(mutated.genome.definition).valid);
 
     const variable = mutated.genome.definition.state.variables[0];
-    assert.equal(variable.initial, variable.type.max);
+    assert.equal(variable.initial, variable.type.min);
     assert.equal(
       mutated.genome.definition.actions.length,
       crossoverChild.definition.actions.length + 1

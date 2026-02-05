@@ -18,6 +18,8 @@ import { detectUnusedParams } from "./semantic/unused-param-detector.js";
 import { detectOverlappingTerminations } from "./semantic/termination-overlap-detector.js";
 import { detectUnreachableTerminations } from "./semantic/termination-reachability.js";
 
+const VERBOSE = process.env.LUDOFORGE_VERBOSE === "1";
+
 const warningRules = new Set([
   "action-precondition-unsatisfiable",
   "unused-variable",
@@ -48,13 +50,13 @@ export const REPAIR_EXPECTED_RULES = new Set([
   "effect-value-out-of-bounds",
   "effect-amount-excessive",
   "termination-threshold-out-of-bounds",
+  "termination-immediately-true",
   "termination-variable-unmodified",
   "zone-token-type-mismatch",
   "unused-action-param",
 ]);
 
 export const UNREPAIRED_WARNING_RULES = new Set([
-  "termination-immediately-true",
   "termination-overlap",
   "action-precondition-unsatisfiable",
 ]);
@@ -118,17 +120,17 @@ export function collectSemanticIssues(definition) {
     });
   });
 
-  process.stderr.write("[semantic] validateZoneTokenTypes\n");
+  VERBOSE && process.stderr.write("[semantic] validateZoneTokenTypes\n");
   validateZoneTokenTypes(zones, tokenTypeIds, pushIssue);
 
-  process.stderr.write("[semantic] validateTerminationBlock\n");
+  VERBOSE && process.stderr.write("[semantic] validateTerminationBlock\n");
   const terminationConditions = validateTerminationBlock(definition, pushIssue);
 
-  process.stderr.write("[semantic] validateNoLegalActionsPolicy\n");
+  VERBOSE && process.stderr.write("[semantic] validateNoLegalActionsPolicy\n");
   validateNoLegalActionsPolicy(definition, pushIssue);
 
   const allowedMetaIds = new Set(["legalActionCount", "hasLegalActions"]);
-  process.stderr.write("[semantic] createRefValidator\n");
+  VERBOSE && process.stderr.write("[semantic] createRefValidator\n");
   const {
     validateRef,
     validateZoneRef,
@@ -149,7 +151,7 @@ export function collectSemanticIssues(definition) {
   const domainContext = { variableById, tokenAttributeDefs };
   const exprEvalContext = { domainForRef, domainContext };
 
-  process.stderr.write("[semantic] createSemanticValidators\n");
+  VERBOSE && process.stderr.write("[semantic] createSemanticValidators\n");
   const { validateSelector, validateEffect, validateExpr } = createSemanticValidators({
     validateRef,
     validateZoneRef,
@@ -161,7 +163,7 @@ export function collectSemanticIssues(definition) {
     pushIssue,
   });
 
-  process.stderr.write("[semantic] validateActions\n");
+  VERBOSE && process.stderr.write("[semantic] validateActions\n");
   validateActions(definition, {
     validateExpr,
     validateEffect,
@@ -172,33 +174,33 @@ export function collectSemanticIssues(definition) {
   });
 
   const actions = normalizeArray(definition.actions);
-  process.stderr.write("[semantic] detectDuplicateActions\n");
+  VERBOSE && process.stderr.write("[semantic] detectDuplicateActions\n");
   detectDuplicateActions(actions, pushIssue);
-  process.stderr.write("[semantic] detectCancellingEffects\n");
+  VERBOSE && process.stderr.write("[semantic] detectCancellingEffects\n");
   detectCancellingEffects(actions, pushIssue);
-  process.stderr.write("[semantic] detectUnusedParams\n");
+  VERBOSE && process.stderr.write("[semantic] detectUnusedParams\n");
   detectUnusedParams(actions, pushIssue);
 
-  process.stderr.write("[semantic] validateTriggers\n");
+  VERBOSE && process.stderr.write("[semantic] validateTriggers\n");
   validateTriggers(normalizeArray(definition.triggers), "/triggers", { validateExpr, validateEffect });
   validateTriggers(normalizeArray(definition.turn?.stepEffects), "/turn/stepEffects", { validateExpr, validateEffect });
 
-  process.stderr.write("[semantic] validateScheduler\n");
+  VERBOSE && process.stderr.write("[semantic] validateScheduler\n");
   validateScheduler(definition, { variableIds, tokenTypeIds, zoneIds, pushIssue });
 
-  process.stderr.write("[semantic] validateTerminationExpressions\n");
+  VERBOSE && process.stderr.write("[semantic] validateTerminationExpressions\n");
   validateTerminationExpressions(terminationConditions, definition, validateExpr);
 
-  process.stderr.write("[semantic] validateTerminationThresholds\n");
+  VERBOSE && process.stderr.write("[semantic] validateTerminationThresholds\n");
   validateTerminationThresholds(terminationConditions, variableById, pushIssue);
 
-  process.stderr.write("[semantic] detectOverlappingTerminations\n");
+  VERBOSE && process.stderr.write("[semantic] detectOverlappingTerminations\n");
   detectOverlappingTerminations(terminationConditions, variableById, pushIssue);
 
-  process.stderr.write("[semantic] detectUnreachableTerminations\n");
+  VERBOSE && process.stderr.write("[semantic] detectUnreachableTerminations\n");
   detectUnreachableTerminations(terminationConditions, definition, pushIssue);
 
-  process.stderr.write("[semantic] reportUnusedResources\n");
+  VERBOSE && process.stderr.write("[semantic] reportUnusedResources\n");
   reportUnusedResources({
     variableIds,
     tokenTypeIds,
@@ -209,7 +211,7 @@ export function collectSemanticIssues(definition) {
     pushIssue,
   });
 
-  process.stderr.write("[semantic] done\n");
+  VERBOSE && process.stderr.write("[semantic] done\n");
   return issues;
 }
 

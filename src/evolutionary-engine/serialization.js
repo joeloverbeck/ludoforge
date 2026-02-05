@@ -4,6 +4,8 @@ import { serializeGameDefinition } from "../dsl/serialize.js";
 import { validateGameDefinition } from "../dsl/validate.js";
 import { validateSemanticDefinition } from "../dsl/semantic.js";
 
+const VERBOSE = process.env.LUDOFORGE_VERBOSE === "1";
+
 function hashGenome(serialized) {
   return `genome-${createHash("sha256").update(serialized).digest("hex")}`;
 }
@@ -13,9 +15,9 @@ export function serializeGenome(definition) {
 }
 
 export function validateGenomeDefinition(definition) {
-  process.stderr.write("[validate] schema start\n");
+  VERBOSE && process.stderr.write("[validate] schema start\n");
   const schemaResult = validateGameDefinition(definition);
-  process.stderr.write(`[validate] schema done valid=${schemaResult.valid}\n`);
+  VERBOSE && process.stderr.write(`[validate] schema done valid=${schemaResult.valid}\n`);
   if (!schemaResult.valid) {
     return {
       valid: false,
@@ -24,9 +26,9 @@ export function validateGenomeDefinition(definition) {
     };
   }
 
-  process.stderr.write("[validate] semantic start\n");
+  VERBOSE && process.stderr.write("[validate] semantic start\n");
   const semanticResult = validateSemanticDefinition(definition);
-  process.stderr.write(`[validate] semantic done valid=${semanticResult.valid}\n`);
+  VERBOSE && process.stderr.write(`[validate] semantic done valid=${semanticResult.valid}\n`);
   return {
     valid: semanticResult.valid,
     errors: [],

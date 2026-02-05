@@ -355,10 +355,21 @@ Implemented in `src/evolutionary-engine/repair.js`.
   issues are handled by simulation + degeneracy filters rather than repair.
 - The repair orchestrator (`orchestrator.js`) also repairs `definition.turn.stepEffects`
   by running `repairEffects()` on each step-effect entry.
-- The repair orchestrator repairs termination outcome `players` fields via
-  `repairTerminationOutcomes()` from `src/evolutionary-engine/repair/termination-repair.js`.
-  Valid values are `"all"`, `"active"`, or an array of non-negative integers. Invalid
-  values (e.g., `"inactive"`) are reset to `"active"`.
+- The repair orchestrator applies a termination repair chain (all in
+  `src/evolutionary-engine/repair/termination-repair.js`) in order:
+  1. `repairTerminationOutcomes()` — fixes invalid `players` fields. Valid values are
+     `"all"`, `"active"`, or an array of non-negative integers. Invalid values (e.g.,
+     `"inactive"`) are reset to `"active"`.
+  2. `repairTerminationThresholds()` — clamps `cmp` condition thresholds to the
+     referenced variable's `[min, max]` bounds.
+  3. `repairImmediatelyTrueTerminations()` — adjusts thresholds on `cmp` conditions
+     that are immediately true given the variable's initial value. For `>=`/`<=`,
+     shifts the threshold by ±1; for `>`/`<`, sets the threshold to `initial`; for
+     `==`, shifts to `initial + 1` (or `initial - 1` at max). Returns entries
+     unchanged when no valid adjustment exists (e.g., single-value range or
+     `initial + 1 > max`), leaving the repair-leak gate to reject them.
+  4. `repairUnreachableTerminations()` — removes conditions referencing variables
+     never modified by any effect.
 - `unused-element-prune` (implemented in `src/evolutionary-engine/repair/unused-prune.js`)
   removes unused zones, token types, and variables after mutation/crossover. Uses
   `collectUsedIds()` from `src/dsl/semantic/used-id-collector.js` to walk the

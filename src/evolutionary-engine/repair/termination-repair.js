@@ -189,6 +189,116 @@ function extractVarRefId(expr) {
 }
 
 /**
+ * Adjust termination thresholds that are immediately true at initial state.
+ * For each cmp condition, if the variable's initial value already satisfies
+ * the comparison, shift the threshold so that the condition starts false.
+ * Returns entry unchanged when no valid adjustment exists (e.g. single-value range).
+ * @param {object} definition
+ * @returns {object}
+ */
+export function repairImmediatelyTrueTerminations(definition) {
+  const conditions = normalizeArray(definition?.termination?.conditions);
+  if (conditions.length === 0) {
+    return definition;
+  }
+
+  const variableById = buildVariableById(definition);
+  let changed = false;
+
+  const repairedConditions = conditions.map((entry) => {
+    if (!entry?.condition || entry.condition.kind !== "cmp") {
+      return entry;
+    }
+    const cond = entry.condition;
+    const varId = extractVarRefId(cond.left);
+    if (!varId) {
+      return entry;
+    }
+    const variable = variableById.get(varId);
+    if (
+      !variable ||
+      variable.type?.kind !== "int" ||
+      typeof variable.type.min !== "number" ||
+      typeof variable.type.max !== "number"
+    ) {
+      return entry;
+    }
+    if (cond.right?.kind !== "value" || typeof cond.right.value !== "number") {
+      return entry;
+    }
+
+    const { min, max } = variable.type;
+    const initial = typeof variable.initial === "number" ? variable.initial : min;
+    const op = cond.op;
+    const threshold = cond.right.value;
+
+    const immediatelyTrue =
+      (op === ">=" && initial >= threshold) ||
+      (op === "<=" && initial <= threshold) ||
+      (op === ">" && initial > threshold) ||
+      (op === "<" && initial < threshold) ||
+      (op === "==" && initial === threshold);
+
+    if (!immediatelyTrue) {
+      return entry;
+    }
+
+    let newThreshold;
+    if (op === ">=") {
+      newThreshold = initial + 1;
+      if (newThreshold > max) {
+        changed = true;
+        return null;
+      }
+    } else if (op === "<=") {
+      newThreshold = initial - 1;
+      if (newThreshold < min) {
+        changed = true;
+        return null;
+      }
+    } else if (op === ">") {
+      newThreshold = initial;
+    } else if (op === "<") {
+      newThreshold = initial;
+    } else if (op === "==") {
+      if (initial + 1 <= max) {
+        newThreshold = initial + 1;
+      } else if (initial - 1 >= min) {
+        newThreshold = initial - 1;
+      } else {
+        changed = true;
+        return null;
+      }
+    } else {
+      return entry;
+    }
+
+    changed = true;
+    return {
+      ...entry,
+      condition: {
+        ...cond,
+        right: { ...cond.right, value: newThreshold },
+      },
+    };
+  });
+
+  if (!changed) {
+    return definition;
+  }
+
+  const survivingConditions = repairedConditions.filter((c) => c !== null);
+
+  return {
+    ...definition,
+    termination: {
+      ...definition.termination,
+      conditions: survivingConditions,
+    },
+  };
+}
+
+/**
  * Clamp termination condition thresholds to referenced variable bounds.
  * @param {object} definition
  * @returns {object}
