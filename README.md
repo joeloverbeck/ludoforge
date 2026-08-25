@@ -1,8 +1,10 @@
 # LudoForge
 
-Evolve games. Measure fun. Forge mechanics.
+Archived research prototype — February 2026
 
-LudoForge evolves playable tabletop game prototypes from composable rule primitives using simulation, self-play, and human preference learning.
+Ludoforge explored whether evolutionary search, simulation, proxy metrics, and preference learning could generate balanced tabletop games from a generic rule DSL. The prototype successfully demonstrated deterministic execution, mutation, repair, simulation, metrics, and MAP-Elites-style infrastructure, but it did not establish that grammatically valid generated systems contained meaningful game-design semantics or that its proxy measurements predicted enjoyable play.
+
+The project was abandoned because game generation, competent play, statistical evaluation, and human preference learning all depended on design knowledge that the generic representation had attempted to avoid encoding. Successor work instead begins with explicit mechanics knowledge and intentionally authored games, using simulation and search downstream for testing and refinement.
 
 ## DSL example
 See `examples/dsl/minimal-game.json` for a minimal, valid DSL game definition.
